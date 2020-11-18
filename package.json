@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Active record models with Proxy and more useful classes",
   "main": "src/index.js",
-  "private": false,
   "keywords": [
     "active record",
     "proxy",
