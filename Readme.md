@@ -2,8 +2,8 @@ Active Models
 ===
 Доступные модули в пакете:
 
-- `ActiveModel`: 
-- `Enum`: ;
+- `ActiveModel`
+- `Enum`
 - `CallableModel` 
 
 `ActiveModel`
@@ -106,6 +106,7 @@ class Notify extends CallableModel {
 
 }
 ```
+
 Дальше можем прихреначить объект класса `Notify` как плагин в нухт например и юзать так
 
 ```js
