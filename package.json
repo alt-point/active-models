@@ -1,0 +1,51 @@
+{
+  "name": "@alt.point/active-models",
+  "version": "1.0.0",
+  "description": "Active record models with Proxy and more useful classes",
+  "main": "src/index.js",
+  "keywords": [
+    "active record",
+    "proxy",
+    "model",
+    "helper",
+    "data structure"
+  ],
+  "scripts": {
+    "build": "node ./build"
+  },
+  "author": "surrealistik@alt-point.com",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alt-point/active-models"
+  },
+  "browser": "./dist/index.js",
+  "babel": {
+    "presets": [
+      "@babel/preset-env"
+    ],
+    "plugins": [
+      "@babel/plugin-proposal-class-properties",
+      "@babel/plugin-transform-runtime"
+    ]
+  },
+  "dependencies": {
+    "merge": "^2.1.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.12.1",
+    "@babel/core": "^7.12.3",
+    "@babel/node": "^7.0.0",
+    "@babel/plugin-proposal-class-properties": "^7.12.1",
+    "@babel/plugin-transform-runtime": "^7.0.0",
+    "@babel/preset-env": "^7.12.1",
+    "@babel/preset-stage-2": "^7.8.3",
+    "@babel/register": "^7.0.0",
+    "babel-eslint": "^10.0.1",
+    "del": "^6.0.0",
+    "rollup": "^2.33.3",
+    "rollup-plugin-babel": "^4.0.3",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-node-resolve": "^5.2.0"
+  }
+}

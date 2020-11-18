@@ -1,0 +1,23 @@
+{
+  "name": "@alt.point/active-models",
+  "version": "1.0.0",
+  "description": "Active record models with Proxy and more useful classes",
+  "main": "src/index.js",
+  "keywords": [
+    "active record",
+    "proxy",
+    "model",
+    "helper",
+    "data structure"
+  ],
+  "author": "surrealistik@alt-point.com",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alt-point/active-models"
+  },
+  "browser": "./dist/index.js",
+  "dependencies": {
+    "merge": "^2.1.0"
+  }
+}
