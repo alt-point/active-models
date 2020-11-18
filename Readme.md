@@ -1,5 +1,21 @@
 Active Models
 ===
+
+Installation
+---
+
+yarn
+
+```
+yarn add @alt-point/active-models
+```
+
+npm
+
+```
+npm install --save @alt-point/active-models
+```
+
 Доступные модули в пакете:
 
 - `ActiveModel`
@@ -28,7 +44,7 @@ Class based wrapper для объектов с ацессорами (`setter`/`g
 ```js
 
 import { ActiveModel, Enum } from '@alt-point/active-models'
-
+import { Good } from './models'
 // Мы хотим контролировать то, что проставляется в поле status, потому определяем enum
 export const OrderStatuses = new Enum(['new', 'complete', 'shipping'], 'new')
 
@@ -55,7 +71,7 @@ export default class Order extends {
   //
   static setterGoods (model, prop, value = [], receiver) {
     value = (Array.isArray(value) ? value : [])
-      .map(item => !(item instanceof Order) ? new Order(item) : item)
+      .map(item => !(item instanceof Good) ? new Good(item) : item)
     Reflect.set(model, prop, value, receiver)
   }
 
