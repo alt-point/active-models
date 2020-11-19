@@ -1,10 +1,12 @@
 {
   "name": "@alt-point/active-models",
   "version": "1.0.1",
-  "description": "Active record models with Proxy and more useful classes",
+  "description": "Reactive models with Proxy and more useful classes",
   "main": "src/index.js",
   "keywords": [
     "active record",
+    "reactive",
+    "reactive model",
     "proxy",
     "model",
     "helper",
