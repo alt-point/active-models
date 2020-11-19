@@ -1,12 +1,3 @@
-/**
- * Babel Starter Kit (https://www.kriasoft.com/babel-starter-kit)
- *
- * Copyright © 2015-2016 Kriasoft, LLC. All rights reserved.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE.txt file in the root directory of this source tree.
- */
-
 'use strict';
 
 const fs = require('fs');
@@ -34,7 +25,7 @@ promise = promise.then(() => del(['dist/*']));
         exclude: 'node_modules/**',
         externalHelpers: false,
         runtimeHelpers: true,
-        presets: pkg.babel.presets.map(x => (x === 'latest' ? ['latest', { es2015: { modules: false } }] : x)),
+        presets: pkg.babel.presets.map(x => (x === 'latest' ? ['latest', { es2016: { modules: false } }] : x)),
       })),
       commonjs(),
     ],
