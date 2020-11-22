@@ -73,23 +73,12 @@ function _toConsumableArray(arr) {
 
 var toConsumableArray = _toConsumableArray;
 
-function _defineProperty(obj, key, value) {
-  if (key in obj) {
-    Object.defineProperty(obj, key, {
-      value: value,
-      enumerable: true,
-      configurable: true,
-      writable: true
-    });
-  } else {
-    obj[key] = value;
-  }
+function _createForOfIteratorHelper(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$1(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
-  return obj;
-}
+function _unsupportedIterableToArray$1(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$1(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$1(o, minLen); }
 
-var defineProperty = _defineProperty;
-
+function _arrayLikeToArray$1(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+var splitTokens = new RegExp('[-_.+*/:? ]', 'g');
 /**
  * String to camel case
  * @param {string} s
@@ -97,7 +86,7 @@ var defineProperty = _defineProperty;
  */
 
 var stringToCamelCase = function stringToCamelCase(s) {
-  var result = s.split('_').map(function (s) {
+  var result = s.split(splitTokens).map(function (s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
   }).join('');
   return result.charAt(0).toLowerCase() + result.slice(1);
@@ -110,12 +99,12 @@ var stringToCamelCase = function stringToCamelCase(s) {
 
 
 var stringToPascalCase = function stringToPascalCase(s) {
-  return String(s).split('_').map(function (s) {
+  return String(s).split(splitTokens).map(function (s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
   }).join('');
 };
 /**
- * sanitize data
+ * Sanitize data
  * @param data
  * @returns {any}
  */
@@ -125,9 +114,9 @@ var sanitize = function sanitize(data) {
   return merge.recursive(true, {}, data);
 };
 /**
- * Применяем данные переданные в конструктор к модели
- * @param data
- * @param model
+ * Fill data to model
+ * @param {Object} data
+ * @param {Object} model
  */
 
 
@@ -156,15 +145,29 @@ var setDefaultAttributes = function setDefaultAttributes(model, $defaultAttribut
     }
   }
 
-  Object.defineProperties(model, getters.map(function (p) {
-    return defineProperty({}, p, {
-      enumerable: true
-    });
-  }));
+  var _iterator = _createForOfIteratorHelper(getters),
+      _step;
+
+  try {
+    for (_iterator.s(); !(_step = _iterator.n()).done;) {
+      var g = _step.value;
+
+      if (!Object.prototype.hasOwnProperty.call(model, g)) {
+        Object.defineProperty(model, g, {
+          enumerable: true
+        });
+      }
+    }
+  } catch (err) {
+    _iterator.e(err);
+  } finally {
+    _iterator.f();
+  }
+
   return model;
 };
 /**
- * Поднимаем все свойства и методы из цепочки прототипов
+ * Lifting all properties and methods from the prototype chain
  * @param {Class} constructor
  * @param {array} properties
  * @returns {*[]}
@@ -188,22 +191,19 @@ var getStaticMethodsNamesDeep = function getStaticMethodsNamesDeep(constructor) 
   properties.push.apply(properties, toConsumableArray(op));
   return getStaticMethodsNamesDeep(Object.getPrototypeOf(constructor), properties);
 };
+/**
+ * Check property is fillable
+ * @param {string} prop
+ * @param {array} fillable
+ * @return {boolean}
+ */
 
-var requiredCheck = function requiredCheck(model, prop, value) {
-  var required = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : [];
-
-  if (required.includes(prop)) {
-    if (!Object.prototype.hasOwnProperty.call(model, prop) || value === undefined) {
-      throw new Error("Property ".concat(prop, " is required!"));
-    }
-  }
-};
 
 var fillableCheck = function fillableCheck(prop) {
   var fillable = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
 
-  // Если свойство не содержится в массиве доступных для присвоения свойств,
-  // то устанавливать его значение запрещено
+  // If the property is not contained in the array of properties available for assignment,
+  // it is forbidden to set its value
   if (fillable.length) {
     return fillable.includes(prop);
   }
@@ -211,7 +211,7 @@ var fillableCheck = function fillableCheck(prop) {
   return true;
 };
 /**
- * Proxy getter
+ * Setter handler
  * @param model
  * @param prop
  * @param value
@@ -227,10 +227,8 @@ var setter = function setter(model, prop, value, receiver) {
 
   if (!fillableCheck(prop, model.constructor.fillable)) {
     return false;
-  } // check required value
+  } // validate value
 
-
-  requiredCheck(model, prop, value, model.constructor.required); // validate value
 
   var pascalProp = stringToPascalCase(prop);
   var validator = typeof prop === 'string' && "validate".concat(pascalProp);
@@ -239,16 +237,16 @@ var setter = function setter(model, prop, value, receiver) {
     model.constructor[validator](model, prop, value);
   }
 
-  var setter = typeof prop === 'string' && "setter".concat(pascalProp);
+  var setter = typeof prop === 'string' && model.constructor["setter".concat(pascalProp)];
 
-  if (typeof model.constructor[setter] === 'function') {
-    model.constructor[setter](model, prop, value, receiver);
+  if (typeof setter === 'function') {
+    setter(model, prop, value, receiver);
   } else {
     Reflect.set(model, prop, value, receiver);
   }
 };
 /**
- * Getter
+ * Getter handler
  * @param target
  * @param prop
  * @param receiver
@@ -257,23 +255,14 @@ var setter = function setter(model, prop, value, receiver) {
 
 
 var getter = function getter(target, prop, receiver) {
-  // Если свойство скрыто, то вместо его значения возвращаем `undefined`
-  if (target.constructor.hidden.includes(prop) && typeof target[prop] !== 'function') {
-    return;
-  }
-
   var pascalProp = stringToPascalCase(prop);
-  var getter = typeof prop === 'string' && "getter".concat(pascalProp);
+  var getter = typeof prop === 'string' && target.constructor["getter".concat(pascalProp)];
 
-  if (typeof target[prop] === 'function') {
-    return Reflect.get(target, prop, receiver);
-  }
-
-  if (typeof target.constructor[getter] === 'function') {
+  if (typeof getter === 'function') {
     return target.constructor[getter](target, prop, receiver);
-  } else {
-    return Reflect.get(target, prop, receiver);
   }
+
+  return Reflect.get(target, prop, receiver);
 };
 /**
  * Active record model
@@ -288,13 +277,18 @@ var ActiveModel = /*#__PURE__*/function () {
     value: function toString() {
       return JSON.stringify(this);
     }
+    /**
+     * Make model readonly
+     * @return {Readonly<ActiveModel>}
+     */
+
   }, {
     key: "makeFreeze",
     value: function makeFreeze() {
       return Object.freeze(this);
     }
     /**
-     * Модель
+     * Constructor
      * @param {object} data
      * @returns {Proxy<ActiveModel>|{}}
      */
@@ -305,7 +299,7 @@ var ActiveModel = /*#__PURE__*/function () {
       return {};
     }
     /**
-     * Список полей, доступных для явного изменения
+     * An array of the properties available for assignment via constructor argument `data`
      * @return {*[]}
      */
 
@@ -315,7 +309,7 @@ var ActiveModel = /*#__PURE__*/function () {
       return [];
     }
     /**
-     * Список обязательных полей
+     * List of fields that cannot be deleted
      * @return {*[]}
      */
 
@@ -325,7 +319,7 @@ var ActiveModel = /*#__PURE__*/function () {
       return [];
     }
     /**
-     * Список полей, недоступных для чтения, например `password`
+     * List of fields to exclude from ownKeys, such as ' password`
      * @returns {Array}
      */
 
@@ -357,6 +351,10 @@ var ActiveModel = /*#__PURE__*/function () {
         return Reflect.getPrototypeOf(self);
       },
       deleteProperty: function deleteProperty(target, prop) {
+        if (self.constructor.required && self.constructor.required.includes(prop)) {
+          throw new TypeError("Property \"".concat(prop, "\" is required!"));
+        }
+
         return Reflect.deleteProperty(target, prop);
       },
       has: function has(target, prop) {
@@ -371,12 +369,14 @@ var ActiveModel = /*#__PURE__*/function () {
 
     if (getters.length) {
       handler.ownKeys = function (target) {
-        return toConsumableArray(new Set(Reflect.ownKeys(target).concat(getters)));
+        return toConsumableArray(new Set(Reflect.ownKeys(target).concat(getters))).filter(function (property) {
+          return !self.constructor.hidden.includes(property);
+        });
       };
     }
 
-    data = setDefaultAttributes(sanitize(data || {}), this.constructor.$attributes, getters);
     var model = new Proxy(this, handler);
+    data = setDefaultAttributes(sanitize(data || {}), this.constructor.$attributes, getters);
     fill(model, data);
     return model;
   }
@@ -437,11 +437,28 @@ function _construct(Parent, args, Class) {
 module.exports = _construct;
 });
 
-function _createForOfIteratorHelper(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$1(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+function _defineProperty(obj, key, value) {
+  if (key in obj) {
+    Object.defineProperty(obj, key, {
+      value: value,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+  } else {
+    obj[key] = value;
+  }
 
-function _unsupportedIterableToArray$1(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$1(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$1(o, minLen); }
+  return obj;
+}
 
-function _arrayLikeToArray$1(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+var defineProperty = _defineProperty;
+
+function _createForOfIteratorHelper$1(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$2(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+
+function _unsupportedIterableToArray$2(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$2(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$2(o, minLen); }
+
+function _arrayLikeToArray$2(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
 var Enum = /*#__PURE__*/function () {
   /**
@@ -458,7 +475,7 @@ var Enum = /*#__PURE__*/function () {
 
     defineProperty(this, "__default", undefined);
 
-    var _iterator = _createForOfIteratorHelper(entries),
+    var _iterator = _createForOfIteratorHelper$1(entries),
         _step;
 
     try {

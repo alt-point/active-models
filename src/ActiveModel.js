@@ -1,12 +1,14 @@
 import merge from 'merge'
 
+const splitTokens = new RegExp('[-_.+*/:? ]', 'g')
+
 /**
  * String to camel case
  * @param {string} s
  * @returns {string}
  */
 const stringToCamelCase = (s) => {
-  const result = s.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
+  const result = s.split(splitTokens).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
   return result.charAt(0).toLowerCase() + result.slice(1)
 }
 
@@ -15,10 +17,10 @@ const stringToCamelCase = (s) => {
  * @param {string} s
  * @returns {string}
  */
-const stringToPascalCase = s => String(s).split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
+const stringToPascalCase = s => String(s).split(splitTokens).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
 
 /**
- * sanitize data
+ * Sanitize data
  * @param data
  * @returns {any}
  */
@@ -27,9 +29,9 @@ const sanitize = (data) => {
 }
 
 /**
- * Применяем данные переданные в конструктор к модели
- * @param data
- * @param model
+ * Fill data to model
+ * @param {Object} data
+ * @param {Object} model
  */
 const fill = (model, data) => {
   for (const prop in data) {
@@ -52,12 +54,18 @@ const setDefaultAttributes = (model, $defaultAttributes, getters = []) => {
       model[prop] = model[prop] || $defaultAttributes[prop]
     }
   }
-  Object.defineProperties(model, getters.map(p => ({ [p]: { enumerable: true } })))
+
+  for (const g of getters) {
+    if (!Object.prototype.hasOwnProperty.call(model, g)) {
+      Object.defineProperty(model, g, { enumerable: true })
+    }
+  }
+
   return model
 }
 
 /**
- * Поднимаем все свойства и методы из цепочки прототипов
+ * Lifting all properties and methods from the prototype chain
  * @param {Class} constructor
  * @param {array} properties
  * @returns {*[]}
@@ -74,17 +82,15 @@ const getStaticMethodsNamesDeep = (constructor, properties = []) => {
   return getStaticMethodsNamesDeep(Object.getPrototypeOf(constructor), properties)
 }
 
-const requiredCheck = (model, prop, value, required = []) => {
-  if (required.includes(prop)) {
-    if (!Object.prototype.hasOwnProperty.call(model, prop) || value === undefined) {
-      throw new Error(`Property ${prop} is required!`)
-    }
-  }
-}
-
+/**
+ * Check property is fillable
+ * @param {string} prop
+ * @param {array} fillable
+ * @return {boolean}
+ */
 const fillableCheck = (prop, fillable = []) => {
-  // Если свойство не содержится в массиве доступных для присвоения свойств,
-  // то устанавливать его значение запрещено
+  // If the property is not contained in the array of properties available for assignment,
+  // it is forbidden to set its value
   if (fillable.length) {
     return fillable.includes(prop)
   }
@@ -92,7 +98,7 @@ const fillableCheck = (prop, fillable = []) => {
 }
 
 /**
- * Proxy getter
+ * Setter handler
  * @param model
  * @param prop
  * @param value
@@ -107,8 +113,7 @@ const setter = (model, prop, value, receiver) => {
   if (!fillableCheck(prop, model.constructor.fillable)) {
     return false
   }
-  // check required value
-  requiredCheck(model, prop, value, model.constructor.required)
+
   // validate value
   const pascalProp = stringToPascalCase(prop)
   const validator = typeof prop === 'string' && `validate${pascalProp}`
@@ -117,39 +122,31 @@ const setter = (model, prop, value, receiver) => {
     model.constructor[validator](model, prop, value)
   }
 
-  const setter = typeof prop === 'string' && `setter${pascalProp}`
+  const setter = typeof prop === 'string' && model.constructor[`setter${pascalProp}`]
 
-  if (typeof model.constructor[setter] === 'function') {
-    model.constructor[setter](model, prop, value, receiver)
+  if (typeof setter === 'function') {
+    setter(model, prop, value, receiver)
   } else {
     Reflect.set(model, prop, value, receiver)
   }
 }
 
 /**
- * Getter
+ * Getter handler
  * @param target
  * @param prop
  * @param receiver
  * @returns {any}
  */
 const getter = (target, prop, receiver) => {
-  // Если свойство скрыто, то вместо его значения возвращаем `undefined`
-  if (target.constructor.hidden.includes(prop) && typeof target[prop] !== 'function') {
-    return
-  }
   const pascalProp = stringToPascalCase(prop)
-  const getter = typeof prop === 'string' && `getter${pascalProp}`
+  const getter = typeof prop === 'string' && target.constructor[`getter${pascalProp}`]
 
-  if (typeof target[prop] === 'function') {
-    return Reflect.get(target, prop, receiver)
-  }
-
-  if (typeof target.constructor[getter] === 'function') {
+  if (typeof getter === 'function') {
     return target.constructor[getter](target, prop, receiver)
-  } else {
-    return Reflect.get(target, prop, receiver)
   }
+
+  return Reflect.get(target, prop, receiver)
 }
 
 /**
@@ -163,7 +160,7 @@ export default class ActiveModel {
   }
 
   /**
-   * Список полей, доступных для явного изменения
+   * An array of the properties available for assignment via constructor argument `data`
    * @return {*[]}
    */
   static get fillable () {
@@ -171,7 +168,7 @@ export default class ActiveModel {
   }
 
   /**
-   * Список обязательных полей
+   * List of fields that cannot be deleted
    * @return {*[]}
    */
   static get required () {
@@ -179,7 +176,7 @@ export default class ActiveModel {
   }
 
   /**
-   * Список полей, недоступных для чтения, например `password`
+   * List of fields to exclude from ownKeys, such as ' password`
    * @returns {Array}
    */
   static get hidden () {
@@ -190,12 +187,16 @@ export default class ActiveModel {
     return JSON.stringify(this)
   }
 
+  /**
+   * Make model readonly
+   * @return {Readonly<ActiveModel>}
+   */
   makeFreeze () {
     return Object.freeze(this)
   }
 
   /**
-   * Модель
+   * Constructor
    * @param {object} data
    * @returns {Proxy<ActiveModel>|{}}
    */
@@ -217,12 +218,17 @@ export default class ActiveModel {
         return Reflect.getPrototypeOf(self)
       },
       deleteProperty (target, prop) {
+        if (self.constructor.required && self.constructor.required.includes(prop)) {
+          throw new TypeError(`Property "${prop}" is required!`)
+        }
+
         return Reflect.deleteProperty(target, prop)
       },
       has (target, prop) {
         return Reflect.has(target, prop)
       }
     }
+
     const getters = getStaticMethodsNamesDeep(this.constructor)
       .filter(fn => fn.startsWith('getter'))
       .map(fn => stringToCamelCase(fn.substring(6)))
@@ -230,11 +236,12 @@ export default class ActiveModel {
     if (getters.length) {
       handler.ownKeys = function (target) {
         return [...new Set(Reflect.ownKeys(target).concat(getters))]
+          .filter(property => !self.constructor.hidden.includes(property))
       }
     }
+    const model = new Proxy(this, handler)
 
     data = setDefaultAttributes(sanitize(data || {}), this.constructor.$attributes, getters)
-    const model = new Proxy(this, handler)
     fill(model, data)
     return model
   }

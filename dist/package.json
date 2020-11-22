@@ -1,20 +1,27 @@
 {
-  "name": "@alt.point/active-models",
-  "version": "1.0.0",
-  "description": "Active record models with Proxy and more useful classes",
+  "name": "@alt-point/active-models",
+  "version": "1.0.4",
+  "description": "Reactive models with Proxy and more useful classes",
   "main": "src/index.js",
   "keywords": [
     "active record",
+    "reactive",
+    "reactive model",
     "proxy",
     "model",
     "helper",
     "data structure"
   ],
-  "author": "surrealistik@alt-point.com",
-  "license": "ISC",
+  "homepage": "https://github.com/alt-point/active-models#readme",
+  "author": {
+    "email": "surrealistik@alt-point.com",
+    "name": "SurRealistik",
+    "url": "https://alt-point.com/"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/alt-point/active-models"
+    "url": "https://github.com/alt-point/active-models"
   },
   "browser": "./dist/index.js",
   "dependencies": {

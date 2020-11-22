@@ -76,7 +76,9 @@ export default class Order extends ActiveModel {
     return [
       'goods',
       'id',
-      'status'  
+      'status',
+      'createdAt',
+      'updatedAt'  
     ]  
   }
   
