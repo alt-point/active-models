@@ -1,6 +1,6 @@
 {
   "name": "@alt-point/active-models",
-  "version": "1.0.43",
+  "version": "1.0.44",
   "description": "Reactive models with Proxy and more useful classes",
   "main": "src/index.js",
   "keywords": [
