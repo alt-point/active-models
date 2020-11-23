@@ -116,17 +116,17 @@ const setter = (model, prop, value, receiver) => {
 
   // validate value
   const pascalProp = stringToPascalCase(prop)
-  const validator = typeof prop === 'string' && model.constructor[`validate${pascalProp}`]
+  const validator = typeof prop === 'string' && `validate${pascalProp}`
 
-  typeof validator === 'function' && validator(model, prop, value)
+  typeof model.constructor[validator] === 'function' && model.constructor[validator](model, prop, value)
 
-  const setter = typeof prop === 'string' && model.constructor[`setter${pascalProp}`]
+  const setter = typeof prop === 'string' && `setter${pascalProp}`
 
-  if (typeof setter === 'function') {
-    setter(model, prop, value, receiver)
-  } else {
-    Reflect.set(model, prop, value, receiver)
+  if (typeof model.constructor[setter] === 'function') {
+    return model.constructor[setter](model, prop, value, receiver)
   }
+
+  Reflect.set(model, prop, value, receiver)
 }
 
 /**
@@ -138,10 +138,10 @@ const setter = (model, prop, value, receiver) => {
  */
 const getter = (target, prop, receiver) => {
   const pascalProp = stringToPascalCase(prop)
-  const getter = typeof prop === 'string' && target.constructor[`getter${pascalProp}`]
+  const getter = typeof prop === 'string' && `getter${pascalProp}`
 
-  if (typeof getter === 'function') {
-    return getter(target, prop, receiver)
+  if (typeof target.constructor[getter] === 'function') {
+    return target.constructor[getter](target, prop, receiver)
   }
 
   return Reflect.get(target, prop, receiver)
