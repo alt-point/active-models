@@ -239,15 +239,15 @@
 
 
     var pascalProp = stringToPascalCase(prop);
-    var validator = typeof prop === 'string' && model.constructor["validate".concat(pascalProp)];
-    typeof validator === 'function' && validator(model, prop, value);
-    var setter = typeof prop === 'string' && model.constructor["setter".concat(pascalProp)];
+    var validator = typeof prop === 'string' && "validate".concat(pascalProp);
+    typeof model.constructor[validator] === 'function' && model.constructor[validator](model, prop, value);
+    var setter = typeof prop === 'string' && "setter".concat(pascalProp);
 
-    if (typeof setter === 'function') {
-      setter(model, prop, value, receiver);
-    } else {
-      Reflect.set(model, prop, value, receiver);
+    if (typeof model.constructor[setter] === 'function') {
+      return model.constructor[setter](model, prop, value, receiver);
     }
+
+    Reflect.set(model, prop, value, receiver);
   };
   /**
    * Getter handler
@@ -260,10 +260,10 @@
 
   var getter = function getter(target, prop, receiver) {
     var pascalProp = stringToPascalCase(prop);
-    var getter = typeof prop === 'string' && target.constructor["getter".concat(pascalProp)];
+    var getter = typeof prop === 'string' && "getter".concat(pascalProp);
 
-    if (typeof getter === 'function') {
-      return getter(target, prop, receiver);
+    if (typeof target.constructor[getter] === 'function') {
+      return target.constructor[getter](target, prop, receiver);
     }
 
     return Reflect.get(target, prop, receiver);
@@ -373,9 +373,7 @@
 
       if (getters.length) {
         handler.ownKeys = function (target) {
-          return toConsumableArray(new Set(Reflect.ownKeys(target).concat(getters))).filter(function (property) {
-            return !self.constructor.hidden.includes(property);
-          });
+          return toConsumableArray(new Set(Reflect.ownKeys(target).concat(getters))); // .filter(property => !self.constructor.hidden.includes(property))
         };
       }
 
