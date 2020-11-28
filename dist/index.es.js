@@ -757,19 +757,26 @@ function _isNativeReflectConstruct$1() { if (typeof Reflect === "undefined" || !
 /**
  * Callable class
  */
-var Callable = /*#__PURE__*/function (_Function) {
-  inherits(Callable, _Function);
+var CallableModel = /*#__PURE__*/function (_Function) {
+  inherits(CallableModel, _Function);
 
-  var _super = _createSuper(Callable);
+  var _super = _createSuper(CallableModel);
 
-  function Callable() {
+  createClass(CallableModel, [{
+    key: "__call",
+    value: function __call() {
+      throw new TypeError('Method "__call" must be implemented');
+    }
+  }]);
+
+  function CallableModel() {
     var _this;
 
-    classCallCheck(this, Callable);
+    classCallCheck(this, CallableModel);
 
     _this = _super.call(this);
 
-    if (!Object.prototype.hasOwnProperty.call(assertThisInitialized(_this), '__call')) {
+    if (!Object.prototype.hasOwnProperty.call(assertThisInitialized(_this), '__call') && typeof _this.__call === 'function') {
       throw new TypeError('Class mast be implement method "__call"');
     }
 
@@ -780,8 +787,8 @@ var Callable = /*#__PURE__*/function (_Function) {
     }));
   }
 
-  return Callable;
+  return CallableModel;
 }( /*#__PURE__*/wrapNativeSuper(Function));
 
-export { ActiveModel, Callable as CallableModel, Enum };
+export { ActiveModel, CallableModel, Enum };
 //# sourceMappingURL=index.es.js.map

@@ -5,13 +5,9 @@
 
 Какие проблемы поможет решить?
 
-- [x] Внедрить в модели данных с реактивными свойствами ([`ActiveModel`](#activemodel));
-
-- [x] Контролировать целостность структур данных (`ActiveModel.$attributes`, `ActiveModel.setter${PascalPropertyName}`, `ActiveModel.getter${PascalPropertyName}`);
-
+- [x] Реализовать модели данных с реактивными свойствами ([`ActiveModel`](#activemodel));
+- [x] Контролировать целостность структур данных (`ActiveModel.$attributes`, `ActiveModel.fillable`, `ActiveModel.hidden`, `ActiveModel.required`);
 - [x] Контролировать тип данных в каждом конкретном свойстве (`ActiveModel.validate${PascalPropertyName}`);
-
-- [x] Реагировать на изменение данных внутри модели *налету*;
 
 Installation
 ---
@@ -31,240 +27,103 @@ npm install --save @alt-point/active-models
 ## `ActiveModel`
 
 Класс реализован с использованием [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy).
-Даёт возможность на уровне дочерних классов добавлять обработчики, вызываемые в момент запроса и установки значения свойств объекта (`setter`, `getter`).
+Даёт возможность на уровне дочерних классов добавлять обработчики, вызываемые в момент запроса и установки значения 
+свойств объекта (`setter`, `getter`).
 
+[Пример](docs/active-model.md), иллюстрирующий применение
 
-**Мотивация**
+#### `$attributes`
 
-Если в проекте моделей данных много, либо они используются в разных местах одни и те же, 
- то логично для этого использовать классы, описывающие эти структуры данных и их взаимоотношения.
+*Default value:*  `{}`
 
-Классический случай модель `Order` используется в листинге заказов, 
-при *создании заказа* (`create`), при *обновлении заказа* (`update`), при *чтении данных заказа* (`read`), 
-а так же в вызовах api.
+*Description:* Структура объекта по умолчанию, а так же значения свойств по умолчанию. Даже если значение не 
+передано в `data` в конструкторе, будет установлено из `$attributes`
 
-В компонентах:
-
- - Листинг заказов;
- - Просмотр одного заказа;
- - Создание заказа;
- - Обновление данных заказа;
-
-В `api` (*условно*):
-
-- `ordersList()` - возвращает массив с объектами заказов;
-- `ordersCreate(model)` - ждёт, что в него передадут данные модели заказа;
-- `ordersRead(id)` - по `id` запрашивает с бекенда модель заказа;
-- `ordersUpdate(id, model)` - по `id` обновляет модель данных на бекенде;
-
-Итого, мы имеем в 8 местах в проекте работу с одинаковой моделью данных.
-
----
-
-Как этот кейс можно решить с помощью `ActiveModel`
+*Example:*
 
 ```js
+    static get $attributes () {
+        return {
+            id: '',
+            login: '',
+            password: '',
+            createdAt: ''
+        }                          
+    }                              
+```
 
-import { ActiveModel, Enum } from '@alt-point/active-models'
-import { Good } from './models'
-// Мы хотим контролировать то, что проставляется в поле status, потому определяем enum
-export const OrderStatuses = new Enum(['new', 'complete', 'shipping'], 'new')
+#### `fillable`
 
-export default class Order extends ActiveModel {
-  // Контролируем, что из сырых данных, переданных в конструктор, мы заберём только этот список полей
+*Default value*: ` [] `
+
+*Description*: Массив имён свойств, которые могут быть установлены через конструктор. Если массив пуст, 
+то можно устанавливать любые свойства.
+
+*Example:*
+```js
   static get fillable () {
     return [
-      'goods',
-      'id',
-      'status',
-      'createdAt',
-      'updatedAt'  
-    ]  
-  }
-  
-  // Определяем дефолтную структуру объекта
-  static get $attributes () {
-    return {
-      goods: [],
-      id: '',
-      status: OrderStatuses.default,
-      createdAt: '',
-      updatedAt: ''
-    } 
-  }
-  
-  // В свойстве goods мы хотим, чтобы были только объекты класса Goods
-  //
-  static setterGoods (model, prop, value = [], receiver) {
-    value = (Array.isArray(value) ? value : [])
-      .map(item => !(item instanceof Good) ? new Good(item) : item)
-    Reflect.set(model, prop, value, receiver)
-  }
-
-  // Можем сразу подсчитывать количество товаров в заказе
-  static getterGoodsCount (model) {
-    return model.goods.length
-  }
-
-  // Также можем посчитать вес заказа
-  static getterWeight (model) {
-    return model.goods.reduce((a, { weight }) => a + weight, 0)
-  }
-  
-  // Если передадим некорректное значение статуса, получим исключение 
-  static validateStatus (model, prop, value) {
-    OrderStatuses.validate(value)
-  }
-
+        'id',
+        'password',
+        'property',
+        'createdAt'
+    ]
 }
+```
 
-````
+#### `required`
 
-В `api`: 
+*Default value*: ` [] `
+
+*Description*: Массив имён свойств, которые запрещено удалять у объекта, если массив пустой, 
+то удалять можно любые свойства. 
+
+*Example*:
+```js
+    static get required () {
+        return [
+            'id',
+            'login',
+            'password',
+            'createdAt'
+        ]
+    }
+```
+
+#### `hidden`
+
+*Default value*: ` [] `
+
+*Description*: Массив имён свойств, которые не должны быть перечисляемыми, а следовательно и не будут попадать в `JSON.stringify`
+
+*Example*:
 
 ```js
-
-import { Order } from './models'
-
-class Api {
-    $client //  http клиент, в нашем случае будет @nuxt/http
-
-    async ordersList () {
-      return (await this.$client.$get('orders/')).map(o => new Order(o))
+    static get hidden () {
+        return [
+            'password'
+        ]
     }
-
-    async ordersCreate (model = new Order()) {
-      return new Order(await this.$client.$post('orders/', new Order(model)))    
-    }
-    
-    async ordersRead (id) {
-      return new Order(await this.$client.$get(`orders/${id}/`))
-    }
-
-    async ordersUpdate (id, model) {
-      return new Order(await this.$client.$patch(`orders/${id}/`, new Order(model)))    
-    }
-
-}
-  ///
-
 
 ```
 
-Теперь мы можем быть уверены, что в компонентах будут именно те структуры данных, которые мы ожидаем.
-На примере фрагмента компонента создания/редактирования заказа:
+#### `static setter${PascalPropertyName}(model, prop, value, receiver)`
+
+*Description*: Для того что бы определить *сеттер* для свойства модели необходимо добавить классу, унаследованному от `ActiveModel`
+ **статический** метод с префиксом `setter` + имя в `PascalCase` свойства (разделители `[-_.+*/:? ]` не будут учитываться)
+ 
+*Example*:
 
 ```js
-import { Order } from './models'
+    setterMyIntegerPropertyName (model, prop, value = 0, receiver) {
+        Reflect.set(model, prop, Number.parseInt(value), receiver)
+    }
+``` 
+   
 
-export default {
-  name: 'OrderForm',
-  props: {
-    // Если работаем с данными с сервера, передаём айдишник
-    id: {
-      type: String,
-      default () {
-        return ''
-      }
-    },
-    // если работаем как с инпутом с v-model, принимаем модель целиком
-    value: {
-      type: Order,
-      default () {
-        return new Order()
-      }
-    },
-    // по умолчанию работаем в "серверном" режиме
-    serverMode: {
-      type: Boolean,
-      default () {
-        return true
-      }
-    }
-  },
-  model: {
-    prop: 'value',
-    event: 'save'
-  },  
-  data () {
-    return {
-      model: new Order(),      
-      loading: false
-    }
-  },
-  watch: {
-    id: {
-      immediate: true,
-      handler (n, p) {
-        if (!this.serverMode) {
-          return
-        }
-        if (n === p) {
-          return false
-        }
-    
-        this.load()
-      }
-    },
-    value: {
-      immediate: true,
-      handler (n, p) {
-        if (this.serverMode) {
-          return
-        }
-        if (JSON.stringify(n) !== JSON.stringify(p) || JSON.stringify(n) !== JSON.stringify(this.model)) {
-          this.load()
-        }
-      }
-    }
-  },
-  methods: {
-    saveModel () {
-      // Эмитим данные модели внаружу  
-      this.$emit('save', new Order(this.model))      
-    },
-    // обработчик сохранения формы
-    async save () {
-      if (!this.serverMode) {
-        this.saveModel()
-        return
-      }    
-      this.loading = true
-      
-      try {
-        if (this.id) {
-          const result = await this.$api.ordersUpdate(this.id, this.model)
-          this.$emit('update', result)
-        } else {
-          const result = await this.$api.ordersCreate(this.model)
-          this.$emit('create', result)
-        }
-        
-        await this.saveModel()
-        
-        this.loading = false
-      } catch (e) {
-        // eslint-disable-next-line
-        console.warn(e)
-        this.loading = false
-      }
-    },
-    async load () {
-      // если нет айдишника - заполняем model из props.value
-      if (!this.id) {
-        this.model = new Order(this.value)
-        return
-      }
-      
-      this.loading = true
-      this.model = new Order(await this.$api.ordersRead(this.id))        
-      this.loading = false    
-    }
-  }
-
-
-}
-```
+#### `static getter{PascalPropertyName}(model, prop)`
+*Description*: Для того что бы определить *геттер* для свойства модели необходимо добавить классу, унаследованному от `ActiveModel` 
+**статический** метод с префиксом `getter` + имя в `PascalCase` свойства (разделители `[-_.+*/:? ]` не будут учитываться)
 
 
 ***
@@ -326,9 +185,10 @@ OrderStatuses.default // 'new'
 
 ## TODO:
 - [ ] Добавить больше примеров использования;
-
+- [ ] Тесты;
+- [ ] TS?;
 - [ ] Добавить примеры использования моделей на `node.js`;
-
+- [ ] Перевести на английский readme;
 
 ### Credits
 [Alex D. Bubenchikov](https://t.me/surrealistik), [surrealistik@alt-point.com](mailto:surrealistik@alt-point.com?subject=ActiveModels)
