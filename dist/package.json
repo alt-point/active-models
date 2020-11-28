@@ -1,6 +1,6 @@
 {
   "name": "@alt-point/active-models",
-  "version": "1.0.44",
+  "version": "1.1.0",
   "description": "Reactive models with Proxy and more useful classes",
   "main": "src/index.js",
   "keywords": [
@@ -25,6 +25,6 @@
   },
   "browser": "./dist/index.js",
   "dependencies": {
-    "merge": "^2.1.0"
+    "klona": "^2.0.4"
   }
 }

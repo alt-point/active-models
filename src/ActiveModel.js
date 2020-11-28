@@ -1,4 +1,4 @@
-import merge from 'merge'
+import { klona } from 'klona'
 
 const splitTokens = new RegExp('[-_.+*/:? ]', 'g')
 
@@ -24,9 +24,7 @@ const stringToPascalCase = s => String(s).split(splitTokens).map(s => s.charAt(0
  * @param data
  * @returns {any}
  */
-const sanitize = (data) => {
-  return merge.recursive(true, {}, data)
-}
+const sanitize = data => klona({ ...data })
 
 /**
  * Fill data to model
