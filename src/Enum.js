@@ -1,6 +1,6 @@
 export default class Enum {
-  __map = new Map()
-  __default = undefined
+  #map = new Map()
+  #default = undefined
 
   /**
    * @param entries
@@ -8,40 +8,75 @@ export default class Enum {
    */
   constructor (entries = [], defaultValue) {
     for (const key of entries) {
-      this.__map.set(key, key)
+      this.#map.set(key, key)
     }
-    this.__default = defaultValue
-  }
-
-  get default () {
-    return this.__default
-  }
-
-  values () {
-    return new Array(...this.__map.values())
-  }
-
-  get (key) {
-    return this.__map.get(key)
-  }
-
-  set (key, value) {
-    return this.__map.set(key, value)
-  }
-
-  has (key) {
-    return this.__map.has(key)
+    this.#default = defaultValue
   }
 
   /**
-   * Валидация установленного значения
-   * @param value
+   * Get default value
+   * @return {any}
+   */
+  get default () {
+    return this.#default
+  }
+
+  /**
+   * Get enum values
+   * @return {any[]}
+   */
+  values () {
+    return Array.from(this.#map.values())
+  }
+
+  /**
+   * Get value by key
+   * @param key
+   * @return {any}
+   */
+  get (key) {
+    return this.#map.get(key)
+  }
+
+  /**
+   * Check exist value in enum
+   * @param key
+   * @return {boolean}
+   */
+  has (key) {
+    return this.#map.has(key)
+  }
+
+  /**
+   *
+   * @return {any[]}
+   */
+  keys () {
+    return Array.from(this.#map.keys())
+  }
+
+  /**
+   *
+   * @return {[any, any][]}
+   */
+  entries () {
+    return Array.from(this.#map.entries())
+  }
+
+  /**
+   * Validate values
+   * @param {array|string} value
    * @return {boolean}
    */
   validate (value) {
-    if (!this.has(value)) {
-      throw new Error(`Value must be include one of type: ${this.values().join(', ')}; Provide value "${value}"`)
+    value  = Array.isArray(value) ? value : [value]
+
+    for (const v of value) {
+      if (!this.has(v)) {
+        throw new Error(`Value must be include one of type: ${this.values().join(', ')}; Provide value "${v}"`)
+      }
     }
+
     return true
   }
 }
