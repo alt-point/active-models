@@ -401,6 +401,200 @@ var ActiveModel = /*#__PURE__*/function () {
   return ActiveModel;
 }();
 
+function _classPrivateFieldSet(receiver, privateMap, value) {
+  var descriptor = privateMap.get(receiver);
+
+  if (!descriptor) {
+    throw new TypeError("attempted to set private field on non-instance");
+  }
+
+  if (descriptor.set) {
+    descriptor.set.call(receiver, value);
+  } else {
+    if (!descriptor.writable) {
+      throw new TypeError("attempted to set read only private field");
+    }
+
+    descriptor.value = value;
+  }
+
+  return value;
+}
+
+var classPrivateFieldSet = _classPrivateFieldSet;
+
+function _classPrivateFieldGet(receiver, privateMap) {
+  var descriptor = privateMap.get(receiver);
+
+  if (!descriptor) {
+    throw new TypeError("attempted to get private field on non-instance");
+  }
+
+  if (descriptor.get) {
+    return descriptor.get.call(receiver);
+  }
+
+  return descriptor.value;
+}
+
+var classPrivateFieldGet = _classPrivateFieldGet;
+
+function _createForOfIteratorHelper$1(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$2(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+
+function _unsupportedIterableToArray$2(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$2(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$2(o, minLen); }
+
+function _arrayLikeToArray$2(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
+var _map = new WeakMap();
+
+var _default = new WeakMap();
+
+var Enum = /*#__PURE__*/function () {
+  /**
+   * @param entries
+   * @param defaultValue
+   */
+  function Enum() {
+    var entries = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+    var defaultValue = arguments.length > 1 ? arguments[1] : undefined;
+
+    classCallCheck(this, Enum);
+
+    _map.set(this, {
+      writable: true,
+      value: new Map()
+    });
+
+    _default.set(this, {
+      writable: true,
+      value: undefined
+    });
+
+    var _iterator = _createForOfIteratorHelper$1(entries),
+        _step;
+
+    try {
+      for (_iterator.s(); !(_step = _iterator.n()).done;) {
+        var key = _step.value;
+
+        classPrivateFieldGet(this, _map).set(key, key);
+      }
+    } catch (err) {
+      _iterator.e(err);
+    } finally {
+      _iterator.f();
+    }
+
+    classPrivateFieldSet(this, _default, defaultValue);
+  }
+  /**
+   * Get default value
+   * @return {any}
+   */
+
+
+  createClass(Enum, [{
+    key: "values",
+
+    /**
+     * Get enum values
+     * @return {any[]}
+     */
+    value: function values() {
+      return Array.from(classPrivateFieldGet(this, _map).values());
+    }
+    /**
+     * Get value by key
+     * @param key
+     * @return {any}
+     */
+
+  }, {
+    key: "get",
+    value: function get(key) {
+      return classPrivateFieldGet(this, _map).get(key);
+    }
+    /**
+     * Check exist value in enum
+     * @param key
+     * @return {boolean}
+     */
+
+  }, {
+    key: "has",
+    value: function has(key) {
+      return classPrivateFieldGet(this, _map).has(key);
+    }
+    /**
+     *
+     * @return {any[]}
+     */
+
+  }, {
+    key: "keys",
+    value: function keys() {
+      return Array.from(classPrivateFieldGet(this, _map).keys());
+    }
+    /**
+     *
+     * @return {[any, any][]}
+     */
+
+  }, {
+    key: "entries",
+    value: function entries() {
+      return Array.from(classPrivateFieldGet(this, _map).entries());
+    }
+    /**
+     * Validate values
+     * @param {array|string} value
+     * @return {boolean}
+     */
+
+  }, {
+    key: "validate",
+    value: function validate(value) {
+      value = Array.isArray(value) ? value : [value];
+
+      var _iterator2 = _createForOfIteratorHelper$1(value),
+          _step2;
+
+      try {
+        for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+          var v = _step2.value;
+
+          if (!this.has(v)) {
+            throw new Error("Value must be include one of type: ".concat(this.values().join(', '), "; Provide value \"").concat(v, "\""));
+          }
+        }
+      } catch (err) {
+        _iterator2.e(err);
+      } finally {
+        _iterator2.f();
+      }
+
+      return true;
+    }
+  }, {
+    key: "default",
+    get: function get() {
+      return classPrivateFieldGet(this, _default);
+    }
+  }]);
+
+  return Enum;
+}();
+
+function _assertThisInitialized(self) {
+  if (self === void 0) {
+    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+  }
+
+  return self;
+}
+
+var assertThisInitialized = _assertThisInitialized;
+
 function createCommonjsModule(fn, module) {
 	return module = { exports: {} }, fn(module, module.exports), module.exports;
 }
@@ -417,136 +611,6 @@ function _setPrototypeOf(o, p) {
 
 module.exports = _setPrototypeOf;
 });
-
-function _isNativeReflectConstruct() {
-  if (typeof Reflect === "undefined" || !Reflect.construct) return false;
-  if (Reflect.construct.sham) return false;
-  if (typeof Proxy === "function") return true;
-
-  try {
-    Date.prototype.toString.call(Reflect.construct(Date, [], function () {}));
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-var isNativeReflectConstruct = _isNativeReflectConstruct;
-
-var construct = createCommonjsModule(function (module) {
-function _construct(Parent, args, Class) {
-  if (isNativeReflectConstruct()) {
-    module.exports = _construct = Reflect.construct;
-  } else {
-    module.exports = _construct = function _construct(Parent, args, Class) {
-      var a = [null];
-      a.push.apply(a, args);
-      var Constructor = Function.bind.apply(Parent, a);
-      var instance = new Constructor();
-      if (Class) setPrototypeOf(instance, Class.prototype);
-      return instance;
-    };
-  }
-
-  return _construct.apply(null, arguments);
-}
-
-module.exports = _construct;
-});
-
-function _createForOfIteratorHelper$1(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$2(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
-
-function _unsupportedIterableToArray$2(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$2(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$2(o, minLen); }
-
-function _arrayLikeToArray$2(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-
-var Enum = /*#__PURE__*/function () {
-  /**
-   * @param entries
-   * @param defaultValue
-   */
-  function Enum() {
-    var entries = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
-    var defaultValue = arguments.length > 1 ? arguments[1] : undefined;
-
-    classCallCheck(this, Enum);
-
-    defineProperty(this, "__map", new Map());
-
-    defineProperty(this, "__default", undefined);
-
-    var _iterator = _createForOfIteratorHelper$1(entries),
-        _step;
-
-    try {
-      for (_iterator.s(); !(_step = _iterator.n()).done;) {
-        var key = _step.value;
-
-        this.__map.set(key, key);
-      }
-    } catch (err) {
-      _iterator.e(err);
-    } finally {
-      _iterator.f();
-    }
-
-    this.__default = defaultValue;
-  }
-
-  createClass(Enum, [{
-    key: "values",
-    value: function values() {
-      return construct(Array, toConsumableArray(this.__map.values()));
-    }
-  }, {
-    key: "get",
-    value: function get(key) {
-      return this.__map.get(key);
-    }
-  }, {
-    key: "set",
-    value: function set(key, value) {
-      return this.__map.set(key, value);
-    }
-  }, {
-    key: "has",
-    value: function has(key) {
-      return this.__map.has(key);
-    }
-    /**
-     * Валидация установленного значения
-     * @param value
-     * @return {boolean}
-     */
-
-  }, {
-    key: "validate",
-    value: function validate(value) {
-      if (!this.has(value)) {
-        throw new Error("Value must be include one of type: ".concat(this.values().join(', '), "; Provide value \"").concat(value, "\""));
-      }
-
-      return true;
-    }
-  }, {
-    key: "default",
-    get: function get() {
-      return this.__default;
-    }
-  }]);
-
-  return Enum;
-}();
-
-function _assertThisInitialized(self) {
-  if (self === void 0) {
-    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-  }
-
-  return self;
-}
-
-var assertThisInitialized = _assertThisInitialized;
 
 function _inherits(subClass, superClass) {
   if (typeof superClass !== "function" && superClass !== null) {
@@ -612,6 +676,42 @@ function _isNativeFunction(fn) {
 
 var isNativeFunction = _isNativeFunction;
 
+function _isNativeReflectConstruct() {
+  if (typeof Reflect === "undefined" || !Reflect.construct) return false;
+  if (Reflect.construct.sham) return false;
+  if (typeof Proxy === "function") return true;
+
+  try {
+    Date.prototype.toString.call(Reflect.construct(Date, [], function () {}));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+var isNativeReflectConstruct = _isNativeReflectConstruct;
+
+var construct = createCommonjsModule(function (module) {
+function _construct(Parent, args, Class) {
+  if (isNativeReflectConstruct()) {
+    module.exports = _construct = Reflect.construct;
+  } else {
+    module.exports = _construct = function _construct(Parent, args, Class) {
+      var a = [null];
+      a.push.apply(a, args);
+      var Constructor = Function.bind.apply(Parent, a);
+      var instance = new Constructor();
+      if (Class) setPrototypeOf(instance, Class.prototype);
+      return instance;
+    };
+  }
+
+  return _construct.apply(null, arguments);
+}
+
+module.exports = _construct;
+});
+
 var wrapNativeSuper = createCommonjsModule(function (module) {
 function _wrapNativeSuper(Class) {
   var _cache = typeof Map === "function" ? new Map() : undefined;
@@ -654,6 +754,9 @@ function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflec
 
 function _isNativeReflectConstruct$1() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Date.prototype.toString.call(Reflect.construct(Date, [], function () {})); return true; } catch (e) { return false; } }
 
+/**
+ * Callable class
+ */
 var Callable = /*#__PURE__*/function (_Function) {
   inherits(Callable, _Function);
 
@@ -665,6 +768,11 @@ var Callable = /*#__PURE__*/function (_Function) {
     classCallCheck(this, Callable);
 
     _this = _super.call(this);
+
+    if (!Object.prototype.hasOwnProperty.call(assertThisInitialized(_this), '__call')) {
+      throw new TypeError('Class mast be implement method "__call"');
+    }
+
     return possibleConstructorReturn(_this, new Proxy(assertThisInitialized(_this), {
       apply: function apply(target, thisArg, args) {
         return target.__call.apply(target, toConsumableArray(args));
