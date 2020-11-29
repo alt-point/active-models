@@ -20,13 +20,6 @@ const stringToCamelCase = (s) => {
 const stringToPascalCase = s => String(s).split(splitTokens).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
 
 /**
- * Sanitize data
- * @param data
- * @returns {any}
- */
-const sanitize = data => cloneDeep(data) // JSON.parse(JSON.stringify(data))
-
-/**
  * Fill data to model
  * @param {Object} data
  * @param {Object} model
@@ -187,8 +180,13 @@ export default class ActiveModel {
     return Object.freeze(this)
   }
 
-  toString () {
-    return `[object ${this.constructor.name}]`
+  /**
+   * Sanitize input data
+   * @param data
+   * @return {*}
+   */
+  static sanitize (data) {
+    return cloneDeep(data) // data
   }
   /**
    * Constructor
@@ -233,7 +231,7 @@ export default class ActiveModel {
       }
     })
 
-    data = setDefaultAttributes(sanitize(data || {}), this.constructor.$attributes, getters)
+    data = setDefaultAttributes(this.constructor.sanitize(data || {}), this.constructor.$attributes, getters)
     fill(model, data)
     return model
   }
