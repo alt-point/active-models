@@ -32,7 +32,7 @@ npm install --save @alt-point/active-models
 
 [Пример](docs/active-model.md), иллюстрирующий применение
 
-#### `$attributes`
+#### `static get $attributes`
 
 *Default value:*  `{}`
 
@@ -52,7 +52,7 @@ npm install --save @alt-point/active-models
     }                              
 ```
 
-#### `fillable`
+#### `static get fillable`
 
 *Default value*: ` [] `
 
@@ -71,7 +71,7 @@ npm install --save @alt-point/active-models
 }
 ```
 
-#### `required`
+#### `static required`
 
 *Default value*: ` [] `
 
@@ -90,7 +90,7 @@ npm install --save @alt-point/active-models
     }
 ```
 
-#### `hidden`
+#### `static hidden`
 
 *Default value*: ` [] `
 
@@ -115,7 +115,7 @@ npm install --save @alt-point/active-models
 *Example*:
 
 ```js
-    setterMyIntegerPropertyName (model, prop, value = 0, receiver) {
+    static setterMyIntegerPropertyName (model, prop, value = 0, receiver) {
         Reflect.set(model, prop, Number.parseInt(value), receiver)
     }
 ``` 
@@ -125,10 +125,19 @@ npm install --save @alt-point/active-models
 *Description*: Для того что бы определить *геттер* для свойства модели необходимо добавить классу, унаследованному от `ActiveModel` 
 **статический** метод с префиксом `getter` + имя в `PascalCase` свойства (разделители `[-_.+*/:? ]` не будут учитываться)
 
+*Example*:
+
+```js
+    static getterGoodsSumWeight (model) {
+        return model.goods.reduce((a, { weight }) => a + weight, 0)        
+    }
+```
+
+
 #### `static sanitize(data)`
 *Description*: Статический метод преобразования/очистки данных переданных в конструктор.
 По умолчанию возвращает `lodash.cloneDeep(data)`.
- 
+
 
 ***
  
