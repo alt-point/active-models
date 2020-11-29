@@ -1,4 +1,4 @@
-import { klona } from 'klona/full'
+import cloneDeep from 'lodash.clonedeep'
 
 const splitTokens = new RegExp('[-_.+*/:? ]', 'g')
 
@@ -24,7 +24,7 @@ const stringToPascalCase = s => String(s).split(splitTokens).map(s => s.charAt(0
  * @param data
  * @returns {any}
  */
-const sanitize = data => klona({ ...data })
+const sanitize = data => cloneDeep(data) // JSON.parse(JSON.stringify(data))
 
 /**
  * Fill data to model
@@ -179,10 +179,6 @@ export default class ActiveModel {
     return []
   }
 
-  toString () {
-    return JSON.stringify(this)
-  }
-
   /**
    * Make model readonly
    * @return {Readonly<ActiveModel>}
@@ -191,15 +187,23 @@ export default class ActiveModel {
     return Object.freeze(this)
   }
 
+  toString () {
+    return `[object ${this.constructor.name}]`
+  }
   /**
    * Constructor
    * @param {object} data
    * @returns {Proxy<ActiveModel>|{}}
    */
   constructor (data = {}) {
+    data = data || {}
     const self = this
 
-    const handler = {
+    const getters = getStaticMethodsNamesDeep(this.constructor)
+      .filter(fn => fn.startsWith('getter'))
+      .map(fn => stringToCamelCase(fn.substring(6)))
+
+    const model = new Proxy(this, {
       get (target, prop, receiver) {
         return getter(target, prop, receiver)
       },
@@ -222,20 +226,12 @@ export default class ActiveModel {
       },
       has (target, prop) {
         return Reflect.has(target, prop)
-      }
-    }
-
-    const getters = getStaticMethodsNamesDeep(this.constructor)
-      .filter(fn => fn.startsWith('getter'))
-      .map(fn => stringToCamelCase(fn.substring(6)))
-
-    if (getters.length) {
-      handler.ownKeys = function (target) {
-        return [...new Set(Reflect.ownKeys(target).concat(getters))]
+      },
+      ownKeys (target) {
+        return Array.from(new Set(Reflect.ownKeys(target).concat(getters)))
           .filter(property => !self.constructor.hidden.includes(property))
       }
-    }
-    const model = new Proxy(this, handler)
+    })
 
     data = setDefaultAttributes(sanitize(data || {}), this.constructor.$attributes, getters)
     fill(model, data)
