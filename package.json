@@ -12,6 +12,10 @@
     "helper",
     "data structure"
   ],
+  "files": [
+    "./dist",
+    "./src"
+  ],
   "scripts": {
     "build": "node ./build"
   },
