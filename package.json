@@ -13,8 +13,8 @@
     "data structure"
   ],
   "files": [
-    "./dist",
-    "./src"
+    "dist/",
+    "src/"
   ],
   "scripts": {
     "build": "node ./build"
