@@ -1,8 +1,8 @@
 {
   "name": "@alt-point/active-models",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Reactive models with Proxy and more useful classes",
-  "main": "src/index.js",
+  "main": "./dist/index.umd.js",
   "keywords": [
     "active record",
     "reactive",
@@ -26,7 +26,6 @@
     "type": "git",
     "url": "https://github.com/alt-point/active-models"
   },
-  "browser": "./dist/index.js",
   "babel": {
     "presets": [
       "@babel/preset-env"
