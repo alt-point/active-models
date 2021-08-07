@@ -1,12 +1,13 @@
+import type { EnumItemType } from './types'
 export default class Enum {
-  #map = new Map()
-  #default = undefined
+  readonly #map: Map<EnumItemType,EnumItemType> = new Map()
+  readonly #default: EnumItemType | undefined = undefined
 
   /**
    * @param entries
    * @param defaultValue
    */
-  constructor (entries = [], defaultValue) {
+  constructor (entries: EnumItemType[] = [], defaultValue: EnumItemType | undefined = undefined) {
     for (const key of entries) {
       this.#map.set(key, key)
     }
@@ -15,9 +16,9 @@ export default class Enum {
 
   /**
    * Get default value
-   * @return {any}
+   * @return {}
    */
-  get default () {
+  get default (): EnumItemType | undefined {
     return this.#default
   }
 
@@ -25,7 +26,7 @@ export default class Enum {
    * Get enum values
    * @return {any[]}
    */
-  values () {
+  values (): Array<EnumItemType> {
     return Array.from(this.#map.values())
   }
 
@@ -34,7 +35,7 @@ export default class Enum {
    * @param key
    * @return {any}
    */
-  get (key) {
+  get (key: EnumItemType): EnumItemType| undefined {
     return this.#map.get(key)
   }
 
@@ -43,7 +44,7 @@ export default class Enum {
    * @param key
    * @return {boolean}
    */
-  has (key) {
+  has (key: EnumItemType): boolean {
     return this.#map.has(key)
   }
 
@@ -51,24 +52,23 @@ export default class Enum {
    *
    * @return {any[]}
    */
-  keys () {
+  keys (): Array<EnumItemType> {
     return Array.from(this.#map.keys())
   }
 
   /**
    *
-   * @return {[any, any][]}
+   * @return {[EnumItemType, EnumItemType][]}
    */
-  entries () {
+  entries (): [EnumItemType, EnumItemType][] {
     return Array.from(this.#map.entries())
   }
 
   /**
    * Validate values
-   * @param {array|string} value
-   * @return {boolean}
+   * @param value
    */
-  validate (value) {
+  validate (value: EnumItemType[] | EnumItemType): boolean {
     value  = Array.isArray(value) ? value : [value]
 
     for (const v of value) {

@@ -2,7 +2,7 @@
  * Callable class
  */
 export default class CallableModel extends Function {
-  __call () {
+  __call (...args: any[]): any {
     throw new TypeError('Method "__call" must be implemented')
   }
 
