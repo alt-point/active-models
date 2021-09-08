@@ -3,6 +3,7 @@ const rollup = require('rollup');
 const babel = require('rollup-plugin-babel');
 const resolve = require('rollup-plugin-node-resolve');
 const commonjs = require('rollup-plugin-commonjs');
+const typescript = require('rollup-plugin-typescript');
 const pkg = require('./package.json');
 
 let promise = Promise.resolve();
@@ -15,10 +16,11 @@ promise = promise.then(() => del(['dist/*']));
 ['es', 'cjs', 'umd']
   .forEach((format) => {
     promise = promise.then(() => rollup.rollup({
-      input: 'src/index.js',
+      input: 'src/index.ts',
       external: Object.keys(pkg.dependencies),
       plugins: [
         resolve(),
+        typescript({module: 'CommonJS'}),
         babel(Object.assign(pkg.babel, {
           babelrc: false,
           exclude: 'node_modules/**',
@@ -26,7 +28,7 @@ promise = promise.then(() => del(['dist/*']));
           runtimeHelpers: true,
           presets: pkg.babel.presets.map(x => (x === 'latest' ? ['latest', { es2016: { modules: false } }] : x)),
         })),
-        commonjs(),
+        commonjs({ extensions: ['.ts', '.js'] }),
       ],
     }))
     .then(bundle => bundle.write({

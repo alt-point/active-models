@@ -1,7 +1,7 @@
 @alt-point/active-models
 ===
 
-Пакет с базовыми классами на `es6` для упрощения работы со структурами данных.
+Пакет с базовыми классами на `es6`/`TS` для упрощения работы со структурами данных.
 
 Какие проблемы поможет решить?
 
@@ -31,6 +31,26 @@ npm install --save @alt-point/active-models
 свойств объекта (`setter`, `getter`).
 
 [Пример](docs/active-model.md), иллюстрирующий применение
+
+#### `static get $attributes`
+
+*Default value:*  `{}`
+
+*Description:* Структура объекта по умолчанию, а так же значения свойств по умолчанию. Даже если значение не 
+передано в `data` в конструкторе, будет установлено из `$attributes`
+
+*Example:*
+
+```js
+    static get $attributes () {
+        return {
+            id: '',
+            login: '',
+            password: '',
+            createdAt: ''
+        }                          
+    }
+```
 
 #### `static get fillable`
 
@@ -181,7 +201,7 @@ OrderStatuses.default // 'new'
 ## TODO:
 - [ ] Добавить больше примеров использования;
 - [ ] Тесты;
-- [ ] TS?;
+- [x] TS;
 - [ ] Добавить примеры использования моделей на `node.js`;
 - [ ] Перевести на английский readme;
 

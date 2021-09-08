@@ -4,6 +4,7 @@
   "description": "Reactive models with Proxy and more useful classes",
   "main": "./src/index.ts",
   "keywords": [
+    "DTO",
     "active record",
     "reactive",
     "reactive model",
@@ -58,6 +59,9 @@
     "rollup": "^2.53.3",
     "rollup-plugin-babel": "^4.0.3",
     "rollup-plugin-commonjs": "^10.1.0",
-    "rollup-plugin-node-resolve": "^5.2.0"
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-typescript": "^1.0.1",
+    "tslib": "^2.3.1",
+    "typescript": "^4.4.2"
   }
 }

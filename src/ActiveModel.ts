@@ -1,6 +1,6 @@
 import cloneDeep from 'lodash.clonedeep'
 import deepEqual from 'fast-deep-equal'
-import type  { ActiveModelSource, AnyClassInstance } from './types'
+import type  { ActiveModelSource, AnyClassInstance, Getter, Setter } from './types'
 
 const splitTokens = new RegExp('[-_.+*/:? ]', 'g')
 
@@ -28,10 +28,12 @@ const stringToPascalCase = (s: string): string => {
  * @param {Object} data
  * @param {Object} model
  */
-const fill = (model: ActiveModel | AnyClassInstance, data: ActiveModel | object | AnyClassInstance): void => {
-  Reflect.ownKeys(data).forEach((prop) => {
-    model[prop] = data[prop]
-  })
+const _fill = <T>(model: ActiveModel | AnyClassInstance, data: ActiveModel | AnyClassInstance): T => {
+  for (const prop in data) {
+    Reflect.set(model, prop, data[prop])
+    // model[prop] = data[prop]
+  }
+  return model
 }
 
 /**
@@ -41,17 +43,33 @@ const fill = (model: ActiveModel | AnyClassInstance, data: ActiveModel | object 
  * @param {Array} getters
  * @returns {*}
  */
-const implementGetters  = (model: ActiveModel, getters: Array<string> = []): ActiveModel => {
+const implementGetters  = (model: ActiveModel, getters: Array<string> = []): void => {
   for (const g of getters) {
     if (!Object.prototype.hasOwnProperty.call(model, g)) {
-      Object.defineProperty(model, g, {
+      Reflect.defineProperty(model, g, {
         enumerable: true,
-        configurable: true
+        configurable: true,
+        writable: true
       })
     }
   }
-  return model
 }
+
+/**
+ * Set default values for attributes
+ * @param data
+ * @param $defaultAttributes
+ */
+const setDefaultAttributes = (data: AnyClassInstance, $defaultAttributes: ActiveModel | object | AnyClassInstance): AnyClassInstance | object => {
+  for (const prop in $defaultAttributes) {
+    if (Object.prototype.hasOwnProperty.call($defaultAttributes, prop)) {
+      data[prop] = data[prop] || $defaultAttributes[prop]
+    }
+  }
+  return data
+}
+
+
 
 /**
  * Lifting all properties and methods from the prototype chain
@@ -72,6 +90,16 @@ const getStaticMethodsNamesDeep = (constructor: Function | object | null | undef
   properties.push(...op)
   return getStaticMethodsNamesDeep(Reflect.getPrototypeOf(constructor), properties)
 }
+
+
+const hasStaticMethod = (Ctor:  { new <T>(...args: any[]): T, [key: string]: (...args: any[]) => any }, method: string): boolean => {
+  return Ctor[method] && typeof Ctor[method] === 'function'
+}
+
+const getStaticMethod = (Ctor:  { new <T>(...args: any[]): T, [key: string]: (...args: any[]) => any }, method: string): Function => {
+  return Ctor[method]
+}
+
 
 /**
  * Check property is fillable
@@ -109,17 +137,22 @@ const setter = (target: ActiveModel | AnyClassInstance, prop: string, value: any
   const pascalProp: string = stringToPascalCase(prop)
   const validator: string = `validate${pascalProp}`
 
-  if (typeof (target.constructor)[validator] === 'function') {
-    (<AnyClassInstance><unknown>target.constructor)[validator](target, prop, value)
+  if (hasStaticMethod(target.constructor, validator)) {
+    getStaticMethod(target.constructor, validator)(target, prop, value)
   }
 
-  const setter: string = `setter${pascalProp}`
+  const registered = target.constructor.resolveSetter(prop)
+  if (registered) {
+    return registered(target, prop, value, receiver)
+  }
 
+  // if setter static method for prop find in current class, then proxied to setter
+  const setter: string = `setter${pascalProp}`
   if ((<AnyClassInstance><unknown>target.constructor)[setter] === 'function') {
     return (<AnyClassInstance><unknown>target.constructor)[setter](target, prop, value, receiver)
   }
 
-  Reflect.set(target, prop, value, receiver)
+  return Reflect.set(target, prop, value, receiver)
 }
 
 /**
@@ -129,36 +162,84 @@ const setter = (target: ActiveModel | AnyClassInstance, prop: string, value: any
  * @param receiver
  * @returns {any}
  */
-const getter = (target: ActiveModel, prop: string, receiver: any): any => {
-  // if (prop === 'toJSON') {
-  //   return target
-  // }
-
+const getter = (target: ActiveModel | AnyClassInstance, prop: string, receiver?: any): any => {
   const getter: string = `getter${stringToPascalCase(prop)}`
 
-  if (typeof (<AnyClassInstance><unknown>target.constructor)[getter] === 'function') {
-    return (<AnyClassInstance><unknown>target.constructor)[getter](target, prop, receiver)
+  const registered = target.constructor.resolveGetter(prop)
+  if (registered) {
+    return registered(target, prop, receiver)
+  }
+
+  if (hasStaticMethod(target.constructor, getter)) {
+    return getStaticMethod(target.constructor, getter)(target, prop, receiver)
   }
 
   return Reflect.get(target, prop, receiver)
 }
 
-/**
- * Active record model
- * @param {object} data
-  */
-export default class ActiveModel {
+const handler = <ProxyHandler<ActiveModel>>{
+  get (target, prop, receiver) {
+    return getter(target, prop as string, receiver)
+  },
+  set (target, prop: string, value, receiver) {
+    setter(target, prop, value, receiver)
+    return true
+  },
+  apply (target: ActiveModel, thisArg, argumentsList) {
+    return Reflect.apply(target as unknown as Function, thisArg, argumentsList)
+  },
+  deleteProperty (target, prop) {
+    if ((<typeof ActiveModel> target.constructor).protected && (<typeof ActiveModel> target.constructor).protected.includes(prop as string)) {
+      throw new TypeError(`Property "${prop as string}" is protected!`)
+    }
+
+    return Reflect.deleteProperty(target, prop)
+  },
+  has (target, prop) {
+    return Reflect.has(target, prop)
+  },
+  ownKeys (target: ActiveModel) {
+    const getters = (<typeof ActiveModel> target.constructor).getGetters()
+    const hidden = (<typeof ActiveModel> target.constructor).hidden
+    return Array.from(new Set(Reflect.ownKeys(target).concat(getters)))
+      .filter(property => !hidden.includes(property as string))
+  }
+}
+
+class ActiveModel {
+  protected static __getters__ = new Map<string | symbol, Getter<any>>()
+  protected static __setters__ = new Map<string | symbol, Setter<any>>()
+
+  protected static defineGetter <T>(prop: string, handler: Getter<T>) {
+    this.__getters__.set(prop, handler)
+  }
+
+  protected static resolveGetter <T>(prop: string | symbol): Getter<T> | undefined {
+    return this.__getters__.get(prop)
+  }
+
+  protected static defineSetter <T>(prop: string, handler: Setter<T>) {
+    this.__setters__.set(prop, handler)
+  }
+
+  protected static resolveSetter <T>(prop: string | symbol): Setter<T> | undefined {
+    return this.__setters__.get(prop)
+  }
+
+  static get $attributes (): object {
+    return {}
+  }
 
   toJSON () {
-    return Object.getOwnPropertyNames(this)
+    return Object.keys(this)
       .reduce((a: object, b: string) => {
         // @ts-ignore
-        a[b] = this[b]
+        a[b] = getter(this,b)
         return a
       }, {})
   }
 
-   /**
+  /**
    * An array of the properties available for assignment via constructor argument `data`
    * @return {string[]}
    */
@@ -196,48 +277,49 @@ export default class ActiveModel {
    * @return {*}
    */
   static sanitize (data: object | ActiveModel): object {
-    return cloneDeep(data) // data
+    return cloneDeep(data)
+  }
+
+  /**
+   * Factory method for create new instance
+   * @param data
+   */
+  static create<T extends ActiveModel>(data: T | ActiveModelSource): T {
+    const model = new this()
+    const getters: string[] = this.getGetters()
+    implementGetters(model, getters)
+    const source = this.sanitize(data || {})
+    return _fill<T>(model, source)
+  }
+
+  fill (data: ActiveModelSource): this {
+    const getters: string[] = (<typeof ActiveModel> this.constructor).getGetters()
+    implementGetters(this, getters)
+    _fill<this>(this, (<typeof ActiveModel> this.constructor).sanitize(data || {}))
+    return this
+  }
+
+  clone (): this {
+    return cloneDeep(this)
+  }
+
+  static getGetters (): string[] {
+    return getStaticMethodsNamesDeep(this)
+      .filter(fn => fn.startsWith('getter'))
+      .map(fn => stringToCamelCase(fn.substring(6)))
   }
 
   constructor(data: ActiveModelSource = {}) {
-    data = data || {}
-    const self = this
-
-    const getters: string[] = getStaticMethodsNamesDeep(this.constructor)
-      .filter(fn => fn.startsWith('getter'))
-      .map(fn => stringToCamelCase(fn.substring(6)))
-
-    const model = new Proxy(this, {
-      get (target, prop, receiver) {
-        return getter(target, prop as string, receiver)
-      },
-      set (target, prop: string, value, receiver) {
-        setter(target, prop, value, receiver)
-        return true
-      },
-      apply (target: ActiveModel, thisArg, argumentsList) {
-        return Reflect.apply(target as unknown as Function, thisArg, argumentsList)
-      },
-      getPrototypeOf () {
-        return Reflect.getPrototypeOf(self)
-      },
-      deleteProperty (target, prop) {
-        if ((<typeof ActiveModel> self.constructor).protected && (<typeof ActiveModel> self.constructor).protected.includes(prop as string)) {
-          throw new TypeError(`Property "${prop as string}" is protected!`)
-        }
-
-        return Reflect.deleteProperty(target, prop)
-      },
-      has (target, prop) {
-        return Reflect.has(target, prop)
-      },
-      ownKeys (target: ActiveModel) {
-        return Array.from(new Set(Reflect.ownKeys(target).concat(getters)))
-          .filter(property => !(<typeof ActiveModel> self.constructor).hidden.includes(property as string))
-      }
-    })
-
-    fill(implementGetters(this, getters), (<typeof ActiveModel> self.constructor).sanitize(data || {}))
-    return model
+    data = (<typeof ActiveModel> this.constructor).sanitize(data || {})
+    const model = new Proxy<this>(this, handler)
+    const getters: string[] = (<typeof ActiveModel> this.constructor).getGetters()
+    implementGetters(model, getters)
+    return _fill<this>(model, setDefaultAttributes(data, (<typeof ActiveModel> this.constructor).$attributes))
   }
 }
+
+/**
+ * Active record model
+ * @param {object} data
+  */
+export default ActiveModel

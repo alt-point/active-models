@@ -44,8 +44,8 @@ export default class Enum {
    * @param key
    * @return {boolean}
    */
-  has (key: EnumItemType): boolean {
-    return this.#map.has(key)
+  has (key: EnumItemType | undefined): boolean {
+    return key=== undefined ? false : this.#map.has(key)
   }
 
   /**
