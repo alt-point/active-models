@@ -2,7 +2,8 @@
   "name": "@alt-point/active-models",
   "version": "2.0.0",
   "description": "Reactive models with Proxy and more useful classes",
-  "main": "./src/index.ts",
+  "main": "./dist/index.umd.js",
+  "types": "./src/types.d.ts",
   "keywords": [
     "DTO",
     "active record",

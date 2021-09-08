@@ -1,4 +1,4 @@
-import ActiveModel from "./ActiveModel";
+import ActiveModel from './ActiveModel'
 
 export type ActiveModelSource = undefined | object | null
 export type EnumItemType = string | Symbol | null
