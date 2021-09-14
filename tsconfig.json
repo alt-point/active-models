@@ -11,7 +11,9 @@
     "noEmit": true,
     "lib": [
       "es2018",
-      "es2015.proxy"
+      "es2015.proxy",
+      "dom",
+      "esnext"
     ]
   },
   "lib": [

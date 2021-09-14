@@ -1,4 +1,4 @@
-export { default as ActiveModel } from './ActiveModel'
-export { default as Enum } from './Enum'
-export { default as CallableModel } from './CallableModel'
-
+export { ActiveModel } from './ActiveModel'
+export { Enum } from './Enum'
+export { CallableModel } from './CallableModel'
+export * from './decorators'

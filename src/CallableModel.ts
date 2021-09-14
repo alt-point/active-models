@@ -1,7 +1,7 @@
 /**
  * Callable class
  */
-export default abstract class CallableModel extends Function {
+export abstract class CallableModel extends Function {
   __call (...args: any[]): any {
     throw new TypeError('Method "__call" must be implemented')
   }

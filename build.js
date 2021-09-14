@@ -18,9 +18,14 @@ promise = promise.then(() => del(['dist/*']));
     promise = promise.then(() => rollup.rollup({
       input: 'src/index.ts',
       external: Object.keys(pkg.dependencies),
+      output: {
+        exports: 'named'
+      },
       plugins: [
         resolve(),
-        typescript({module: 'CommonJS'}),
+        typescript({
+          module: 'CommonJS'
+        }),
         babel(Object.assign(pkg.babel, {
           babelrc: false,
           exclude: 'node_modules/**',
@@ -28,7 +33,9 @@ promise = promise.then(() => del(['dist/*']));
           runtimeHelpers: true,
           presets: pkg.babel.presets.map(x => (x === 'latest' ? ['latest', { es2016: { modules: false } }] : x)),
         })),
-        commonjs({ extensions: ['.ts', '.js'] }),
+        commonjs({
+          extensions: ['.ts', '.js']
+        }),
       ],
     }))
     .then(bundle => bundle.write({
