@@ -202,7 +202,6 @@ const handler = <ProxyHandler<ActiveModel>>{
 
 export class ActiveModel {
   static readonly __activeModeActivate: boolean = false
-  // static [key: string]: any // TODO: need to rewrite it
   protected static __getters__?: Map<string, Getter<any>> = new Map<string, Getter<any>>()
   protected static __setters__?: Map<string, Setter<any>> = new Map<string, Setter<any>>()
   protected static __attributes__?: Map<string, any> = new Map<string, any>()
@@ -211,6 +210,13 @@ export class ActiveModel {
   protected static __protected__?: Set<string> = new Set<string>()
   protected static __readonly__?: Set<string> = new Set<string>()
   protected static __hidden__?: Set<string> = new Set<string>()
+
+  static throwIfNotDecorated () {
+    if (!this.__activeModeActivate) {
+      throw new TypeError('Current class must be decorate with @ActiveClass decorator.')
+    }
+    return this
+  }
 
   static addToHidden (...prop: string[]): void {
     prop.forEach(p => this.__hidden__ && this.__hidden__.add(p))
@@ -277,7 +283,7 @@ export class ActiveModel {
   }
 
   /**
-   * @deprecated
+   *
    */
   static get $attributes (): object {
     return {}
@@ -293,7 +299,6 @@ export class ActiveModel {
 
   /**
    * An array of the properties available for assignment via constructor argument `data`
-   * @deprecated
    * @return {string[]}
    */
   static get fillable (): string[] {
@@ -301,7 +306,7 @@ export class ActiveModel {
   }
 
   /**
-   * @deprecated
+   *
    */
   static get readonly (): string[] {
     return []
@@ -309,7 +314,6 @@ export class ActiveModel {
 
   /**
    * List of fields that cannot be deleted
-   * @deprecated
    * @return {string[]}
    */
   static get protected (): string[] {
@@ -318,7 +322,6 @@ export class ActiveModel {
 
   /**
    * List of fields to exclude from ownKeys, such as ' password`
-   * @deprecated
    * @returns {string[]}
    */
   static get hidden (): string[] {
