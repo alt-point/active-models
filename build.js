@@ -1,12 +1,12 @@
-const del = require('del');
-const rollup = require('rollup');
-const babel = require('rollup-plugin-babel');
-const resolve = require('rollup-plugin-node-resolve');
-const commonjs = require('rollup-plugin-commonjs');
-const typescript = require('rollup-plugin-typescript');
-const pkg = require('./package.json');
+const rollup = require('rollup')
+const babel = require('rollup-plugin-babel')
+const resolve = require('rollup-plugin-node-resolve')
+const commonjs = require('rollup-plugin-commonjs')
+const typescript = require('rollup-plugin-typescript')
+const del = require('del')
+const pkg = require('./package.json')
 
-let promise = Promise.resolve();
+let promise = Promise.resolve()
 
 // Clean up the output directory
 promise = promise.then(() => del(['dist/*']));
@@ -18,9 +18,6 @@ promise = promise.then(() => del(['dist/*']));
     promise = promise.then(() => rollup.rollup({
       input: 'src/index.ts',
       external: Object.keys(pkg.dependencies),
-      output: {
-        exports: 'named'
-      },
       plugins: [
         resolve(),
         typescript({
@@ -31,20 +28,25 @@ promise = promise.then(() => del(['dist/*']));
           exclude: 'node_modules/**',
           externalHelpers: false,
           runtimeHelpers: true,
-          presets: pkg.babel.presets.map(x => (x === 'latest' ? ['latest', { es2016: { modules: false } }] : x)),
+          presets: pkg.babel.presets.map(x => (x === 'latest' ? ['latest', { es2016: { modules: false } }] : x))
         })),
         commonjs({
           extensions: ['.ts', '.js']
-        }),
-      ],
+        })
+      ]
     }))
     .then(bundle => bundle.write({
       file: `dist/${format === 'cjs' ? 'index' : `index.${format}`}.js`,
       format,
+      exports: 'named',
+      globals: {
+        lodash: 'lodash',
+        'fast-deep-equal': 'deepEqual'
+      },
       sourcemap: true,
-      name: format === 'umd' ? pkg.name : undefined,
-    }));
-});
+      name: format === 'umd' ? pkg.name : undefined
+    }))
+})
 
 // Copy package.json and LICENSE.txt
 // promise = promise.then(() => {
@@ -57,4 +59,4 @@ promise = promise.then(() => del(['dist/*']));
 //  // fs.writeFileSync('dist/LICENSE.txt', fs.readFileSync('LICENSE.txt', 'utf-8'), 'utf-8');
 // });
 
-promise.catch(err => console.error(err.stack)); // eslint-disable-line no-console
+promise.catch(err => console.error(err.stack)) // eslint-disable-line no-console
