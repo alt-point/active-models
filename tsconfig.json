@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "Node",
+    "target": "ES2018",
+    "module": "ESNext",
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "sourceMap": true,
+    "strict": true,
+    "noEmit": true,
+    "lib": [
+      "es2018",
+      "es2015.proxy",
+      "dom",
+      "esnext"
+    ]
+  },
+  "lib": [
+    "ESNext",
+    "ESNext.AsyncIterable",
+    "DOM"
+  ],
+  "esModuleInterop": true,
+  "allowJs": true,
+  "sourceMap": true,
+  "strict": true,
+  "noEmit": true,
+  "baseUrl": ".",
+  "paths": {
+    "~/*": [
+      "./*"
+    ],
+    "@/*": [
+      "./*"
+    ]
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}

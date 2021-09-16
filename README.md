@@ -1,13 +1,13 @@
 @alt-point/active-models
 ===
 
-Пакет с базовыми классами на `es6` для упрощения работы со структурами данных.
+Пакет с базовыми классами на `es6`/`TS` для упрощения работы со структурами данных.
 
 Какие проблемы поможет решить?
 
 - [x] Реализовать модели данных с реактивными свойствами ([`ActiveModel`](#activemodel));
-- [x] Контролировать целостность структур данных (`ActiveModel.$attributes`, `ActiveModel.fillable`, `ActiveModel.hidden`, `ActiveModel.required`);
-- [x] Контролировать тип данных в каждом конкретном свойстве (`ActiveModel.validate${PascalPropertyName}`);
+- [x] Контролировать целостность структур данных (`ActiveModel.fillable`, `ActiveModel.hidden`, `ActiveModel.required`);
+- [x] Контролировать тип и целостность данных в каждом конкретном свойстве (`ActiveModel.validate${PascalPropertyName}`);
 
 Installation
 ---
@@ -49,7 +49,7 @@ npm install --save @alt-point/active-models
             password: '',
             createdAt: ''
         }                          
-    }                              
+    }
 ```
 
 #### `static get fillable`
@@ -57,7 +57,7 @@ npm install --save @alt-point/active-models
 *Default value*: ` [] `
 
 *Description*: Массив имён свойств, которые могут быть установлены через конструктор. Если массив пуст, 
-то можно устанавливать любые свойства.
+то можно устанавливать любые свойства. Если массив заполнен, то в модель можно установить только перечисленные свойства и их значения.
 
 *Example:*
 ```js
@@ -76,11 +76,11 @@ npm install --save @alt-point/active-models
 *Default value*: ` [] `
 
 *Description*: Массив имён свойств, которые запрещено удалять у объекта, если массив пустой, 
-то удалять можно любые свойства. 
+то удалять можно любые свойства.
 
 *Example*:
 ```js
-    static get required () {
+    static get protected () {
         return [
             'id',
             'login',
@@ -94,7 +94,7 @@ npm install --save @alt-point/active-models
 
 *Default value*: ` [] `
 
-*Description*: Массив имён свойств, которые не должны быть перечисляемыми, а следовательно и не будут попадать в `JSON.stringify`
+*Description*: Массив имён свойств, которые не должны быть перечисляемыми, а следовательно и не будут попадать в вывод `Object.keys`, `Reflect.ownKeys`, `JSON.stringify`, etc.
 
 *Example*:
 
@@ -136,6 +136,7 @@ npm install --save @alt-point/active-models
 
 #### `static sanitize(data)`
 *Description*: Статический метод преобразования/очистки данных переданных в конструктор.
+
 По умолчанию возвращает `lodash.cloneDeep(data)`.
 
 
@@ -153,7 +154,7 @@ npm install --save @alt-point/active-models
 import { CallableModel } from '@alt-point/active-models'
 
 class Notify extends CallableModel {
-  // Теперь можем обработать вызов объекта как функции
+  // Define 
   __call (...args) {
       return this.success(...args)
   }
@@ -178,9 +179,10 @@ export default (ctx, inject) => {
   inject('notify', new Notify())
 }
 
+
 // в компоненте теперь можно юзать: 
-this.$notify.silent('Я зачем-то пишу в консоли')
-this.$notify('Я ору алертом!')
+this.$notify.silent('Write notice to console!')
+this.$notify('Alert!')
 ```
 
 ## `Enum`
@@ -199,7 +201,7 @@ OrderStatuses.default // 'new'
 ## TODO:
 - [ ] Добавить больше примеров использования;
 - [ ] Тесты;
-- [ ] TS?;
+- [x] TS;
 - [ ] Добавить примеры использования моделей на `node.js`;
 - [ ] Перевести на английский readme;
 
