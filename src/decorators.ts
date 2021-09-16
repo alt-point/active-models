@@ -66,18 +66,18 @@ export function isProtected () {
 
 
 /**
- * Decorate class field
- * @param <ActiveFieldDescriptor>opts
- * setter?: Setter<any>
- * getter?: Getter<any>
- * validator?: Validator<any>
- * readonly?: boolean
- * hidden?: boolean
- * fillable?: boolean
- * protected?: boolean
- * attribute?: any
- * value?: any
+ * Decorate class property
  * @constructor
+ * @param opts<ActiveFieldDescriptor>
+ * @param opts.setter?: Setter<any> - setter for property
+ * @param opts.getter?: Getter<any> - getter for property
+ * @param opts.validator?: Validator<any>
+ * @param opts.readonly?: boolean - property access readonly
+ * @param opts.hidden?: boolean - property hide in own keys
+ * @param opts.fillable?: boolean - property can be filled in
+ * @param opts.protected?: boolean - property protected from deleting
+ * @param opts.attribute?: any - default value for creating
+ * @param opts.value?: any - alias for opts.attribute
  */
 export function ActiveField(opts: ActiveFieldDescriptor = defaultOpts) {
   const options: ActiveFieldDescriptor = Object.assign({ fillable: true, protected: true }, opts)

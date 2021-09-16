@@ -1,4 +1,4 @@
-import cloneDeep from 'lodash.clonedeep'
+import { cloneDeep } from 'lodash'
 import deepEqual from 'fast-deep-equal'
 import type  { ActiveModelSource, AnyClassInstance, Getter, Setter, Validator } from './types'
 
@@ -22,10 +22,6 @@ const stringToPascalCase = (s: string): string => {
   return String(s).split(splitTokens).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
 }
 
-const prefix = (strings: TemplateStringsArray): string => {
-  return `${strings[0]}${stringToPascalCase(strings.slice(1, strings.length ).join(''))}`
-}
-
 /**
  * Fill data to model
  * @param {Object} data
@@ -34,7 +30,6 @@ const prefix = (strings: TemplateStringsArray): string => {
 const _fill = <T>(model: ActiveModel | AnyClassInstance, data: ActiveModel | AnyClassInstance): T => {
   for (const prop in data) {
     Reflect.set(model, prop, data[prop])
-    // model[prop] = data[prop]
   }
   return model
 }
@@ -98,11 +93,6 @@ const getStaticMethodsNamesDeep = (constructor: Function | object | null | undef
 const hasStaticMethod = (Ctor: any, method: string): boolean | undefined => {
   return (Reflect.has(Ctor, method) && typeof Ctor[method] === 'function') || undefined
 }
-
-const getStaticMethod = (Ctor:  { new <T>(...args: any[]): T, [key: string]: (...args: any[]) => any }, method: string): Function => {
-  return Ctor[method]
-}
-
 
 /**
  * Check property is fillable
@@ -357,6 +347,10 @@ export class ActiveModel {
     return _fill<T>(model, setDefaultAttributes(source, this.resolveAttributes()))
   }
 
+  /**
+   *
+   * @param data
+   */
   fill (data: ActiveModelSource): this {
     const Ctor = (<typeof ActiveModel> this.constructor)
     const getters = Ctor.getGetters()
@@ -365,10 +359,16 @@ export class ActiveModel {
     return this
   }
 
+  /**
+   *
+   */
   clone (): this {
     return cloneDeep(this)
   }
 
+  /**
+   *
+   */
   static getGetters (): Array<string> {
     const calculatesGetters = getStaticMethodsNamesDeep(this)
       .filter(fn => fn.startsWith('getter'))

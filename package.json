@@ -1,6 +1,6 @@
 {
   "name": "@alt-point/active-models",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Reactive DTO models with Proxy and more useful classes, decorators, Black-jack and whores",
   "main": "./dist/index.umd.js",
   "types": "./src/types.d.ts",
@@ -42,11 +42,11 @@
     ]
   },
   "dependencies": {
-    "@types/lodash.clonedeep": "^4.5.6",
     "fast-deep-equal": "^3.1.3",
-    "lodash.clonedeep": "^4.5.0"
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
+    "@types/lodash": "^4.5.6",
     "@babel/cli": "^7.15.4",
     "@babel/core": "^7.15.5",
     "@babel/node": "^7.15.4",
@@ -64,5 +64,6 @@
     "rollup-plugin-typescript": "^1.0.1",
     "tslib": "^2.3.1",
     "typescript": "^4.4.2"
+
   }
 }
