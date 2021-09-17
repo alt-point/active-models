@@ -2,10 +2,7 @@ import { ActiveModel } from './'
 import type { Validator, ActiveFieldDescriptor, Getter, Setter } from './types'
 
 const defaultOpts: ActiveFieldDescriptor = {
-  fillable: true,
-  hidden: false,
-  protected: true,
-  attribute: ''
+  fillable: true
 }
 
 export function GetterMethod(property: string) {
@@ -18,29 +15,6 @@ export function SetterMethod(property: string) {
   return function (target: typeof ActiveModel, prop: string | symbol, descriptor: TypedPropertyDescriptor<any>) {
     target.defineSetter(property, descriptor.value)
   }
-}
-
-/**
- *
- * @param Ctor
- * @constructor
- */
-export function ActiveClass <T extends { new (...args: any[]): {}, [key: string]: any }>(Ctor: T) {
-  if (Ctor.__activeModeActivate) {
-    return Ctor
-  }
-  Object.defineProperty(Ctor,'__activeModeActivate', {
-    value: true
-  })
-  Object.defineProperty(Ctor,'__setters__', { value: new Map<string, Setter<any>>() } )
-  Object.defineProperty(Ctor,'__getters__', { value: new Map<string, Getter<any>>() } )
-  Object.defineProperty(Ctor,'__attributes__', { value: new Map<string, any>() } )
-  Object.defineProperty(Ctor,'__validators__', { value: new Map<string, Validator<any>>() } )
-  Object.defineProperty(Ctor,'__fillable__', { value: new Set<string>() } )
-  Object.defineProperty(Ctor,'__protected__', { value: new Set<string>() } )
-  Object.defineProperty(Ctor,'__readonly__', { value: new Set<string>() } )
-  Object.defineProperty(Ctor,'__hidden__', { value: new Set<string>() } )
-  return Ctor
 }
 
 export function isHidden () {

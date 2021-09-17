@@ -97,23 +97,66 @@ const hasStaticMethod = (Ctor: any, method: string): boolean | undefined => {
 /**
  * Check property is fillable
  * @param {string} prop
- * @param {array} fillable
+ * @param Ctor {typeof ActiveModel}
  * @return {boolean}
  */
-const fillableCheck = (prop: string, fillable: string[] = []): boolean => {
+const fieldIsFillable = (prop: string, Ctor: typeof ActiveModel): boolean => {
   // If the property is not contained in the array of properties available for assignment,
   // it is forbidden to set its value
+  const fillable = Ctor.fillable.slice()
+
+  if (Ctor.__fillable__) {
+    fillable.push(...Ctor.__fillable__)
+  }
+
   if (fillable.length) {
     return fillable.includes(prop)
   }
   return true
 }
 
-const readOnlyCheck  = (prop: string, readonly: string[] = []): boolean => {
-  if (readonly.length) {
-    return readonly.includes(prop)
+/**
+ *
+ * @param prop
+ * @param Ctor
+ */
+const fieldIsProtected = (prop: string, Ctor: typeof ActiveModel): boolean => {
+  const guarded = Ctor.protected.slice()
+  if (Ctor.__protected__) {
+    guarded.push(...Ctor.__protected__)
   }
-  return false
+
+  return guarded.includes(prop)
+}
+
+/**
+ *
+ * @param prop
+ * @param Ctor
+ */
+const fieldIsHidden = (prop: string, Ctor: typeof ActiveModel): boolean => {
+  const hidden = Ctor.hidden.slice()
+
+  if (Ctor.__hidden__) {
+    hidden.push(...Ctor.__hidden__)
+  }
+  return hidden.includes(prop)
+}
+
+/**
+ *
+ * @param prop
+ * @param Ctor
+ */
+const fieldIsReadOnly = (prop: string, Ctor: typeof ActiveModel): boolean => {
+  const readonly = Ctor.readonly.slice()
+
+  if (Ctor.__readonly__) {
+    readonly.push(...Ctor.__readonly__)
+  }
+
+  return readonly.includes(prop)
+
 }
 
 
@@ -130,11 +173,7 @@ const setter = (target: ActiveModel | AnyClassInstance, prop: string, value: any
     return Reflect.set(target, prop, value, receiver)
   }
   const Ctor = (<typeof ActiveModel> target.constructor)
-  if (!fillableCheck(prop, Ctor.fillable)) {
-    return false
-  }
-
-  if (readOnlyCheck(prop, Ctor.readonly)) {
+  if (!fieldIsFillable(prop, Ctor) || fieldIsReadOnly(prop, Ctor)) {
     return false
   }
 
@@ -173,7 +212,7 @@ const handler = <ProxyHandler<ActiveModel>>{
     return Reflect.apply(target as unknown as Function, thisArg, argumentsList)
   },
   deleteProperty (target, prop) {
-    if ((<typeof ActiveModel> target.constructor).protected && (<typeof ActiveModel> target.constructor).protected.includes(prop as string)) {
+    if (fieldIsProtected(prop as string, <typeof ActiveModel> target.constructor)) {
       throw new TypeError(`Property "${prop as string}" is protected!`)
     }
 
@@ -183,49 +222,46 @@ const handler = <ProxyHandler<ActiveModel>>{
     return Reflect.has(target, prop)
   },
   ownKeys (target: ActiveModel) {
-    const getters = (<typeof ActiveModel> target.constructor).getGetters()
-    const hidden = (<typeof ActiveModel> target.constructor).hidden
+    const Ctor = <typeof ActiveModel> target.constructor
+    const getters = Ctor.getGetters()
     return Array.from(new Set(Reflect.ownKeys(target).concat(getters)))
-      .filter(property => !hidden.includes(<string>property))
+      .filter(property => !fieldIsHidden(<string>property, Ctor))
   }
 }
 
 export class ActiveModel {
-  static readonly __activeModeActivate: boolean = false
-  protected static __getters__?: Map<string, Getter<any>> = new Map<string, Getter<any>>()
-  protected static __setters__?: Map<string, Setter<any>> = new Map<string, Setter<any>>()
-  protected static __attributes__?: Map<string, any> = new Map<string, any>()
-  protected static __validators__?: Map<string, Validator<any>> = new Map<string, Validator<any>>()
-  protected static __fillable__?: Set<string> = new Set<string>()
-  protected static __protected__?: Set<string> = new Set<string>()
-  protected static __readonly__?: Set<string> = new Set<string>()
-  protected static __hidden__?: Set<string> = new Set<string>()
-
-  static throwIfNotDecorated () {
-    if (!this.__activeModeActivate) {
-      throw new TypeError('Current class must be decorate with @ActiveClass decorator.')
-    }
-    return this
-  }
+  static __getters__?: Map<string, Getter<any>>
+  static __setters__?: Map<string, Setter<any>>
+  static __attributes__?: Map<string, any>
+  static __validators__?: Map<string, Validator<any>>
+  static __fillable__?: Set<string>
+  static __protected__?: Set<string>
+  static __readonly__?: Set<string>
+  static __hidden__?: Set<string>
 
   static addToHidden (...prop: string[]): void {
+    this.__hidden__= this.__hidden__ || new Set<string>()
     prop.forEach(p => this.__hidden__ && this.__hidden__.add(p))
   }
 
   static addToReadonly (prop: string): void {
-    this.__readonly__ && this.__readonly__.add(prop)
+    this.__readonly__ = this.__readonly__ || new Set<string>()
+    this.__readonly__.add(prop)
   }
 
   static addToProtected (prop: string): void {
-    this.__protected__ && this.__protected__.add(prop)
+    this.__protected__ = this.__protected__ || new Set<string>()
+    this.__protected__.add(prop)
   }
 
   static addToFillable (prop: string): void {
-    this.__protected__ && this.__protected__.add(prop)
+    this.__fillable__ = this.__fillable__ || new Set<string>()
+    this.__fillable__.add(prop)
   }
 
   static defineGetter <T>(prop: string, handler: Getter<T>): void {
-    this.__getters__ && this.__getters__.set(prop, handler)
+    this.__getters__ = this.__getters__ || new Map<string, Setter<any>>()
+    this.__getters__.set(prop, handler)
   }
 
   static resolveGetter <T>(prop: string): Getter<T> | undefined {
@@ -236,7 +272,8 @@ export class ActiveModel {
   }
 
   static defineSetter <T>(prop: string, handler: Setter<T>): void {
-    this.__setters__ && this.__setters__.set(prop, handler)
+    this.__setters__ = this.__setters__ || new Map<string, Getter<any>>()
+    this.__setters__.set(prop, handler)
   }
 
   static resolveSetter <T>(prop: string): Setter<T> | undefined {
@@ -247,6 +284,7 @@ export class ActiveModel {
   }
 
   static defineValidator <T = unknown>(prop: string, handler: Validator<T>): void {
+    this.__validators__ = this.__validators__ || new Map<string, Validator<any>>()
     this.__validators__ && this.__validators__.set(prop, handler)
   }
 
@@ -264,7 +302,8 @@ export class ActiveModel {
    * @param value
    */
   static defineAttribute (prop: string, value: any): void {
-    this.__attributes__ && this.__attributes__.set(prop, typeof value === 'function' ? value() : value)
+    this.__attributes__ = this.__attributes__ || new Map<string, any>()
+    this.__attributes__.set(prop, typeof value === 'function' ? value() : value)
   }
 
   private static resolveAttributes (): object {
