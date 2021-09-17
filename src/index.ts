@@ -1,9 +1,4 @@
-import ActiveModel from './ActiveModel'
-import Enum from './Enum'
-import CallableModel from './CallableModel'
-
-export {
-  ActiveModel,
-  CallableModel,
-  Enum
-}
+export { ActiveModel } from './ActiveModel'
+export { Enum } from './Enum'
+export { CallableModel } from './CallableModel'
+export * from './decorators'
