@@ -239,31 +239,56 @@ export class ActiveModel {
   static __readonly__?: Set<string>
   static __hidden__?: Set<string>
 
+  /**
+   *
+   * @param prop
+   */
   static addToHidden (...prop: string[]): void {
     this.__hidden__= this.__hidden__ || new Set<string>()
     prop.forEach(p => this.__hidden__ && this.__hidden__.add(p))
   }
 
+  /**
+   *
+   * @param prop
+   */
   static addToReadonly (prop: string): void {
     this.__readonly__ = this.__readonly__ || new Set<string>()
     this.__readonly__.add(prop)
   }
 
+  /**
+   *
+   * @param prop
+   */
   static addToProtected (prop: string): void {
     this.__protected__ = this.__protected__ || new Set<string>()
     this.__protected__.add(prop)
   }
 
+  /**
+   *
+   * @param prop
+   */
   static addToFillable (prop: string): void {
     this.__fillable__ = this.__fillable__ || new Set<string>()
     this.__fillable__.add(prop)
   }
 
+  /**
+   *
+   * @param prop
+   * @param handler
+   */
   static defineGetter <T>(prop: string, handler: Getter<T>): void {
     this.__getters__ = this.__getters__ || new Map<string, Setter<any>>()
     this.__getters__.set(prop, handler)
   }
 
+  /**
+   *
+   * @param prop
+   */
   static resolveGetter <T>(prop: string): Getter<T> | undefined {
     const staticName = `getter${stringToPascalCase(prop)}`
     const staticFallback = hasStaticMethod(this, staticName) ? Reflect.get(this, staticName) as Getter<T> : undefined
@@ -271,11 +296,20 @@ export class ActiveModel {
     return getter ? getter.bind(this) : undefined
   }
 
+  /**
+   *
+   * @param prop
+   * @param handler
+   */
   static defineSetter <T>(prop: string, handler: Setter<T>): void {
     this.__setters__ = this.__setters__ || new Map<string, Getter<any>>()
     this.__setters__.set(prop, handler)
   }
 
+  /**
+   *
+   * @param prop
+   */
   static resolveSetter <T>(prop: string): Setter<T> | undefined {
     const staticName = `setter${stringToPascalCase(prop)}`
     const staticFallback = hasStaticMethod(this, staticName) ? Reflect.get(this, staticName) as Setter<T> : undefined
@@ -283,11 +317,20 @@ export class ActiveModel {
     return setter ? setter.bind(this) : undefined
   }
 
+  /**
+   *
+   * @param prop
+   * @param handler
+   */
   static defineValidator <T = unknown>(prop: string, handler: Validator<T>): void {
     this.__validators__ = this.__validators__ || new Map<string, Validator<any>>()
     this.__validators__ && this.__validators__.set(prop, handler)
   }
 
+  /**
+   *
+   * @param prop
+   */
   static resolveValidator <T>(prop: string): Validator<T> | undefined {
     const pascalProp: string = stringToPascalCase(prop)
     const staticName: string = `validate${pascalProp}`
@@ -306,6 +349,10 @@ export class ActiveModel {
     this.__attributes__.set(prop, typeof value === 'function' ? value() : value)
   }
 
+  /**
+   *
+   * @private
+   */
   private static resolveAttributes (): object {
     const attributes = this.__attributes__ ? Object.fromEntries( this.__attributes__.entries() ) : {}
     return Object.assign(this.$attributes, attributes)
@@ -359,9 +406,9 @@ export class ActiveModel {
 
   /**
    * Make model readonly
-   * @return {Readonly<ActiveModel>}
+   * @return {Readonly<this>}
    */
-  makeFreeze (): Readonly<ActiveModel> {
+  makeFreeze (): Readonly<this> {
     return Object.freeze(this)
   }
 
