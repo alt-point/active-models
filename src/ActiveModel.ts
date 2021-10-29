@@ -1,6 +1,7 @@
-import { cloneDeep } from 'lodash'
-import deepEqual from 'fast-deep-equal'
 import type { ActiveModelSource, AnyClassInstance, Getter, Setter, Validator } from './types'
+import { cloneDeep } from 'lodash'
+import deepEqual from 'fast-deep-equal/es6'
+
 
 const splitTokens = '[-_.+*/:? ]'
 /**

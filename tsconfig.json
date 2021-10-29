@@ -27,6 +27,10 @@
   "strict": true,
   "noEmit": true,
   "baseUrl": ".",
+  "types": [
+    "fast-deep-equal",
+    "@types/lodash"
+  ],
   "paths": {
     "~/*": [
       "./*"

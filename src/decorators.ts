@@ -1,5 +1,5 @@
 import { ActiveModel } from './'
-import type { Validator, ActiveFieldDescriptor, Getter, Setter } from './types'
+import type { ActiveFieldDescriptor } from './types'
 
 const defaultOpts: ActiveFieldDescriptor = {
   fillable: true
