@@ -2,6 +2,9 @@ import type { ActiveModelSource, AnyClassInstance, Getter, Setter, Validator } f
 import { cloneDeep } from 'lodash'
 import deepEqual from 'fast-deep-equal/es6'
 
+interface Constructor<T> {
+  new (...args: any[]): T
+}
 
 const splitTokens = '[-_.+*/:? ]'
 /**
@@ -340,7 +343,7 @@ export class ActiveModel {
    */
   static defineAttribute (prop: string, value: any): void {
     this.__attributes__ = this.__attributes__ || new Map<string, any>()
-    this.__attributes__.set(prop, typeof value === 'function' ? value() : value)
+    this.__attributes__.set(prop, value)
   }
 
   /**
@@ -349,6 +352,9 @@ export class ActiveModel {
    */
   private static resolveAttributes (): object {
     const attributes = this.__attributes__ ? Object.fromEntries(this.__attributes__.entries()) : {}
+    for (const [key, value] of Object.entries(attributes)) {
+      attributes[key] = typeof value === 'function' ? value() : value
+    }
     return Object.assign(this.$attributes, attributes)
   }
 
@@ -419,7 +425,7 @@ export class ActiveModel {
    * Factory method for create new instance
    * @param data
    */
-  static create<T extends ActiveModel> (data: T | ActiveModelSource): T {
+  static create<T extends ActiveModel> (this: typeof ActiveModel & Constructor<T>, data: T | ActiveModelSource): T {
     const model = new this()
     const getters = this.getGetters()
     implementGetters(model, getters)

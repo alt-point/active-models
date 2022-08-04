@@ -10,9 +10,8 @@ const tsConfig = require('./tsconfig.json')
 let promise = Promise.resolve()
 
 // Clean up the output directory
-promise = promise.then(() => del(['dist/*']));
+promise = promise.then(() => del(['dist/*']))
 const formats = ['es', 'cjs', 'umd']
-
 
 const InputOptions = {
   input: 'src/index.ts',
@@ -43,13 +42,12 @@ const result = formats.map(async (format) => {
     sourcemap: true,
     name: format === 'umd' ? pkg.name : undefined
   }
-  
+
   const bundle = await promise.then(() => rollup(InputOptions))
-  
+
   await bundle.write(OutputOptions)
-  
+
   consola.success(`Write ${format} bundle success`)
-  
 })
 
 Promise.all(result)
