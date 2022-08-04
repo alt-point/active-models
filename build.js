@@ -13,6 +13,10 @@ let promise = Promise.resolve()
 
 // Clean up the output directory
 promise = promise.then(() => {
+  if (!fs.existsSync('dist/')) {
+    consola.info('dist directory not exist')
+    return
+  }
   fs.readdirSync('dist/', (err, files) => {
     if (err) throw err;
     
@@ -23,7 +27,6 @@ promise = promise.then(() => {
     }
   })
   consola.success('Dist directory cleanup')
-  return true
 })
 const formats = ['es', 'cjs', 'umd']
 
