@@ -4,13 +4,27 @@ const { babel } = require('@rollup/plugin-babel')
 const { nodeResolve: resolve } = require('@rollup/plugin-node-resolve')
 const commonjs = require('@rollup/plugin-commonjs')
 const typescript = require('@rollup/plugin-typescript')
-const del = require('del')
 const pkg = require('./package.json')
 const tsConfig = require('./tsconfig.json')
+const fs = require('fs')
+const path = require('path')
+
 let promise = Promise.resolve()
 
 // Clean up the output directory
-promise = promise.then(() => del(['dist/*']))
+promise = promise.then(() => {
+  fs.readdirSync('dist/', (err, files) => {
+    if (err) throw err;
+    
+    for (const file of files) {
+      fs.unlink(path.join('dist/', file), err => {
+        if (err) throw err;
+      });
+    }
+  })
+  consola.success('Dist directory cleanup')
+  return true
+})
 const formats = ['es', 'cjs', 'umd']
 
 const InputOptions = {
