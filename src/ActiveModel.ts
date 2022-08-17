@@ -31,7 +31,7 @@ const stringToPascalCase = (s: string): string => {
  * @param {Object} data
  * @param {Object} model
  */
-const _fill = <T>(model: ActiveModel | AnyClassInstance, data: ActiveModel | AnyClassInstance): T => {
+const _fill = <T extends ActiveModel>(model: T, data: ActiveModel | AnyClassInstance): T => {
   for (const prop in data) {
     Reflect.set(model, prop, data[prop])
   }
@@ -425,12 +425,12 @@ export class ActiveModel {
    * Factory method for create new instance
    * @param data
    */
-  static create<T extends ActiveModel> (this: typeof ActiveModel & Constructor<T>, data: T | ActiveModelSource): T {
+  static create<T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource): InstanceType<T> {
     const model = new this()
     const getters = this.getGetters()
     implementGetters(model, getters)
     const source = this.sanitize(data || {})
-    return _fill<T>(model, setDefaultAttributes(source, this.resolveAttributes()))
+    return _fill(model, setDefaultAttributes(source, this.resolveAttributes())) as InstanceType<T>
   }
 
   /**
