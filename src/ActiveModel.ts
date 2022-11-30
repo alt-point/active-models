@@ -198,7 +198,14 @@ const getter = (target: ActiveModel | AnyClassInstance, prop: string, receiver?:
   return resolvedGetter ? resolvedGetter(target, prop, receiver) : Reflect.get(target, prop, receiver)
 }
 
+type StaticContainers = '__getters__' | '__setters__' | '__attributes__' | '__validators__' | '__fillable__' | '__protected__' | '__readonly__' | '__hidden__'
+
 export class ActiveModel {
+  protected static defineStaticProperty (propertyName: StaticContainers, fallback: () => any) {
+    this[propertyName] = this.hasOwnProperty(propertyName) ? this[propertyName]!: fallback()
+    return this
+  }
+
   static __getters__?: Map<string, Getter<any>>
   static __setters__?: Map<string, Setter<any>>
   static __attributes__?: Map<string, any>
@@ -241,8 +248,8 @@ export class ActiveModel {
    * @param prop
    */
   static addToHidden (...prop: string[]): void {
-    this.__hidden__ = this.__hidden__ || new Set<string>()
-    prop.forEach(p => this.__hidden__ && this.__hidden__.add(p))
+    this.defineStaticProperty('__hidden__', () => new Set(this.__hidden__ || []))
+    prop.forEach(p => this.__hidden__!.add(p))
   }
 
   /**
@@ -250,8 +257,8 @@ export class ActiveModel {
    * @param prop
    */
   static addToReadonly (prop: string): void {
-    this.__readonly__ = this.__readonly__ || new Set<string>()
-    this.__readonly__.add(prop)
+    this.defineStaticProperty('__readonly__', () => new Set(this.__readonly__ || []))
+    this.__readonly__!.add(prop)
   }
 
   /**
@@ -259,8 +266,8 @@ export class ActiveModel {
    * @param prop
    */
   static addToProtected (prop: string): void {
-    this.__protected__ = this.__protected__ || new Set<string>()
-    this.__protected__.add(prop)
+    this.defineStaticProperty('__protected__', () => new Set(this.__protected__ || []))
+    this.__protected__!.add(prop)
   }
 
   /**
@@ -268,18 +275,19 @@ export class ActiveModel {
    * @param prop
    */
   static addToFillable (prop: string): void {
-    this.__fillable__ = this.__fillable__ || new Set<string>()
-    this.__fillable__.add(prop)
+    this.defineStaticProperty('__fillable__', () => new Set(this.__fillable__ || []))
+    this.__fillable__!.add(prop)
   }
-
+  
+  
   /**
    * define getter
    * @param prop
    * @param handler
    */
   static defineGetter <T> (prop: string, handler: Getter<T>): void {
-    this.__getters__ = this.__getters__ || new Map<string, Setter<any>>()
-    this.__getters__.set(prop, handler)
+    this.defineStaticProperty('__getters__', () => new Map(this.__getters__ || []))
+    this.__getters__!.set(prop, handler)
   }
 
   /**
@@ -299,8 +307,8 @@ export class ActiveModel {
    * @param handler
    */
   static defineSetter <T> (prop: string, handler: Setter<T>): void {
-    this.__setters__ = this.__setters__ || new Map<string, Getter<any>>()
-    this.__setters__.set(prop, handler)
+    this.defineStaticProperty('__setters__', () => new Map(this.__setters__ || []))
+    this.__setters__!.set(prop, handler)
   }
 
   /**
@@ -320,8 +328,8 @@ export class ActiveModel {
    * @param handler
    */
   static defineValidator <T = unknown> (prop: string, handler: Validator<T>): void {
-    this.__validators__ = this.__validators__ || new Map<string, Validator<any>>()
-    this.__validators__ && this.__validators__.set(prop, handler)
+    this.defineStaticProperty('__validators__', () => new Map(this.__validators__ || []))
+    this.__validators__!.set(prop, handler)
   }
 
   /**
@@ -342,8 +350,8 @@ export class ActiveModel {
    * @param value
    */
   static defineAttribute (prop: string, value: any): void {
-    this.__attributes__ = this.__attributes__ || new Map<string, any>()
-    this.__attributes__.set(prop, value)
+    this.defineStaticProperty('__attributes__', () => new Map(this.__attributes__ || []))
+    this.__attributes__!.set(prop, value)
   }
 
   /**
