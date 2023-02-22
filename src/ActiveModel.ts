@@ -278,8 +278,8 @@ export class ActiveModel {
     this.defineStaticProperty('__fillable__', () => new Set(this.__fillable__ || []))
     this.__fillable__!.add(prop)
   }
-  
-  
+
+
   /**
    * define getter
    * @param prop
@@ -421,9 +421,9 @@ export class ActiveModel {
   }
 
   /**
-   * Sanitize input data
+   * Sanitize input data with saving reactivity of internal ActiveModel instances
    * @param data
-   * @return {*}
+   * @return {*} New sanitized copy
    */
   static sanitize (data: object | ActiveModel): object {
     return cloneDeepWith(data, this.cloneCustomizer.bind(this))
@@ -433,7 +433,7 @@ export class ActiveModel {
    * Factory method for create new instance
    * @param data
    */
-  static create<T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource): InstanceType<T> {
+  static create<T extends typeof ActiveModel> (this: T, data: InstanceType<T> | ActiveModelSource): InstanceType<T> {
     const model = new this()
     const getters = this.getGetters()
     implementGetters(model, getters)
@@ -443,7 +443,7 @@ export class ActiveModel {
 
   /**
    *
-   * @param data
+   * @param { ActiveModelSource } data Fill current instance with declared structure of class and default fields. Also triggers reactivity.
    */
   fill (data: ActiveModelSource): this {
     const Ctor = (<typeof ActiveModel> this.constructor)
@@ -454,16 +454,17 @@ export class ActiveModel {
   }
 
   /**
-   *
+   * Clone current instance with saving reactivity
+   * @returns { this } clone of the current instance
    */
   clone (): this {
     const Ctor = (<typeof ActiveModel> this.constructor)
-    return cloneDeepWith(this, Ctor.cloneCustomizer.bind(Ctor))
+    return Ctor.wrap(cloneDeepWith(this, Ctor.cloneCustomizer.bind(Ctor)))
   }
 
   protected static cloneCustomizer (value: any, key: number | string | undefined, parent: any): any {
     if (value instanceof ActiveModel && Boolean(parent)) {
-      return this.wrap(cloneDeepWith(value, this.cloneCustomizer.bind(this)))
+      return value.clone()
     }
   }
 
