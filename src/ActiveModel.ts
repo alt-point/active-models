@@ -278,8 +278,8 @@ export class ActiveModel {
     this.defineStaticProperty('__fillable__', () => new Set(this.__fillable__ || []))
     this.__fillable__!.add(prop)
   }
-  
-  
+
+
   /**
    * define getter
    * @param prop
@@ -373,12 +373,25 @@ export class ActiveModel {
     return {}
   }
 
-  toJSON (): object {
-    return Object.keys(this)
-      .reduce((a: { [key: string] : any }, b: string) => {
-        a[b] = getter(this, b)
-        return a
-      }, {})
+  /**
+   * Static method for converting to JSON
+   */
+  static toJSON (instance: ActiveModel | object | Array<ActiveModel | object>): object | Array<object> {
+    if (typeof instance !== 'object' || instance === null) {
+      return instance
+    }
+    return Array.isArray(instance) ? instance.map(i => this.toJSON(i)) : Object.keys(instance).reduce((a: { [key: string] : any }, b: string) => {
+      a[b] = getter(instance, b)
+      if (typeof a[b] === 'object' || Array.isArray(a[b])) {
+        a[b] = this.toJSON(a[b])
+      }
+      return a
+    }, {})
+  }
+
+
+  toJSON () {
+    return (<typeof ActiveModel> this.constructor).toJSON(this)
   }
 
   /**
