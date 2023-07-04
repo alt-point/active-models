@@ -1,5 +1,5 @@
 import type { ActiveModelSource, AnyClassInstance, Getter, Setter, Validator } from './types'
-import { cloneDeep } from 'lodash'
+import { cloneDeepWith } from 'lodash'
 import deepEqual from 'fast-deep-equal/es6'
 
 interface Constructor<T> {
@@ -439,7 +439,7 @@ export class ActiveModel {
    * @return {*}
    */
   static sanitize (data: object | ActiveModel): object {
-    return cloneDeep(data)
+    return cloneDeepWith(data, this.cloneCustomizer.bind(this))
   }
 
   /**
@@ -470,7 +470,14 @@ export class ActiveModel {
    *
    */
   clone (): this {
-    return cloneDeep(this)
+    const Ctor = (<typeof ActiveModel> this.constructor)
+    return cloneDeepWith(this, Ctor.cloneCustomizer.bind(Ctor))
+  }
+
+  protected static cloneCustomizer (value: any, key: number | string | undefined, parent: any): any {
+    if (value instanceof ActiveModel && Boolean(parent)) {
+      return this.wrap(cloneDeepWith(value, this.cloneCustomizer.bind(this)))
+    }
   }
 
   /**
@@ -484,10 +491,18 @@ export class ActiveModel {
     return calculatesGetters
   }
 
+  /**
+   * Wrap an instance in a proxy for traps to work
+   * @param { ActiveModel } instance Instance for wrapping
+   */
+  protected static wrap <InstanceType extends ActiveModel>(instance: InstanceType): InstanceType {
+    return new Proxy(instance, this.handler) as InstanceType
+  }
+
   constructor (data: ActiveModelSource = {}) {
     const Ctor = (<typeof ActiveModel> this.constructor)
     data = Ctor.sanitize(data || {})
-    const model = new Proxy<this>(this, Ctor.handler)
+    const model = Ctor.wrap(this)
     const getters = Ctor.getGetters()
     implementGetters(model, getters)
     return _fill<this>(model, setDefaultAttributes(data, Ctor.resolveAttributes()))
