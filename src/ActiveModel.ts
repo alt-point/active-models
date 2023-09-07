@@ -125,7 +125,6 @@ const fieldIsProtected = (prop: string, Ctor: typeof ActiveModel): boolean => {
   if (Ctor.__protected__) {
     guarded.push(...Ctor.__protected__)
   }
-
   return guarded.includes(prop)
 }
 
@@ -194,7 +193,7 @@ const setter = (target: ActiveModel | AnyClassInstance, prop: string, value: any
  */
 const getter = (target: ActiveModel | AnyClassInstance, prop: string, receiver?: any): any => {
   const Ctor = (<typeof ActiveModel> target.constructor)
-  const resolvedGetter = Ctor.resolveGetter(prop)
+  const resolvedGetter = Ctor?.resolveGetter?.(prop)
   return resolvedGetter ? resolvedGetter(target, prop, receiver) : Reflect.get(target, prop, receiver)
 }
 
