@@ -458,11 +458,11 @@ export class ActiveModel {
    * @param data
    */
   static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>) {
-    return data.map(item => this.create(item))
+    return data.map(item => this.create<T>(item))
   }
 
   static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>) {
-    return this.createFromCollection(await data)
+    return this.createFromCollection<T>(await data)
   }
 
   /**
