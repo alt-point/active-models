@@ -34,7 +34,7 @@ export function isFillable () {
 export function isProtected () {
   return function (target: ActiveModel, prop: string) {
     (<typeof ActiveModel>target.constructor)
-      .addToFillable(prop)
+      .addToProtected(prop)
   }
 }
 
@@ -43,15 +43,6 @@ export function isProtected () {
  * Decorate class property
  * @constructor
  * @param opts<ActiveFieldDescriptor>
- * @param opts.setter?: Setter<any> - setter for property
- * @param opts.getter?: Getter<any> - getter for property
- * @param opts.validator?: Validator<any>
- * @param opts.readonly?: boolean - property access readonly
- * @param opts.hidden?: boolean - property hide in own keys
- * @param opts.fillable?: boolean - property can be filled in
- * @param opts.protected?: boolean - property protected from deleting
- * @param opts.attribute?: any - default value for creating
- * @param opts.value?: any - alias for opts.attribute
  */
 export function ActiveField(opts: ActiveFieldDescriptor = defaultOpts) {
   const options: ActiveFieldDescriptor = Object.assign({ fillable: true, protected: true }, opts)

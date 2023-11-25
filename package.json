@@ -1,10 +1,10 @@
 {
   "name": "@alt-point/active-models",
-  "version": "2.2.9",
+  "version": "2.3.0",
   "description": "Reactive DTO models with Proxy and more useful classes, decorators, Black-jack and whores",
   "main": "./dist/index.js",
   "module": "./dist/index.es.js",
-  "types": "./src/types.d.ts",
+  "types": "./src/types.ts",
   "browser": {},
   "keywords": [
     "DTO",

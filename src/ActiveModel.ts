@@ -454,7 +454,19 @@ export class ActiveModel {
   }
 
   /**
-   *
+   * Batch factory for creating instance collection
+   * @param data
+   */
+  static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>) {
+    return data.map(item => this.create(item))
+  }
+
+  static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>) {
+    return this.createFromCollection(await data)
+  }
+
+  /**
+   * Batch async factory for creating instance collection
    * @param data
    */
   fill (data: ActiveModelSource): this {
