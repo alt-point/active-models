@@ -205,10 +205,10 @@ export class ActiveModel {
     return this
   }
 
-  static __getters__?: Map<string, Getter<any>>
-  static __setters__?: Map<string, Setter<any>>
+  static __getters__?: Map<string, Getter<typeof this>>
+  static __setters__?: Map<string, Setter<typeof this>>
   static __attributes__?: Map<string, any>
-  static __validators__?: Map<string, Validator<any>>
+  static __validators__?: Map<string, Validator<typeof this>>
   static __fillable__?: Set<string>
   static __protected__?: Set<string>
   static __readonly__?: Set<string>
@@ -284,7 +284,7 @@ export class ActiveModel {
    * @param prop
    * @param handler
    */
-  static defineGetter <T> (prop: string, handler: Getter<T>): void {
+  static defineGetter (prop: string, handler: Getter<any>): void {
     this.defineStaticProperty('__getters__', () => new Map(this.__getters__ || []))
     this.__getters__!.set(prop, handler)
   }
@@ -293,9 +293,9 @@ export class ActiveModel {
    * resolve getter
    * @param prop
    */
-  static resolveGetter <T> (prop: string): Getter<T> | undefined {
+  static resolveGetter (prop: string): Getter<any> | undefined {
     const staticName = `getter${stringToPascalCase(prop)}`
-    const staticFallback = hasStaticMethod(this, staticName) ? Reflect.get(this, staticName) as Getter<T> : undefined
+    const staticFallback = hasStaticMethod(this, staticName) ? Reflect.get(this, staticName) as Getter<any> : undefined
     const getter = this.__getters__ ? this.__getters__.get(prop) : staticFallback
     return getter ? getter.bind(this) : undefined
   }
@@ -305,7 +305,7 @@ export class ActiveModel {
    * @param prop
    * @param handler
    */
-  static defineSetter <T> (prop: string, handler: Setter<T>): void {
+  static defineSetter (prop: string, handler: Setter<any>): void {
     this.defineStaticProperty('__setters__', () => new Map(this.__setters__ || []))
     this.__setters__!.set(prop, handler)
   }
@@ -314,9 +314,9 @@ export class ActiveModel {
    * resolve setter for field by name
    * @param prop
    */
-  static resolveSetter <T> (prop: string): Setter<T> | undefined {
+  static resolveSetter (prop: string): Setter<any> | undefined {
     const staticName = `setter${stringToPascalCase(prop)}`
-    const staticFallback = hasStaticMethod(this, staticName) ? Reflect.get(this, staticName) as Setter<T> : undefined
+    const staticFallback = hasStaticMethod(this, staticName) ? Reflect.get(this, staticName) as Setter<any> : undefined
     const setter = this.__setters__ ? this.__setters__.get(prop) : staticFallback
     return setter ? setter.bind(this) : undefined
   }
@@ -326,7 +326,7 @@ export class ActiveModel {
    * @param prop
    * @param handler
    */
-  static defineValidator <T = unknown> (prop: string, handler: Validator<T>): void {
+  static defineValidator (prop: string, handler: Validator<any>): void {
     this.defineStaticProperty('__validators__', () => new Map(this.__validators__ || []))
     this.__validators__!.set(prop, handler)
   }
@@ -335,10 +335,10 @@ export class ActiveModel {
    * Resolve validator for field by name
    * @param prop
    */
-  static resolveValidator <T> (prop: string): Validator<T> | undefined {
+  static resolveValidator (prop: string): Validator<any> | undefined {
     const pascalProp: string = stringToPascalCase(prop)
     const staticName: string = `validate${pascalProp}`
-    const staticFallback = hasStaticMethod(this, staticName) ? Reflect.get(this, staticName) as Validator<T> : undefined
+    const staticFallback = hasStaticMethod(this, staticName) ? Reflect.get(this, staticName) as Validator<any> : undefined
     const validator = this.__validators__ ? this.__validators__.get(prop) : staticFallback
     return validator ? validator.bind(this) : undefined
   }

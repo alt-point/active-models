@@ -44,7 +44,7 @@ export function isProtected () {
  * @constructor
  * @param opts<ActiveFieldDescriptor>
  */
-export function ActiveField(opts: ActiveFieldDescriptor = defaultOpts) {
+export function ActiveField<T extends ActiveModel>(opts: ActiveFieldDescriptor = defaultOpts) {
   const options: ActiveFieldDescriptor = Object.assign({ fillable: true, protected: true }, opts)
   return function (target: ActiveModel, prop: string): void {
     const Ctor = <typeof ActiveModel>target.constructor
