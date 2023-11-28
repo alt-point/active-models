@@ -205,10 +205,10 @@ export class ActiveModel {
     return this
   }
 
-  static __getters__?: Map<string, Getter<typeof this>>
-  static __setters__?: Map<string, Setter<typeof this>>
+  static __getters__?: Map<string, Getter<any>>
+  static __setters__?: Map<string, Setter<any>>
   static __attributes__?: Map<string, any>
-  static __validators__?: Map<string, Validator<typeof this>>
+  static __validators__?: Map<string, Validator<any>>
   static __fillable__?: Set<string>
   static __protected__?: Set<string>
   static __readonly__?: Set<string>
