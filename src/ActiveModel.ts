@@ -458,7 +458,15 @@ export class ActiveModel {
    * @param data
    */
   static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>) {
-    return data.map(item => this.create<T>(item))
+    const getters = this.getGetters()
+    const attributes = this.resolveAttributes()
+    const create = (data: T | ActiveModelSource): InstanceType<T> => {
+      const model = new this()
+      implementGetters(model, getters)
+      const source = this.sanitize(data || {})
+      return _fill(model, setDefaultAttributes(source, attributes)) as InstanceType<T>
+    }
+    return data.map(item => create(item))
   }
 
   static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>) {
