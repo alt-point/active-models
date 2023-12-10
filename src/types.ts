@@ -8,11 +8,11 @@ export type AnyClassInstance = { new (...args: any[]): any } | {
   [key: string]: any
 } | object | any
 
-export type Getter<M extends ActiveModel | any = ActiveModel, R = any> = (model: M, prop: string, receiver?: any ) => R
+export type Getter<M extends ActiveModel = ActiveModel, R = unknown> = (model: M, prop: string, receiver?: any ) => R
 
-export type Setter<M extends ActiveModel | any = ActiveModel, V = any> = (model: M, prop: string, value: V, receiver?: any ) => boolean | void
+export type Setter<M extends ActiveModel = ActiveModel, V = any> = (model: M, prop: string, value: V, receiver?: any ) => boolean
 
-export type Validator<M extends ActiveModel | any = ActiveModel, V = any> = (model: M, prop: string, value: V) => boolean | void
+export type Validator<M extends ActiveModel = ActiveModel, V = any> = (model: M, prop: string, value: V) => boolean | void
 
 export type ActiveFieldDescriptor<T = unknown> = {
   setter?: Setter<any>

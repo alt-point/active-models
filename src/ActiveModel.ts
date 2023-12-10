@@ -7,15 +7,7 @@ interface Constructor<T> {
 }
 
 const splitTokens = '[-_.+*/:? ]'
-/**
- * String to camel case
- * @param {string} s
- * @returns {string}
- */
-const stringToCamelCase = (s: string): string => {
-  const result = s.split(new RegExp(splitTokens, 'g')).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
-  return result.charAt(0).toLowerCase() + result.slice(1)
-}
+
 
 /**
  * String to pascal case
@@ -36,25 +28,6 @@ const _fill = <T extends ActiveModel>(model: T, data: ActiveModel | AnyClassInst
     Reflect.set(model, prop, data[prop])
   }
   return model
-}
-
-/**
- * Set default attributes
- * @param {Object} model
-
- * @param {Array} getters
- * @returns {*}
- */
-const implementGetters = (model: ActiveModel, getters: Array<string> = []): void => {
-  for (const g of getters) {
-    if (!Object.prototype.hasOwnProperty.call(model, g)) {
-      Reflect.defineProperty(model, g, {
-        enumerable: true,
-        configurable: true,
-        writable: true
-      })
-    }
-  }
 }
 
 /**
@@ -102,87 +75,43 @@ export class ActiveModel {
     return this
   }
   
-  protected static fieldIsReadOnly (prop: string & keyof InstanceType<typeof this> | symbol): boolean {
-    return this?.__readonly__?.has(prop) ?? false
+  protected static fieldIsReadOnly (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
+    return this.__readonly__?.has(prop) ?? false
   }
   
-  protected static fieldIsHidden (prop: string & keyof InstanceType<typeof this> | symbol): boolean {
-    return this?.__hidden__?.has(prop) ?? false
+  protected static fieldIsHidden (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
+    return this.__hidden__?.has(prop) ?? false
   }
   
-  protected static fieldIsFillable (prop: string & keyof InstanceType<typeof this> | symbol): boolean {
-    return this?.__fillable__?.has(prop) ?? false
+  protected static fieldIsFillable (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
+    return this.__fillable__?.has(prop) ?? false
   }
   
-  protected static fieldIsProtected (prop:  string & keyof InstanceType<typeof this> | symbol): boolean {
-    return this?.__protected__?.has(prop) ?? false
+  protected static fieldIsProtected (prop:  string | keyof InstanceType<typeof this> | symbol): boolean {
+    return this.__protected__?.has(prop) ?? false
   }
   
-  protected static getter<Result = unknown>(target: ActiveModel, prop: string & keyof InstanceType<typeof this> | symbol, receiver?: ActiveModel): Result {
+  protected static getter<Result = unknown>(target: ActiveModel, prop: string | keyof InstanceType<typeof this> | symbol, receiver?: ActiveModel): Result {
     const Ctor = (<typeof ActiveModel> target.constructor)
     const resolvedGetter = Ctor?.resolveGetter?.(prop)
-    return resolvedGetter ? resolvedGetter(target, prop, receiver) : Reflect.get(target, prop, receiver)
+    return resolvedGetter?.(target, prop as string, receiver) ?? Reflect.get(target, prop, receiver)
   }
 
-  protected static __getters__?: Map<string & keyof InstanceType<typeof this> | symbol, Getter<InstanceType<typeof this>>>
-  protected static __setters__?: Map<string & keyof InstanceType<typeof this> | symbol, Setter<InstanceType<typeof this>>>
-  protected static __attributes__?: Map<string & keyof InstanceType<typeof this> | symbol, any>
-  protected static __validators__?: Map<string & keyof InstanceType<typeof this> | symbol, Validator<any>>
-  protected static __fillable__?: Set<string & keyof InstanceType<typeof this> | symbol>
-  protected static __protected__?: Set<string & keyof InstanceType<typeof this> | symbol>
-  protected static __readonly__?: Set<string & keyof InstanceType<typeof this> | symbol>
-  protected static __hidden__?: Set<string & keyof InstanceType<typeof this> | symbol>
+  protected static __getters__?: Map<string | keyof InstanceType<typeof this> | symbol, Getter<InstanceType<typeof this>>>
+  protected static __setters__?: Map<string | keyof InstanceType<typeof this> | symbol, Setter<InstanceType<typeof this>>>
+  protected static __attributes__?: Map<string | keyof InstanceType<typeof this> | symbol, any>
+  protected static __validators__?: Map<string | keyof InstanceType<typeof this> | symbol, Validator<any>>
+  protected static __fillable__?: Set<string | keyof InstanceType<typeof this> | symbol>
+  protected static __protected__?: Set<string | keyof InstanceType<typeof this> | symbol>
+  protected static __readonly__?: Set<string | keyof InstanceType<typeof this> | symbol>
+  protected static __hidden__?: Set<string | keyof InstanceType<typeof this> | symbol>
   
-  static handler<Inst extends ActiveModel>(): ProxyHandler<InstanceType<typeof this>> {
-    return {
-      get (target, prop: keyof Inst & string | symbol, receiver) {
-        return (<typeof ActiveModel>target.constructor).getter(target, prop, receiver)
-      },
-      set (target, prop: string, value, receiver) {
-        if (deepEqual(target[prop], value)) {
-          return Reflect.set(target, prop, value, receiver)
-        }
-        const Ctor: typeof ActiveModel = (<typeof ActiveModel> target.constructor)
-        if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
-          return false
-        }
-
-        // validate value
-        const validator = Ctor.resolveValidator(prop)
-        if (validator) {
-          validator(target, prop, value)
-        }
-        
-        const resolvedSetter = Ctor.resolveSetter(prop)
-        return resolvedSetter ? resolvedSetter(target, prop, value, receiver) : Reflect.set(target, prop, value, receiver)
-      },
-      apply (target: T, thisArg, argumentsList) {
-        return Reflect.apply(target as unknown as Function, thisArg, argumentsList)
-      },
-      deleteProperty (target: T, prop: string | symbol) {
-        if ((<typeof ActiveModel> target.constructor).fieldIsProtected(prop)) {
-          throw new TypeError(`Property "${prop as string}" is protected!`)
-        }
-        
-        return Reflect.deleteProperty(target, prop)
-      },
-      has (target: T, prop: string | symbol) {
-        return Reflect.has(target, prop)
-      },
-      ownKeys (target: T) {
-        const Ctor = <typeof ActiveModel> target.constructor
-        const getters = Ctor.getGetters()
-        return Array.from(new Set(Reflect.ownKeys(target).concat(getters)))
-          .filter(property => !Ctor.fieldIsHidden(property as keyof T))
-      }
-    }
-  }
 
   /**
    * Add field name to hidden scope
    * @param prop
    */
-  static addToHidden (...prop: Array<string & keyof InstanceType<typeof this> | symbol>): void {
+  static addToHidden (...prop: Array<string | keyof InstanceType<typeof this> | symbol>): void {
     this.defineStaticProperty('__hidden__', () => new Set(this.__hidden__ || []))
     prop.forEach(p => this.__hidden__!.add(p))
   }
@@ -191,7 +120,7 @@ export class ActiveModel {
    *  Add field name to readonly scope
    * @param prop
    */
-  static addToReadonly (prop: string & keyof InstanceType<typeof this> | symbol): void {
+  static addToReadonly (prop: string | keyof InstanceType<typeof this> | symbol): void {
     this.defineStaticProperty('__readonly__', () => new Set(this.__readonly__ || []))
     this.__readonly__!.add(prop)
   }
@@ -200,7 +129,7 @@ export class ActiveModel {
    * Add field name to protected scope
    * @param prop
    */
-  static addToProtected (prop: string & keyof InstanceType<typeof this> | symbol): void {
+  static addToProtected (prop: string | keyof InstanceType<typeof this> | symbol): void {
     this.defineStaticProperty('__protected__', () => new Set(this.__protected__ || []))
     this.__protected__!.add(prop)
   }
@@ -209,7 +138,7 @@ export class ActiveModel {
    * Add field name to fillabe scope
    * @param prop
    */
-  static addToFillable (prop: string & keyof InstanceType<typeof this> | symbol): void {
+  static addToFillable (prop: string | keyof InstanceType<typeof this> | symbol): void {
     this.defineStaticProperty('__fillable__', () => new Set(this.__fillable__ || []))
     this.__fillable__!.add(prop)
   }
@@ -220,7 +149,7 @@ export class ActiveModel {
    * @param prop
    * @param handler
    */
-  static defineGetter (prop: string & keyof InstanceType<typeof this> | symbol, handler: Getter<any>): void {
+  static defineGetter (prop: string | keyof InstanceType<typeof this> | symbol, handler: Getter<any>): void {
     this.defineStaticProperty('__getters__', () => new Map(this.__getters__ || []))
     this.__getters__!.set(prop, handler)
   }
@@ -229,7 +158,7 @@ export class ActiveModel {
    * resolve getter
    * @param prop
    */
-  static resolveGetter (prop: string & keyof InstanceType<typeof this> | symbol): Getter<any> | undefined {
+  static resolveGetter (prop: string | keyof InstanceType<typeof this> | symbol): Getter<any> | undefined {
     const getter = this.__getters__?.get(prop)
     return getter?.bind(this)
   }
@@ -239,7 +168,7 @@ export class ActiveModel {
    * @param prop
    * @param handler
    */
-  static defineSetter (prop: string & keyof InstanceType<typeof this> | symbol, handler: Setter<any>): void {
+  static defineSetter (prop: string | keyof InstanceType<typeof this> | symbol, handler: Setter<any>): void {
     this.defineStaticProperty('__setters__', () => new Map(this.__setters__ || []))
     this.__setters__!.set(prop, handler)
   }
@@ -248,11 +177,9 @@ export class ActiveModel {
    * resolve setter for field by name
    * @param prop
    */
-  protected static resolveSetter (prop: string & keyof InstanceType<typeof this> | symbol): Setter<any> | undefined {
-    const staticName = `setter${stringToPascalCase(prop)}`
-    const staticFallback = hasStaticMethod(this, staticName) ? Reflect.get(this, staticName) as Setter<any> : undefined
-    const setter = this.__setters__ ? this.__setters__.get(prop) : staticFallback
-    return setter ? setter.bind(this) : undefined
+  protected static resolveSetter (prop: string | keyof InstanceType<typeof this> | symbol): Setter<any> | undefined {
+    const setter = this.__setters__?.get(prop)
+    return setter?.bind(this)
   }
 
   /**
@@ -260,7 +187,7 @@ export class ActiveModel {
    * @param prop
    * @param handler
    */
-  static defineValidator (prop: string & keyof InstanceType<typeof this> | symbol, handler: Validator<any>): void {
+  static defineValidator (prop: string | keyof InstanceType<typeof this> | symbol, handler: Validator<any>): void {
     this.defineStaticProperty('__validators__', () => new Map(this.__validators__ || []))
     this.__validators__!.set(prop, handler)
   }
@@ -269,7 +196,7 @@ export class ActiveModel {
    * Resolve validator for field by name
    * @param prop
    */
-  static resolveValidator(prop: string & keyof InstanceType<typeof this> | symbol): Validator<any> | undefined {
+  static resolveValidator(prop: string | keyof InstanceType<typeof this> | symbol): Validator<any> | undefined {
     const pascalProp: string = stringToPascalCase(prop as string)
     const staticName: string = `validate${pascalProp}`
     const staticFallback = hasStaticMethod(this, staticName) ? Reflect.get(this, staticName) as Validator<any> : undefined
@@ -282,7 +209,7 @@ export class ActiveModel {
    * @param prop
    * @param value
    */
-  static defineAttribute (prop: string & keyof InstanceType<typeof this> | symbol, value: any): void {
+  static defineAttribute (prop: string | keyof InstanceType<typeof this> | symbol, value: any): void {
     this.defineStaticProperty('__attributes__', () => new Map(this.__attributes__ || []))
     this.__attributes__!.set(prop, value)
   }
@@ -344,6 +271,9 @@ export class ActiveModel {
    * @param data
    */
   static create<T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource): InstanceType<T> {
+    if (data instanceof this) {
+      return data as InstanceType<T>
+    }
     const model = new this()
     const source = this.sanitize(data || {})
     return _fill(model, setDefaultAttributes(source, this.resolveAttributes())) as InstanceType<T>
@@ -356,13 +286,16 @@ export class ActiveModel {
   static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>) {
     const attributes = this.resolveAttributes()
     const create = (data: T | ActiveModelSource): InstanceType<T> => {
+      if (data instanceof this) {
+        return data as InstanceType<T>
+      }
       const model = new this()
       const source = this.sanitize(data || {})
       return _fill(model, setDefaultAttributes(source, attributes)) as InstanceType<T>
     }
     return data.map(item => create(item))
   }
-
+  
   static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>) {
     return this.createFromCollection<T>(await data)
   }
@@ -394,7 +327,7 @@ export class ActiveModel {
   /**
    *
    */
-  static getGetters (): Array<string & keyof InstanceType<typeof this>  | symbol> {
+  static getGetters (): Array<string | keyof InstanceType<typeof this>  | symbol> {
     return [...this?.__getters__?.keys() ?? []]
   }
 
@@ -402,12 +335,13 @@ export class ActiveModel {
    * Wrap an instance in a proxy for traps to work
    * @param { ActiveModel } instance Instance for wrapping
    */
-  protected static wrap <RType extends ActiveModel>(instance: RType): RType {
+  protected static wrap <RType extends ActiveModel, P = keyof InstanceType<typeof this> | string | symbol>(instance: RType): RType {
     return new Proxy(instance, {
-      get (target, prop: string & keyof InstanceType<typeof this> | symbol, receiver) {
+      get (target, prop, receiver) {
         return (<typeof ActiveModel>target.constructor).getter(target, prop, receiver)
       },
-      set (target, prop: string, value, receiver) {
+      set (target, prop, value, receiver) {
+        // @ts-ignore
         if (deepEqual(target[prop], value)) {
           return Reflect.set(target, prop, value, receiver)
         }
@@ -419,32 +353,32 @@ export class ActiveModel {
         // validate value
         const validator = Ctor.resolveValidator(prop)
         if (validator) {
-          validator(target, prop, value)
+          validator(target, prop as string, value)
         }
         
         const resolvedSetter = Ctor.resolveSetter(prop)
-        return resolvedSetter ? resolvedSetter(target, prop, value, receiver) : Reflect.set(target, prop, value, receiver)
+        return resolvedSetter?.(target, prop as string, value, receiver) ?? Reflect.set(target, prop, value, receiver)
       },
-      apply (target: T, thisArg, argumentsList) {
+      apply (target, thisArg, argumentsList) {
         return Reflect.apply(target as unknown as Function, thisArg, argumentsList)
       },
-      deleteProperty (target: T, prop: string | symbol) {
+      deleteProperty (target, prop: string | symbol) {
         if ((<typeof ActiveModel> target.constructor).fieldIsProtected(prop)) {
           throw new TypeError(`Property "${prop as string}" is protected!`)
         }
         
         return Reflect.deleteProperty(target, prop)
       },
-      has (target: T, prop: string | symbol) {
+      has (target, prop: string | symbol) {
         return Reflect.has(target, prop)
       },
-      ownKeys (target: T) {
+      ownKeys (target) {
         const Ctor = <typeof ActiveModel> target.constructor
         const getters = Ctor.getGetters()
         return Array.from(new Set(Reflect.ownKeys(target).concat(getters)))
-          .filter(property => !Ctor.fieldIsHidden(property as keyof T))
+          .filter(property => !Ctor.fieldIsHidden(property as string))
       }
-    }) as InstanceType
+    }) as RType
   }
 
   constructor (data: ActiveModelSource = {}) {
