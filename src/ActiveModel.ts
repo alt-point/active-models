@@ -2,77 +2,21 @@ import type { ActiveModelSource, AnyClassInstance, Getter, Setter, Validator } f
 import { cloneDeepWith } from 'lodash'
 import deepEqual from 'fast-deep-equal/es6'
 
-interface Constructor<T> {
-  new (...args: any[]): T
-}
-
-const splitTokens = '[-_.+*/:? ]'
-
-
-/**
- * String to pascal case
- * @param {string} s
- * @returns {string}
- */
-const stringToPascalCase = (s: string): string => {
-  return String(s).split(new RegExp(splitTokens, 'g')).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
-}
-
-/**
- * Fill data to model
- * @param {Object} data
- * @param {Object} model
- */
-const _fill = <T extends ActiveModel>(model: T, data: ActiveModel | AnyClassInstance): T => {
-  for (const prop in data) {
-    Reflect.set(model, prop, data[prop])
-  }
-  return model
-}
-
-/**
- * Set default values for attributes
- * @param data
- * @param $defaultAttributes
- */
-const setDefaultAttributes = (data: AnyClassInstance, $defaultAttributes: ActiveModel | object | AnyClassInstance): AnyClassInstance | object => {
-  for (const prop in $defaultAttributes) {
-    if (Object.prototype.hasOwnProperty.call($defaultAttributes, prop)) {
-      data[prop] = Reflect.has(data, prop) ? data[prop] : $defaultAttributes[prop]
-    }
-  }
-  return data
-}
-
-/**
- * Lifting all properties and methods from the prototype chain
- * @param {Function} constructor
- * @param {array} properties
- * @returns {*[]}
- */
-const getStaticMethodsNamesDeep = (constructor: Function | object | null | undefined, properties: string[] = []): string[] => {
-  if (!constructor) {
-    return Array.from(new Set(properties))
-  }
-
-  const op = Array.from(Reflect.ownKeys(constructor))
-    .filter(prop => typeof prop === 'string' && !['arguments', 'callee', 'caller'].includes(prop))
-    .filter(prop => typeof (<AnyClassInstance><unknown>constructor)[<string>prop] === 'function') as Array<string>
-
-  properties.push(...op)
-  return getStaticMethodsNamesDeep(Reflect.getPrototypeOf(constructor), properties)
-}
-
-const hasStaticMethod = (Ctor: any, method: string): boolean | undefined => {
-  return (Reflect.has(Ctor, method) && typeof Ctor[method] === 'function') || undefined
-}
-
 type StaticContainers = '__getters__' | '__setters__' | '__attributes__' | '__validators__' | '__fillable__' | '__protected__' | '__readonly__' | '__hidden__'
 
 export class ActiveModel {
   protected static defineStaticProperty (propertyName: StaticContainers, fallback: () => any) {
     this[propertyName] = this.hasOwnProperty(propertyName) ? this[propertyName]!: fallback()
     return this
+  }
+  
+  protected static setDefaultAttributes (data: AnyClassInstance, $defaultAttributes: ActiveModel | object | AnyClassInstance): AnyClassInstance | object {
+    for (const prop in $defaultAttributes) {
+        if (Object.prototype.hasOwnProperty.call($defaultAttributes, prop)) {
+        data[prop] = Reflect.has(data, prop) ? data[prop] : $defaultAttributes[prop]
+      }
+    }
+    return data
   }
   
   protected static fieldIsReadOnly (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
@@ -197,11 +141,8 @@ export class ActiveModel {
    * @param prop
    */
   static resolveValidator(prop: string | keyof InstanceType<typeof this> | symbol): Validator<any> | undefined {
-    const pascalProp: string = stringToPascalCase(prop as string)
-    const staticName: string = `validate${pascalProp}`
-    const staticFallback = hasStaticMethod(this, staticName) ? Reflect.get(this, staticName) as Validator<any> : undefined
-    const validator = this.__validators__ ? this.__validators__.get(prop) : staticFallback
-    return validator ? validator.bind(this) : undefined
+    const validator = this.__validators__?.get(prop)
+    return validator?.bind(this)
   }
 
   /**
@@ -218,7 +159,7 @@ export class ActiveModel {
    * Resolve all defined attributes for fields
    * @private
    */
-  private static resolveAttributes (): object {
+  private static resolveAttributes (): Partial<InstanceType<typeof this>> {
     const attributes = this.__attributes__ ? Object.fromEntries(this.__attributes__.entries()) : {}
     for (const [key, value] of Object.entries(attributes)) {
       attributes[key] = typeof value === 'function' ? value() : value
@@ -234,10 +175,9 @@ export class ActiveModel {
       return instance
     }
 
-    const getter = (<typeof ActiveModel> instance.constructor).getter
     return Array.isArray(instance) ? instance.map(i => this.toJSON(i)) : Object.keys(instance).reduce((a: { [key: string] : any }, b: string) => {
       // @ts-ignore
-      a[b] = getter(instance, b)
+      a[b] = (<typeof ActiveModel> instance.constructor)?.getter?.(instance, b) ?? Reflect.get(instance, b)
       if (typeof a[b] === 'object' || Array.isArray(a[b])) {
         a[b] = this.toJSON(a[b])
       }
@@ -262,7 +202,7 @@ export class ActiveModel {
    * @param data
    * @return {*}
    */
-  static sanitize (data: object | ActiveModel): object {
+  static sanitize (data: object | ActiveModel): Partial<InstanceType<typeof this>> {
     return cloneDeepWith(data, this.cloneCustomizer.bind(this))
   }
 
@@ -276,7 +216,7 @@ export class ActiveModel {
     }
     const model = new this()
     const source = this.sanitize(data || {})
-    return _fill(model, setDefaultAttributes(source, this.resolveAttributes())) as InstanceType<T>
+    return this.fill(model, this.setDefaultAttributes(source, this.resolveAttributes())) as InstanceType<T>
   }
 
   /**
@@ -291,9 +231,11 @@ export class ActiveModel {
       }
       const model = new this()
       const source = this.sanitize(data || {})
-      return _fill(model, setDefaultAttributes(source, attributes)) as InstanceType<T>
+      return this.fill(model, this.setDefaultAttributes(source, attributes)) as InstanceType<T>
     }
-    return data.map(item => create(item))
+    return data
+      .filter((s: unknown) => s)
+      .map(item => create(item))
   }
   
   static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>) {
@@ -306,9 +248,17 @@ export class ActiveModel {
    */
   fill (data: ActiveModelSource): this {
     const Ctor = (<typeof ActiveModel> this.constructor)
-    _fill<this>(this, Ctor.sanitize(data || {}))
+    Ctor.fill(this, Ctor.sanitize(data || {}))
     return this
   }
+  
+  protected static fill (model: InstanceType<typeof this>, data: Partial<typeof this>): InstanceType<typeof this> {
+    for (const prop in data) {
+      Reflect.set(model, prop, Reflect.get(data,prop))
+    }
+    return model
+  }
+  
 
   /**
    *
@@ -374,7 +324,7 @@ export class ActiveModel {
       },
       ownKeys (target) {
         const Ctor = <typeof ActiveModel> target.constructor
-        const getters = Ctor.getGetters()
+        const getters = Ctor.getGetters() as Array<string | symbol>
         return Array.from(new Set(Reflect.ownKeys(target).concat(getters)))
           .filter(property => !Ctor.fieldIsHidden(property as string))
       }
@@ -385,6 +335,6 @@ export class ActiveModel {
     const Ctor = (<typeof ActiveModel> this.constructor)
     data = Ctor.sanitize(data || {})
     const model = Ctor.wrap(this)
-    return _fill<this>(model, setDefaultAttributes(data, Ctor.resolveAttributes()))
+    return Ctor.fill(model, Ctor.setDefaultAttributes(data, Ctor.resolveAttributes()))
   }
 }

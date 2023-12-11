@@ -14,6 +14,7 @@ export type Setter<M extends ActiveModel = ActiveModel, V = any> = (model: M, pr
 
 export type Validator<M extends ActiveModel = ActiveModel, V = any> = (model: M, prop: string, value: V) => boolean | void
 
+type FactoryConfig = [M: typeof ActiveModel, D?: any] |  typeof ActiveModel
 export type ActiveFieldDescriptor<T = unknown> = {
   setter?: Setter<any>
   getter?: Getter<any>
@@ -24,4 +25,6 @@ export type ActiveFieldDescriptor<T = unknown> = {
   protected?: boolean
   attribute?: any
   value?: any
+  factory?: FactoryConfig
+  
 }

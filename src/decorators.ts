@@ -65,10 +65,28 @@ export function ActiveField<T extends ActiveModel>(opts: ActiveFieldDescriptor =
       Ctor.defineAttribute(prop, options.attribute || options.value)
     }
 
-    if (options.setter) {
+    if (options.setter && !options.factory) {
       Ctor.defineSetter(prop, options.setter)
     }
-
+    
+    if (options.factory) {
+      if (Array.isArray(options.factory)) {
+        const [Model, DefaultValue ] = options.factory
+        
+        Ctor.defineSetter(prop, (m, p, v, r) => {
+          const value = Array.isArray(v) ? Model.createFromCollection(v) : v && v !== DefaultValue ? Model.create(v) : DefaultValue
+          return Reflect.set(m,p, value, r)
+        })
+      } else {
+        const Model = options.factory
+        Ctor.defineSetter(prop, (m, p, v, r) => {
+          const value = Array.isArray(v) ? Model.createFromCollection(v) : (v ? Model.create(v) : v)
+          return Reflect.set(m, p, value, r)
+        })
+      }
+      
+    }
+    
     if (options.getter) {
       Ctor.defineGetter(prop, options.getter)
     }
