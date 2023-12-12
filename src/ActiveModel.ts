@@ -75,6 +75,7 @@ export class ActiveModel {
    * @param prop
    */
   static addToReadonly (prop: string | keyof InstanceType<typeof this> | symbol): void {
+    this.addToFields(prop)
     this.defineStaticProperty('__readonly__', () => new Set(this.__readonly__ || []))
     this.__readonly__!.add(prop)
   }
@@ -84,6 +85,7 @@ export class ActiveModel {
    * @param prop
    */
   static addToProtected (prop: string | keyof InstanceType<typeof this> | symbol): void {
+    this.addToFields(prop)
     this.defineStaticProperty('__protected__', () => new Set(this.__protected__ || []))
     this.__protected__!.add(prop)
   }
@@ -93,6 +95,7 @@ export class ActiveModel {
    * @param prop
    */
   static addToFillable (prop: string | keyof InstanceType<typeof this> | symbol): void {
+    this.addToFields(prop)
     this.defineStaticProperty('__fillable__', () => new Set(this.__fillable__ || []))
     this.__fillable__!.add(prop)
   }
@@ -104,6 +107,7 @@ export class ActiveModel {
    * @param handler
    */
   static defineGetter (prop: string | keyof InstanceType<typeof this> | symbol, handler: Getter<any>): void {
+    this.addToFields(prop)
     this.defineStaticProperty('__getters__', () => new Map(this.__getters__ || []))
     this.__getters__!.set(prop, handler)
   }
@@ -123,6 +127,7 @@ export class ActiveModel {
    * @param handler
    */
   static defineSetter (prop: string | keyof InstanceType<typeof this> | symbol, handler: Setter<any>): void {
+    this.addToFields(prop)
     this.defineStaticProperty('__setters__', () => new Map(this.__setters__ || []))
     this.__setters__!.set(prop, handler)
   }
@@ -142,6 +147,7 @@ export class ActiveModel {
    * @param handler
    */
   static defineValidator (prop: string | keyof InstanceType<typeof this> | symbol, handler: Validator<any>): void {
+    this.addToFields(prop)
     this.defineStaticProperty('__validators__', () => new Map(this.__validators__ || []))
     this.__validators__!.set(prop, handler)
   }
@@ -161,6 +167,7 @@ export class ActiveModel {
    * @param value
    */
   static defineAttribute (prop: string | keyof InstanceType<typeof this> | symbol, value: any): void {
+    this.addToFields(prop)
     this.defineStaticProperty('__attributes__', () => new Map(this.__attributes__ || []))
     this.__attributes__!.set(prop, value)
   }
