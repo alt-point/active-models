@@ -2,7 +2,7 @@ import type { ActiveModelSource, AnyClassInstance, Getter, Setter, Validator } f
 import { cloneDeepWith } from 'lodash'
 import deepEqual from 'fast-deep-equal/es6'
 
-type StaticContainers = '__getters__' | '__setters__' | '__attributes__' | '__validators__' | '__fillable__' | '__protected__' | '__readonly__' | '__hidden__'
+type StaticContainers = '__getters__' | '__setters__' | '__attributes__' | '__validators__' | '__fillable__' | '__protected__' | '__readonly__' | '__hidden__' | '__activeFields__'
 
 export class ActiveModel {
   protected static defineStaticProperty (propertyName: StaticContainers, fallback: () => any) {
@@ -49,6 +49,7 @@ export class ActiveModel {
   protected static __protected__?: Set<string | keyof InstanceType<typeof this> | symbol>
   protected static __readonly__?: Set<string | keyof InstanceType<typeof this> | symbol>
   protected static __hidden__?: Set<string | keyof InstanceType<typeof this> | symbol>
+  protected static __activeFields__?: Set<string | keyof InstanceType<typeof this> | symbol>
   
 
   /**
@@ -58,6 +59,15 @@ export class ActiveModel {
   static addToHidden (...prop: Array<string | keyof InstanceType<typeof this> | symbol>): void {
     this.defineStaticProperty('__hidden__', () => new Set(this.__hidden__ || []))
     prop.forEach(p => this.__hidden__!.add(p))
+  }
+  
+  static addToFields (...prop: Array<string | keyof InstanceType<typeof this> | symbol>): void {
+    this.defineStaticProperty('__activeFields__', () => new Set(this.__activeFields__ || []))
+    prop.forEach(p => this.__activeFields__!.add(p))
+  }
+  
+  protected static isActiveField (prop: string | keyof InstanceType<typeof this> | symbol) {
+    return this?.__activeFields__?.has(prop) ?? false
   }
 
   /**
@@ -286,11 +296,15 @@ export class ActiveModel {
    * @param { ActiveModel } instance Instance for wrapping
    */
   protected static wrap <RType extends ActiveModel, P = keyof InstanceType<typeof this> | string | symbol>(instance: RType): RType {
+    
     return new Proxy(instance, {
       get (target, prop, receiver) {
         return (<typeof ActiveModel>target.constructor).getter(target, prop, receiver)
       },
       set (target, prop, value, receiver) {
+        if (!(<typeof ActiveModel>target.constructor).isActiveField(prop)) {
+          return Reflect.set(target, prop, value, receiver)
+        }
         // @ts-ignore
         if (deepEqual(target[prop], value)) {
           return Reflect.set(target, prop, value, receiver)

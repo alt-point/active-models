@@ -1,5 +1,5 @@
 import { ActiveModel } from './'
-import type { ActiveFieldDescriptor } from './types'
+import type { ActiveFieldDescriptor, FactoryConfig } from './types'
 
 const defaultOpts: ActiveFieldDescriptor = {
   fillable: true
@@ -38,6 +38,34 @@ export function isProtected () {
   }
 }
 
+const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryConfig, isOptional?: boolean) => {
+  if (!factory) {
+    return
+  }
+  const Ctor = <typeof ActiveModel>target.constructor
+  if (Array.isArray(factory)) {
+    const [Model, DefaultValue ] = factory
+    
+    Ctor.defineSetter(prop, (m, p, v, r) => {
+      const value = Array.isArray(v) ? Model.createFromCollection(v) : v && v !== DefaultValue ? Model.create(v) : DefaultValue
+      return Reflect.set(m,p, value, r)
+    })
+    return
+  }
+  
+  const Model = factory
+  Ctor.defineSetter(prop, (m, p, v, r) => {
+    const value = Array.isArray(v) ? Model.createFromCollection(v) : (v ? Model.create(v) : v)
+    return Reflect.set(m, p, value, r)
+  })
+  
+}
+
+export function ActiveFactory (factory: FactoryConfig, isOptional: boolean = false) {
+  return function (target: ActiveModel, prop: string): void {
+    factoryDecorator(target, prop, factory, isOptional)
+  }
+}
 
 /**
  * Decorate class property
@@ -48,7 +76,9 @@ export function ActiveField<T extends ActiveModel>(opts: ActiveFieldDescriptor =
   const options: ActiveFieldDescriptor = Object.assign({ fillable: true, protected: true }, opts)
   return function (target: ActiveModel, prop: string): void {
     const Ctor = <typeof ActiveModel>target.constructor
-
+    
+    Ctor.addToFields(prop)
+    
     if (options.fillable) {
       Ctor.addToFillable(prop)
     }
@@ -69,23 +99,7 @@ export function ActiveField<T extends ActiveModel>(opts: ActiveFieldDescriptor =
       Ctor.defineSetter(prop, options.setter)
     }
     
-    if (options.factory) {
-      if (Array.isArray(options.factory)) {
-        const [Model, DefaultValue ] = options.factory
-        
-        Ctor.defineSetter(prop, (m, p, v, r) => {
-          const value = Array.isArray(v) ? Model.createFromCollection(v) : v && v !== DefaultValue ? Model.create(v) : DefaultValue
-          return Reflect.set(m,p, value, r)
-        })
-      } else {
-        const Model = options.factory
-        Ctor.defineSetter(prop, (m, p, v, r) => {
-          const value = Array.isArray(v) ? Model.createFromCollection(v) : (v ? Model.create(v) : v)
-          return Reflect.set(m, p, value, r)
-        })
-      }
-      
-    }
+    factoryDecorator(target, prop, options.factory, false)
     
     if (options.getter) {
       Ctor.defineGetter(prop, options.getter)
