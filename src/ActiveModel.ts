@@ -1,7 +1,7 @@
 import type { ActiveModelSource, AnyClassInstance, FactoryOptions, Getter, Setter, Validator } from './types'
 import { cloneDeepWith } from 'lodash'
 import deepEqual from 'fast-deep-equal/es6'
-import { endCreating, isNotCreating, isTouched, saveInitialState, saveRaw, startCreating, useMeta } from "./meta";
+import { useMeta } from './meta'
 
 type StaticContainers = '__getters__' | '__setters__' | '__attributes__' | '__validators__' | '__fillable__' | '__protected__' | '__readonly__' | '__hidden__' | '__activeFields__'
 
@@ -239,7 +239,7 @@ export class ActiveModel {
     const source = this.sanitize(data || {})
     opts?.tracked && saveRaw(data)
     const initialState =  this.fill(model, this.setDefaultAttributes(source, this.resolveAttributes())) as InstanceType<T>
-    opts?.tracked && endCreating()
+    opts?.tracked && saveInitialState(initialState)
     return initialState
   }
   
