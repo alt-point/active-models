@@ -229,7 +229,7 @@ export class ActiveModel {
    * @param data
    * @param opts
    */
-  static create<T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource, opts: FactoryOptions = { lazy: false, tracked: false }): InstanceType<T> {
+  static create<T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource = {}, opts: FactoryOptions = { lazy: false, tracked: false }): InstanceType<T> {
     if (data instanceof this && opts.lazy) {
       return data as InstanceType<T>
     }
@@ -237,13 +237,19 @@ export class ActiveModel {
     const {  saveInitialState, saveRaw } = useMeta(model)
     
     const source = this.sanitize(data || {})
-    opts?.tracked && saveRaw(data)
+    if (opts.tracked) {
+      saveRaw(data)
+    }
+    
     const initialState =  this.fill(model, this.setDefaultAttributes(source, this.resolveAttributes())) as InstanceType<T>
-    opts?.tracked && saveInitialState(initialState)
+    if (opts.tracked) {
+      saveInitialState(initialState)
+    }
+    
     return initialState
   }
   
-  static createLazy <T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }): InstanceType<T> {
+  static createLazy <T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource = {}, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }): InstanceType<T> {
     return this.create<T>(data, { lazy: true, tracked: opts.tracked })
   }
   /**
@@ -294,7 +300,7 @@ export class ActiveModel {
    * @param data
    * @protected
    */
-  protected static fill (model: InstanceType<typeof this>, data: Partial<typeof this>): InstanceType<typeof this> {
+  protected static fill (model: InstanceType<typeof this>, data: Partial<InstanceType<typeof this>>): InstanceType<typeof this> {
     const ownFields = new Set(Reflect.ownKeys(model))
     for (const prop in data) {
       if (!ownFields.has(prop)) {
