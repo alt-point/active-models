@@ -1,6 +1,7 @@
-import type { ActiveModelSource, AnyClassInstance, Getter, Setter, Validator } from './types'
+import type { ActiveModelSource, AnyClassInstance, FactoryOptions, Getter, Setter, Validator } from './types'
 import { cloneDeepWith } from 'lodash'
 import deepEqual from 'fast-deep-equal/es6'
+import { endCreating, isNotCreating, isTouched, saveInitialState, saveRaw, startCreating, useMeta } from "./meta";
 
 type StaticContainers = '__getters__' | '__setters__' | '__attributes__' | '__validators__' | '__fillable__' | '__protected__' | '__readonly__' | '__hidden__' | '__activeFields__'
 
@@ -226,41 +227,59 @@ export class ActiveModel {
   /**
    * Factory method for create new instance
    * @param data
+   * @param opts
    */
-  static create<T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource): InstanceType<T> {
-    if (data instanceof this) {
+  static create<T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource, opts: FactoryOptions = { lazy: false, tracked: false }): InstanceType<T> {
+    if (data instanceof this && opts.lazy) {
       return data as InstanceType<T>
     }
     const model = new this()
+    const {  saveInitialState, saveRaw } = useMeta(model)
+    
     const source = this.sanitize(data || {})
-    return this.fill(model, this.setDefaultAttributes(source, this.resolveAttributes())) as InstanceType<T>
+    opts?.tracked && saveRaw(data)
+    const initialState =  this.fill(model, this.setDefaultAttributes(source, this.resolveAttributes())) as InstanceType<T>
+    opts?.tracked && endCreating()
+    return initialState
   }
-
+  
+  static createLazy <T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }): InstanceType<T> {
+    return this.create<T>(data, { lazy: true, tracked: opts.tracked })
+  }
   /**
    * Batch factory for creating instance collection
    * @param data
+   * @param opts
    */
-  static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>) {
+  static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: FactoryOptions = { lazy: false, tracked: false }) {
     const attributes = this.resolveAttributes()
     const create = (data: T | ActiveModelSource): InstanceType<T> => {
-      if (data instanceof this) {
+      if (data instanceof this && opts.lazy) {
         return data as InstanceType<T>
       }
       const model = new this()
+      const { saveRaw, saveInitialState } = useMeta(model)
+      opts.tracked && saveRaw(data)
       const source = this.sanitize(data || {})
-      return this.fill(model, this.setDefaultAttributes(source, attributes)) as InstanceType<T>
+      const initialState =  this.fill(model, this.setDefaultAttributes(source, attributes)) as InstanceType<T>
+      opts.tracked && saveInitialState(initialState)
+      return initialState
     }
     return data
       .filter((s: unknown) => s)
       .map(item => create(item))
   }
   
-  static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>) {
-    return this.createFromCollection<T>(await data)
+  static createFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false} ) {
+    return this.createFromCollection(data, { lazy: true, tracked: opts.tracked}  )
   }
-
+  
+  static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: FactoryOptions = { lazy: false, tracked: false} ) {
+    return this.createFromCollection<T>(await data, opts)
+  }
+  
   /**
-   * Batch async factory for creating instance collection
+   * Filling data to **only own fields**
    * @param data
    */
   fill (data: ActiveModelSource): this {
@@ -269,8 +288,18 @@ export class ActiveModel {
     return this
   }
   
+  /**
+   * Filling data to **only own fields** of instance
+   * @param model
+   * @param data
+   * @protected
+   */
   protected static fill (model: InstanceType<typeof this>, data: Partial<typeof this>): InstanceType<typeof this> {
+    const ownFields = new Set(Reflect.ownKeys(model))
     for (const prop in data) {
+      if (!ownFields.has(prop)) {
+        continue
+      }
       Reflect.set(model, prop, Reflect.get(data,prop))
     }
     return model
@@ -351,7 +380,20 @@ export class ActiveModel {
       }
     }) as RType
   }
-
+  
+  /**
+   *  Return touched state of model
+   */
+  isTouched () {
+    const { isTouched } = useMeta(this)
+    return isTouched()
+  }
+  
+  startTracking () {
+    const { saveInitialState } = useMeta(this)
+    saveInitialState(this)
+  }
+  
   constructor (data: ActiveModelSource = {}) {
     const Ctor = (<typeof ActiveModel> this.constructor)
     data = Ctor.sanitize(data || {})

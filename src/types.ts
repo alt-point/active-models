@@ -28,3 +28,9 @@ export type ActiveFieldDescriptor<T = unknown> = {
   factory?: FactoryConfig
   
 }
+
+
+export type FactoryOptions = {
+  lazy?: boolean
+  tracked?: boolean
+}
