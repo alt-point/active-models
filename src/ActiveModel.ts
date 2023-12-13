@@ -301,7 +301,7 @@ export class ActiveModel {
    * @protected
    */
   protected static fill (model: InstanceType<typeof this>, data: Partial<InstanceType<typeof this>>): InstanceType<typeof this> {
-    const ownFields = new Set(Reflect.ownKeys(model))
+    const ownFields = new Set([...Reflect.ownKeys(model), ...this?.__fillable__ || []])
     for (const prop in data) {
       if (!ownFields.has(prop)) {
         continue
