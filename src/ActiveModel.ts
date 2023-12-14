@@ -287,10 +287,11 @@ export class ActiveModel {
   /**
    * Filling data to **only own fields**
    * @param data
+   * @param force
    */
-  fill (data: ActiveModelSource): this {
+  fill (data: ActiveModelSource, force = false): this {
     const Ctor = (<typeof ActiveModel> this.constructor)
-    Ctor.fill(this, Ctor.sanitize(data || {}))
+    Ctor.fill(this, Ctor.sanitize(data || {}), force)
     return this
   }
   
@@ -298,12 +299,13 @@ export class ActiveModel {
    * Filling data to **only own fields** of instance
    * @param model
    * @param data
+   * @param force
    * @protected
    */
-  protected static fill (model: InstanceType<typeof this>, data: Partial<InstanceType<typeof this>>): InstanceType<typeof this> {
+  protected static fill (model: InstanceType<typeof this>, data: Partial<InstanceType<typeof this>>, force = false): InstanceType<typeof this> {
     const ownFields = new Set([...Reflect.ownKeys(model), ...this?.__fillable__ || []])
     for (const prop in data) {
-      if (!ownFields.has(prop)) {
+      if (!ownFields.has(prop) && !force) {
         continue
       }
       Reflect.set(model, prop, Reflect.get(data,prop))
