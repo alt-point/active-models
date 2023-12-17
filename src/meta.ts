@@ -79,11 +79,27 @@ function deepFreeze(value: any) {
   return Object.freeze(value);
 }
 
-export const useMeta = (instance: ActiveModel) => {
+const requiredInstance = (instance?: ActiveModel) => {
+  if (!instance) {
+    throw new Error(`Instance extends ActiveModel is required for this method!`)
+  }
+  
+  return instance
+}
+
+export const useMeta = (instance?: ActiveModel) => {
+  let inst = instance
   return {
-    saveInitialState: (initialState: ActiveModel) => saveInitialState(instance, initialState),
-    saveRaw: (raw: any) => saveRaw(instance, raw),
-    isTouched: () => isTouched(instance)
+    setInstance: (instance: ActiveModel) => {
+      inst = instance
+    },
+    startCreating,
+    endCreating,
+    isCreating,
+    isNotCreating,
+    saveInitialState: (initialState: ActiveModel) =>  saveInitialState(requiredInstance(inst), initialState),
+    saveRaw: (raw: any) => saveRaw(requiredInstance(inst), raw),
+    isTouched: () => isTouched(requiredInstance(inst))
   }
 }
 

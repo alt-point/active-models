@@ -1,20 +1,67 @@
 import type { ActiveModelSource, AnyClassInstance, FactoryOptions, Getter, Setter, Validator } from './types'
 import { cloneDeepWith } from 'lodash'
-import deepEqual from 'fast-deep-equal/es6'
 import { useMeta } from './meta'
 
 type StaticContainers = '__getters__' | '__setters__' | '__attributes__' | '__validators__' | '__fillable__' | '__protected__' | '__readonly__' | '__hidden__' | '__activeFields__'
 
+const isTouched = Symbol('@touched')
+
+const events = Symbol('@events')
+
+enum EventType {
+  touched = 'touched',
+  created = 'created'
+}
+
+type Listener = (model: any) => void
+
 export class ActiveModel {
+  
+  [events] = new Map<EventType,Set<Listener>>([
+    [EventType.created, new Set<Listener>()],
+    [EventType.touched, new Set<Listener>()],
+  ]);
+  
+  [isTouched]: boolean = false;
+  
+  emit (event: EventType, payload?: any) {
+    for (const cb of this[events].get(event)!) {
+      cb(payload)
+    }
+  }
+  
+  on (event: EventType, cb: Listener) {
+    const unbind = () => this[events].get(event)!.delete(cb)
+    this[events].get(event)!.add(cb)
+    return unbind
+  }
+  
+  once (event: EventType, cb: Listener) {
+    let unbind;
+    
+    const closure = (payload?: any) => {
+      cb(payload)
+      unbind = () => this[events].get(event)!.delete(cb)
+      unbind()
+      return unbind
+    }
+    
+    this[events].get(event)!.add(closure)
+    return unbind
+  }
+  
   protected static defineStaticProperty (propertyName: StaticContainers, fallback: () => any) {
     this[propertyName] = this.hasOwnProperty(propertyName) ? this[propertyName]!: fallback()
     return this
   }
   
-  protected static setDefaultAttributes (data: AnyClassInstance, $defaultAttributes: ActiveModel | object | AnyClassInstance): AnyClassInstance | object {
-    for (const prop in $defaultAttributes) {
-        if (Object.prototype.hasOwnProperty.call($defaultAttributes, prop)) {
-        data[prop] = Reflect.has(data, prop) ? data[prop] : $defaultAttributes[prop]
+  
+  protected static setDefaultAttributes (data: AnyClassInstance): AnyClassInstance | object {
+    const attributes: Record<string, any> = this.__attributes__ ? Object.fromEntries(this.__attributes__.entries()) : {}
+    const resolveValue = (prop: string) => typeof attributes?.[prop] === 'function' ? attributes?.[prop]?.() : attributes?.[prop]
+    for (const prop in attributes) {
+      if (Object.prototype.hasOwnProperty.call(attributes, prop)) {
+        data[prop] = Reflect.has(data, prop) ? data[prop] : resolveValue(prop)
       }
     }
     return data
@@ -174,18 +221,6 @@ export class ActiveModel {
   }
 
   /**
-   * Resolve all defined attributes for fields
-   * @private
-   */
-  private static resolveAttributes (): Partial<InstanceType<typeof this>> {
-    const attributes = this.__attributes__ ? Object.fromEntries(this.__attributes__.entries()) : {}
-    for (const [key, value] of Object.entries(attributes)) {
-      attributes[key] = typeof value === 'function' ? value() : value
-    }
-    return attributes
-  }
-
-  /**
    * Static method for converting to JSON
    */
   static toJSON (instance: ActiveModel | ActiveModel[]): object | object[] {
@@ -233,19 +268,21 @@ export class ActiveModel {
     if (data instanceof this && opts.lazy) {
       return data as InstanceType<T>
     }
+    const { saveInitialState, setInstance, startCreating, endCreating, saveRaw } = useMeta()
+    startCreating()
     const model = new this()
-    const {  saveInitialState, saveRaw } = useMeta(model)
+    setInstance(model)
     
     const source = this.sanitize(data || {})
     if (opts.tracked) {
       saveRaw(data)
     }
     
-    const initialState =  this.fill(model, this.setDefaultAttributes(source, this.resolveAttributes())) as InstanceType<T>
+    const initialState =  this.fill(model, this.setDefaultAttributes(source)) as InstanceType<T>
     if (opts.tracked) {
       saveInitialState(initialState)
     }
-    
+    endCreating()
     return initialState
   }
   
@@ -258,22 +295,9 @@ export class ActiveModel {
    * @param opts
    */
   static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: FactoryOptions = { lazy: false, tracked: false }) {
-    const attributes = this.resolveAttributes()
-    const create = (data: T | ActiveModelSource): InstanceType<T> => {
-      if (data instanceof this && opts.lazy) {
-        return data as InstanceType<T>
-      }
-      const model = new this()
-      const { saveRaw, saveInitialState } = useMeta(model)
-      opts.tracked && saveRaw(data)
-      const source = this.sanitize(data || {})
-      const initialState =  this.fill(model, this.setDefaultAttributes(source, attributes)) as InstanceType<T>
-      opts.tracked && saveInitialState(initialState)
-      return initialState
-    }
     return data
       .filter((s: unknown) => s)
-      .map(item => create(item))
+      .map(item => this.create(item, opts))
   }
   
   static createFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false} ) {
@@ -346,26 +370,40 @@ export class ActiveModel {
         return (<typeof ActiveModel>target.constructor).getter(target, prop, receiver)
       },
       set (target, prop, value, receiver) {
-        if (!(<typeof ActiveModel>target.constructor).isActiveField(prop)) {
+        const isActiveField = (<typeof ActiveModel>target.constructor).isActiveField(prop)
+        
+        
+        if (!isActiveField) {
           return Reflect.set(target, prop, value, receiver)
         }
         // @ts-ignore
-        if (deepEqual(target[prop], value)) {
-          return Reflect.set(target, prop, value, receiver)
+        const isEqual = Object.is(target[prop], value)
+        
+        
+        if (value instanceof ActiveModel) {
+          value.on(EventType.touched, () => {
+            target[isTouched] = true
+          })
         }
+        if (!isEqual) {
+          target[isTouched] = true
+          target.emit(EventType.touched)
+        
+        }
+        if (isEqual) {
+          return Reflect.set(target, prop, value, receiver)
+        
+        }
+        
         const Ctor: typeof ActiveModel = (<typeof ActiveModel> target.constructor)
         if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
           return false
         }
         
         // validate value
-        const validator = Ctor.resolveValidator(prop)
-        if (validator) {
-          validator(target, prop as string, value)
-        }
+        Ctor.resolveValidator(prop)?.(target, prop as string, value)
         
-        const resolvedSetter = Ctor.resolveSetter(prop)
-        return resolvedSetter?.(target, prop as string, value, receiver) ?? Reflect.set(target, prop, value, receiver)
+        return Ctor.resolveSetter(prop)?.(target, prop as string, value, receiver) ?? Reflect.set(target, prop, value, receiver)
       },
       apply (target, thisArg, argumentsList) {
         return Reflect.apply(target as unknown as Function, thisArg, argumentsList)
@@ -403,9 +441,13 @@ export class ActiveModel {
   }
   
   constructor (data: ActiveModelSource = {}) {
+    const { isCreating } = useMeta()
+    if ( isCreating() ) {
+      return this
+    }
     const Ctor = (<typeof ActiveModel> this.constructor)
     data = Ctor.sanitize(data || {})
     const model = Ctor.wrap(this)
-    return Ctor.fill(model, Ctor.setDefaultAttributes(data, Ctor.resolveAttributes()))
+    return Ctor.fill(model, Ctor.setDefaultAttributes(data))
   }
 }
