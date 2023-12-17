@@ -26,12 +26,10 @@ const upsertState = (instance: ActiveModel, data: Partial<State>) => {
 
 export const startCreating = () => {
   creating = true
-  console.log('LOCK creating', creating)
 }
 
 export const endCreating = () => {
   creating = false
-  console.log('UNLOCK creating', creating)
 }
 
 export const isCreating = (): boolean => {
