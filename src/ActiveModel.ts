@@ -268,22 +268,25 @@ export class ActiveModel {
     if (data instanceof this && opts.lazy) {
       return data as InstanceType<T>
     }
+    // console.group('create', this)
     const { saveInitialState, setInstance, startCreating, endCreating, saveRaw } = useMeta()
     startCreating()
     const model = new this()
     setInstance(model)
     
-    const source = this.sanitize(data || {})
     if (opts.tracked) {
       saveRaw(data)
     }
+    const source = this.sanitize(data || {})
     
-    const initialState =  this.fill(model, this.setDefaultAttributes(source)) as InstanceType<T>
+    // model = this.wrap(model)
+    this.fill(model, this.setDefaultAttributes(source)) as InstanceType<T>
     if (opts.tracked) {
-      saveInitialState(initialState)
+      saveInitialState(model)
     }
     endCreating()
-    return initialState
+    // console.groupEnd()
+    return model
   }
   
   static createLazy <T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource = {}, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }): InstanceType<T> {
@@ -364,36 +367,35 @@ export class ActiveModel {
    * @param { ActiveModel } instance Instance for wrapping
    */
   protected static wrap <RType extends ActiveModel, P = keyof InstanceType<typeof this> | string | symbol>(instance: RType): RType {
-    
+    const self = this
     return new Proxy(instance, {
       get (target, prop, receiver) {
         return (<typeof ActiveModel>target.constructor).getter(target, prop, receiver)
       },
       set (target, prop, value, receiver) {
+        const { isNotCreating } = useMeta()
         const isActiveField = (<typeof ActiveModel>target.constructor).isActiveField(prop)
-        
-        
-        if (!isActiveField) {
-          return Reflect.set(target, prop, value, receiver)
-        }
         // @ts-ignore
         const isEqual = Object.is(target[prop], value)
+        if (!isEqual && isNotCreating()) {
+          target[isTouched] = true
+          target.emit(EventType.touched)
+        }
         
+        if (isEqual) {
+          return Reflect.set(target, prop, value, receiver)
+        }
         
         if (value instanceof ActiveModel) {
           value.on(EventType.touched, () => {
             target[isTouched] = true
           })
         }
-        if (!isEqual) {
-          target[isTouched] = true
-          target.emit(EventType.touched)
         
-        }
-        if (isEqual) {
+        if (!isActiveField) {
           return Reflect.set(target, prop, value, receiver)
-        
         }
+        
         
         const Ctor: typeof ActiveModel = (<typeof ActiveModel> target.constructor)
         if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
@@ -442,10 +444,10 @@ export class ActiveModel {
   
   constructor (data: ActiveModelSource = {}) {
     const { isCreating } = useMeta()
-    if ( isCreating() ) {
-      return this
-    }
     const Ctor = (<typeof ActiveModel> this.constructor)
+    if ( isCreating() ) {
+      return Ctor.wrap(this)
+    }
     data = Ctor.sanitize(data || {})
     const model = Ctor.wrap(this)
     return Ctor.fill(model, Ctor.setDefaultAttributes(data))
