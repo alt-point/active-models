@@ -38,27 +38,42 @@ export function isProtected () {
   }
 }
 
+function getValue<T> (data: () => T | T) {
+  if (typeof data === 'function') {
+    return data()
+  }
+  return data
+}
+
 const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryConfig, isOptional?: boolean) => {
   if (!factory) {
     return
   }
   const Ctor = <typeof ActiveModel>target.constructor
   if (Array.isArray(factory)) {
-    const [Model, DefaultValue ] = factory
-    
+    const [Model, DefaultValueFactory] = factory
+
     Ctor.defineSetter(prop, (m, p, v, r) => {
-      const value = Array.isArray(v) ? Model.createFromCollectionLazy(v) : v && v !== DefaultValue ? Model.createLazy(v) : DefaultValue
-      return Reflect.set(m,p, value, r)
+      if (Array.isArray(v)) {
+        return Reflect.set(m,p, Model.createFromCollectionLazy(v), r)
+      }
+
+      const defaultValue = getValue(DefaultValueFactory)
+      if (v && v !== defaultValue) {
+        return Reflect.set(m,p, Model.createLazy(v), r)
+      }
+
+      return Reflect.set(m,p, defaultValue, r)
     })
     return
   }
-  
+
   const Model = factory
   Ctor.defineSetter(prop, (m, p, v, r) => {
     const value = Array.isArray(v) ? Model.createFromCollectionLazy(v) : (v ? Model.createLazy(v) : v)
     return Reflect.set(m, p, value, r)
   })
-  
+
 }
 
 export function ActiveFactory (factory: FactoryConfig, isOptional: boolean = false) {
@@ -76,9 +91,9 @@ export function ActiveField<T extends ActiveModel>(opts: ActiveFieldDescriptor =
   const options: ActiveFieldDescriptor = Object.assign({ fillable: true, protected: true }, opts)
   return function (target: ActiveModel, prop: string): void {
     const Ctor = <typeof ActiveModel>target.constructor
-    
+
     Ctor.addToFields(prop)
-    
+
     if (options.fillable) {
       Ctor.addToFillable(prop)
     }
@@ -98,9 +113,9 @@ export function ActiveField<T extends ActiveModel>(opts: ActiveFieldDescriptor =
     if (options.setter && !options.factory) {
       Ctor.defineSetter(prop, options.setter)
     }
-    
+
     factoryDecorator(target, prop, options.factory, false)
-    
+
     if (options.getter) {
       Ctor.defineGetter(prop, options.getter)
     }

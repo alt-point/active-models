@@ -30,10 +30,8 @@ npm install --save @alt-point/active-models
 
 **Назначение**: контроль целостности структуры и типов данных моделей приходящих из внешних источников/подсистем ([DTO](https://en.wikipedia.org/wiki/Data_transfer_object))
 
-[Пример](docs/active-model.md), иллюстрирующий применение, [пример с декораторами](docs/active-model-with-decorators.md) 
+[Пример](docs/active-model.md), иллюстрирующий применение, [пример с декораторами](docs/active-model-with-decorators.md)
 
-
-Есть ~~2 стула~~ 2 варианта, либо использовать статическое api, либо юзать декораторы:
 
 @Decorators
 ---
@@ -57,11 +55,11 @@ type ActiveFieldDescriptor = object & {
 
 >
 > **Notice:**
-> 
+>
 > Для того, что бы были задействованы атрибуты (значения по умолчанию для полей модели) необходимо
-> создавать экземпляр модели через фабричный метод `ActiveModel.create(data)`, либо же определить логику установки 
-> значений в конструкторе явно, например так 
-> 
+> создавать экземпляр модели через фабричный метод `ActiveModel.create(data)`, либо же определить логику установки
+> значений в конструкторе явно, например так
+>
 > ```ts
 >  class SomeModeal extends ActiveModel {
 >    constructor (data?: any) {
@@ -74,119 +72,8 @@ type ActiveFieldDescriptor = object & {
 >```
 
 
-
-Static Api:
----
-#### `static get $attributes`
-
-*Default value:*  `{}`
-
-*Description:* Структура объекта по умолчанию, а так же значения свойств по умолчанию. Даже если значение не 
-передано в `data` в конструкторе, будет установлено из `$attributes`
-
-*Example:*
-
-```js
-    static get $attributes () {
-        return {
-            id: '',
-            login: '',
-            password: '',
-            createdAt: ''
-        }                          
-    }
-```
-
-#### `static get fillable`
-
-*Default value*: ` [] `
-
-*Description*: Массив имён свойств, которые могут быть установлены через конструктор. Если массив пуст, 
-то можно устанавливать любые свойства. Если массив заполнен, то в модель можно установить только перечисленные свойства и их значения.
-
-*Example:*
-```js
-  static get fillable () {
-    return [
-        'id',
-        'password',
-        'property',
-        'createdAt'
-    ]
-}
-```
-
-#### `static protected`
-
-*Default value*: ` [] `
-
-*Description*: Массив имён свойств, которые запрещено удалять у объекта, если массив пустой, 
-то удалять можно любые свойства.
-
-*Example*:
-```js
-    static get protected () {
-        return [
-            'id',
-            'login',
-            'password',
-            'createdAt'
-        ]
-    }
-```
-
-#### `static hidden`
-
-*Default value*: ` [] `
-
-*Description*: Массив имён свойств, которые не должны быть перечисляемыми, а следовательно и не будут попадать в вывод `Object.keys`, `Reflect.ownKeys`, `JSON.stringify`, etc.
-
-*Example*:
-
-```js
-    static get hidden () {
-        return [
-            'password'
-        ]
-    }
-
-```
-
-#### `static setter${PascalPropertyName}(model, prop, value, receiver)`
-
-*Description*: Для того что бы определить *сеттер* для свойства модели необходимо добавить классу, унаследованному от `ActiveModel`
- **статический** метод с префиксом `setter` + имя в `PascalCase` свойства (разделители `[-_.+*/:? ]` не будут учитываться)
- 
-*Example*:
-
-```js
-    static setterMyIntegerPropertyName (model, prop, value = 0, receiver) {
-        Reflect.set(model, prop, Number.parseInt(value), receiver)
-    }
-``` 
-   
-
-#### `static getter{PascalPropertyName}(model, prop)`
-*Description*: Для того что бы определить *геттер* для свойства модели необходимо добавить классу, унаследованному от `ActiveModel` 
-**статический** метод с префиксом `getter` + имя в `PascalCase` свойства (разделители `[-_.+*/:? ]` не будут учитываться)
-
-*Example*:
-
-```js
-    static getterGoodsSumWeight (model) {
-        return model.goods.reduce((a, { weight }) => a + weight, 0)        
-    }
-```
-
-
-#### `static sanitize(data)`
-*Description*: Статический метод преобразования/очистки данных переданных в конструктор.
-
-По умолчанию возвращает `lodash.cloneDeep(data)`.
-
-
 ***
- 
+
 
 ## `CallableModel`
 
@@ -199,15 +86,15 @@ Static Api:
 import { CallableModel } from '@alt-point/active-models'
 
 class Notify extends CallableModel {
-  // Define 
+  // Define
   __call (...args) {
       return this.success(...args)
   }
-  
+
   success (successMessage) {
      alert(successMessage)
   }
-  
+
   silent (message) {
     console.log('Silent message:' + message)
   }
@@ -225,7 +112,7 @@ export default (ctx, inject) => {
 }
 
 
-// в компоненте теперь можно юзать: 
+// в компоненте теперь можно юзать:
 this.$notify.silent('Write notice to console!')
 this.$notify('Alert!')
 ```
