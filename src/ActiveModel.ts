@@ -16,46 +16,46 @@ enum EventType {
 type Listener = (model: any) => void
 
 export class ActiveModel {
-  
+
   [events] = new Map<EventType,Set<Listener>>([
     [EventType.created, new Set<Listener>()],
     [EventType.touched, new Set<Listener>()],
   ]);
-  
+
   [isTouched]: boolean = false;
-  
+
   emit (event: EventType, payload?: any) {
     for (const cb of this[events].get(event)!) {
       cb(payload)
     }
   }
-  
+
   on (event: EventType, cb: Listener) {
     const unbind = () => this[events].get(event)!.delete(cb)
     this[events].get(event)!.add(cb)
     return unbind
   }
-  
+
   once (event: EventType, cb: Listener) {
     let unbind;
-    
+
     const closure = (payload?: any) => {
       cb(payload)
       unbind = () => this[events].get(event)!.delete(cb)
       unbind()
       return unbind
     }
-    
+
     this[events].get(event)!.add(closure)
     return unbind
   }
-  
+
   protected static defineStaticProperty (propertyName: StaticContainers, fallback: () => any) {
     this[propertyName] = this.hasOwnProperty(propertyName) ? this[propertyName]!: fallback()
     return this
   }
-  
-  
+
+
   protected static setDefaultAttributes (data: AnyClassInstance): AnyClassInstance | object {
     const attributes: Record<string, any> = this.__attributes__ ? Object.fromEntries(this.__attributes__.entries()) : {}
     const resolveValue = (prop: string) => typeof attributes?.[prop] === 'function' ? attributes?.[prop]?.() : attributes?.[prop]
@@ -66,23 +66,23 @@ export class ActiveModel {
     }
     return data
   }
-  
+
   protected static fieldIsReadOnly (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
     return this.__readonly__?.has(prop) ?? false
   }
-  
+
   protected static fieldIsHidden (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
     return this.__hidden__?.has(prop) ?? false
   }
-  
+
   protected static fieldIsFillable (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
     return this.__fillable__?.has(prop) ?? false
   }
-  
+
   protected static fieldIsProtected (prop:  string | keyof InstanceType<typeof this> | symbol): boolean {
     return this.__protected__?.has(prop) ?? false
   }
-  
+
   protected static getter<Result = unknown>(target: ActiveModel, prop: string | keyof InstanceType<typeof this> | symbol, receiver?: ActiveModel): Result {
     const Ctor = (<typeof ActiveModel> target.constructor)
     const resolvedGetter = Ctor?.resolveGetter?.(prop)
@@ -98,7 +98,7 @@ export class ActiveModel {
   protected static __readonly__?: Set<string | keyof InstanceType<typeof this> | symbol>
   protected static __hidden__?: Set<string | keyof InstanceType<typeof this> | symbol>
   protected static __activeFields__?: Set<string | keyof InstanceType<typeof this> | symbol>
-  
+
 
   /**
    * Add field name to hidden scope
@@ -108,12 +108,12 @@ export class ActiveModel {
     this.defineStaticProperty('__hidden__', () => new Set(this.__hidden__ || []))
     prop.forEach(p => this.__hidden__!.add(p))
   }
-  
+
   static addToFields (...prop: Array<string | keyof InstanceType<typeof this> | symbol>): void {
     this.defineStaticProperty('__activeFields__', () => new Set(this.__activeFields__ || []))
     prop.forEach(p => this.__activeFields__!.add(p))
   }
-  
+
   protected static isActiveField (prop: string | keyof InstanceType<typeof this> | symbol) {
     return this?.__activeFields__?.has(prop) ?? false
   }
@@ -273,12 +273,12 @@ export class ActiveModel {
     startCreating()
     const model = new this()
     setInstance(model)
-    
+
     if (opts.tracked) {
       saveRaw(data)
     }
     const source = this.sanitize(data || {})
-    
+
     // model = this.wrap(model)
     this.fill(model, this.setDefaultAttributes(source)) as InstanceType<T>
     if (opts.tracked) {
@@ -286,9 +286,9 @@ export class ActiveModel {
     }
     endCreating()
     // console.groupEnd()
-    return model
+    return model as InstanceType<T>
   }
-  
+
   static createLazy <T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource = {}, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }): InstanceType<T> {
     return this.create<T>(data, { lazy: true, tracked: opts.tracked })
   }
@@ -302,15 +302,15 @@ export class ActiveModel {
       .filter((s: unknown) => s)
       .map(item => this.create(item, opts))
   }
-  
+
   static createFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false} ) {
     return this.createFromCollection(data, { lazy: true, tracked: opts.tracked}  )
   }
-  
+
   static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: FactoryOptions = { lazy: false, tracked: false} ) {
     return this.createFromCollection<T>(await data, opts)
   }
-  
+
   /**
    * Filling data to **only own fields**
    * @param data
@@ -321,7 +321,7 @@ export class ActiveModel {
     Ctor.fill(this, Ctor.sanitize(data || {}), force)
     return this
   }
-  
+
   /**
    * Filling data to **only own fields** of instance
    * @param model
@@ -339,7 +339,7 @@ export class ActiveModel {
     }
     return model
   }
-  
+
 
   /**
    *
@@ -381,30 +381,30 @@ export class ActiveModel {
           target[isTouched] = true
           target.emit(EventType.touched)
         }
-        
+
         if (isEqual) {
           return Reflect.set(target, prop, value, receiver)
         }
-        
+
         if (value instanceof ActiveModel) {
           value.on(EventType.touched, () => {
             target[isTouched] = true
           })
         }
-        
+
         if (!isActiveField) {
           return Reflect.set(target, prop, value, receiver)
         }
-        
-        
+
+
         const Ctor: typeof ActiveModel = (<typeof ActiveModel> target.constructor)
         if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
           return false
         }
-        
+
         // validate value
         Ctor.resolveValidator(prop)?.(target, prop as string, value)
-        
+
         return Ctor.resolveSetter(prop)?.(target, prop as string, value, receiver) ?? Reflect.set(target, prop, value, receiver)
       },
       apply (target, thisArg, argumentsList) {
@@ -414,7 +414,7 @@ export class ActiveModel {
         if ((<typeof ActiveModel> target.constructor).fieldIsProtected(prop)) {
           throw new TypeError(`Property "${prop as string}" is protected!`)
         }
-        
+
         return Reflect.deleteProperty(target, prop)
       },
       has (target, prop: string | symbol) {
@@ -428,7 +428,7 @@ export class ActiveModel {
       }
     }) as RType
   }
-  
+
   /**
    *  Return touched state of model
    */
@@ -436,12 +436,12 @@ export class ActiveModel {
     const { isTouched } = useMeta(this)
     return isTouched()
   }
-  
+
   startTracking () {
     const { saveInitialState } = useMeta(this)
     saveInitialState(this)
   }
-  
+
   constructor (data: ActiveModelSource = {}) {
     const { isCreating } = useMeta()
     const Ctor = (<typeof ActiveModel> this.constructor)
