@@ -46,7 +46,7 @@ type ActiveFieldDescriptor = object & {
     getter?: Getter<any> // getter
     validator?: Validator<any> // validation on setter
     readonly?: boolean // whether the attribute is read only
-    hidden?: boolean // whether the attribute is hidden from listings 
+    hidden?: boolean // whether the attribute is hidden from listings
     fillable?: boolean // whether the attribute can be set and updated
     protected?: boolean // true if deleting the attribute from the model is prohibited
     attribute?: any // default attribute value during instantiation
@@ -56,10 +56,10 @@ type ActiveFieldDescriptor = object & {
 
 >
 > **Notice:**
-> 
-> In order or attributes (default values) to work, 
-> you must create an instance using 
-> `ActiveModel.create(data)` factory method, 
+>
+> In order or attributes (default values) to work,
+> you must create an instance using
+> `ActiveModel.create(data)` factory method,
 > or explicitly set values in the constructor like so:
 >
 > ```ts
@@ -74,117 +74,6 @@ type ActiveFieldDescriptor = object & {
 >```
 
 
-
-Static Api:
----
-### `static get $attributes`
-
-*Default value:*  `{}`
-
-*Description:* Default object template structure and value types. 
-If no `data` was passed to the constructor, it will be set via `$attributes`
-
-*Example:*
-
-```js
-static get $attributes () {
-    return {
-        id: '',
-        login: '',
-        password: '',
-        createdAt: ''
-    }                          
-}
-```
----
-### `static get fillable`
-
-*Default value*: ` [] `
-
-*Description*: Array of attributes that can be set via constructor. If this array is empty, any attribute can be set. 
-If this array is non-empty, then only the attributes that are in this array can be set.
-
-*Example:*
-```js
-static get fillable () {
-    return [
-        'id',
-        'password',
-        'property',
-        'createdAt'
-    ]
-}
-```
----
-### `static protected`
-
-*Default value*: ` [] `
-
-*Description*: Array of attributes that cannot be removed from this object.
-If this array is empty, any attribute can be removed.
-
-*Example*:
-```js
-static get protected () {
-    return [
-        'id',
-        'login',
-        'password',
-        'createdAt'
-    ]
-}
-```
----
-### `static hidden`
-
-*Default value*: ` [] `
-
-*Description*: Array of attributes that should be hidden 
-(ignored by `Object.keys`, `Reflect.ownKeys`, `JSON.stringify`, etc.)
-
-
-*Example*:
-
-```js
-static get hidden () {
-    return [
-        'password'
-    ]
-}
-```
----
-### `static setter${PascalPropertyName}(model, prop, value, receiver)`
-
-*Description*: Add a **static** method `setter + PascalCaseAttributeName` (separators `[-_.+*/:? ]` do not count) 
-to a class that extends `ActiveModel` to define a setter for its attribute
-
-*Example*:
-
-```js
-static setterMyIntegerPropertyName (model, prop, value = 0, receiver) {
-    Reflect.set(model, prop, Number.parseInt(value), receiver)
-}
-``` 
----
-### `static getter{PascalPropertyName}(model, prop)`
-
-
-*Description*: Add a **static** method `getter + PascalCaseAttributeName` (separators [-_.+*/:? ] do not count)
-to a class that extends `ActiveModel` to define a getter for its attribute
-
-*Example*:
-
-```js
-static getterGoodsSumWeight (model) {
-    return model.goods.reduce((a, { weight }) => a + weight, 0)        
-}
-```
----
-### `static sanitize(data)`
-*Description*: A static method to clean/sanitize the data passed to the constructor.
-
-By default returns `lodash.cloneDeep(data)`.
-
 ***
 
 CallableModel
@@ -198,15 +87,15 @@ Usage example:
 import { CallableModel } from '@alt-point/active-models'
 
 class Notify extends CallableModel {
-  // Define 
+  // Define
   __call (...args) {
       return this.success(...args)
   }
-  
+
   success (successMessage) {
      alert(successMessage)
   }
-  
+
   silent (message) {
     console.log('Silent message:' + message)
   }
@@ -222,7 +111,7 @@ export default (ctx, inject) => {
 }
 
 
-// inside the component you can now do: 
+// inside the component you can now do:
 this.$notify.silent('Write notice to console!')
 this.$notify('Alert!')
 ```
