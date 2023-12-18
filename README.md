@@ -33,8 +33,6 @@ npm install --save @alt-point/active-models
 [Пример](docs/active-model.md), иллюстрирующий применение, [пример с декораторами](docs/active-model-with-decorators.md)
 
 
-Есть ~~2 стула~~ 2 варианта, либо использовать статическое api, либо юзать декораторы:
-
 @Decorators
 ---
 
