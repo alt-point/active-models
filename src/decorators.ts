@@ -1,5 +1,6 @@
 import { ActiveModel } from './'
 import type { ActiveFieldDescriptor, FactoryConfig } from './types'
+import { getValue } from './utils'
 
 const defaultOpts: ActiveFieldDescriptor = {
   fillable: true
@@ -36,13 +37,6 @@ export function isProtected () {
     (<typeof ActiveModel>target.constructor)
       .addToProtected(prop)
   }
-}
-
-function getValue<T> (data: () => T | T) {
-  if (typeof data === 'function') {
-    return data()
-  }
-  return data
 }
 
 const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryConfig, isOptional?: boolean) => {

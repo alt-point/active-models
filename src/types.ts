@@ -26,11 +26,10 @@ export type ActiveFieldDescriptor<T = unknown> = {
   attribute?: any
   value?: any
   factory?: FactoryConfig
-  
 }
-
 
 export type FactoryOptions = {
   lazy?: boolean
+  sanitize?: boolean
   tracked?: boolean
 }

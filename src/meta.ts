@@ -1,6 +1,6 @@
 import { ActiveModel } from './ActiveModel'
 import deepEqual from 'fast-deep-equal/es6'
-import { cloneDeep, cloneDeepWith } from "lodash";
+import { cloneDeep } from "lodash"
 type State = {
   creating: boolean
   isDirty: boolean
@@ -8,8 +8,21 @@ type State = {
   raw?: any
 }
 const sharedState = new WeakMap<ActiveModel,State>()
+export const sanitizedValues = new WeakSet()
 
 let creating = false
+
+export function markSanitized (value: {}) {
+  sanitizedValues.add(value)
+}
+
+export function unmarkSanitized (value: {}) {
+  sanitizedValues.delete(value)
+}
+export function checkSanitized (value: {}) {
+  if (!value || typeof value !== 'object') return true
+  return sanitizedValues.has(value)
+}
 
 const upsertState = (instance: ActiveModel, data: Partial<State>) => {
   if(!sharedState.has(instance)) {

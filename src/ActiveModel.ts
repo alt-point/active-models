@@ -1,6 +1,7 @@
 import type { ActiveModelSource, AnyClassInstance, FactoryOptions, Getter, Setter, Validator } from './types'
 import { cloneDeepWith } from 'lodash'
-import { useMeta } from './meta'
+import { checkSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
+import { ModelProperties, RecursivePartialActiveModel, checkComplexValue, checkPrimitiveValue, getValue } from './utils'
 
 type StaticContainers = '__getters__' | '__setters__' | '__attributes__' | '__validators__' | '__fillable__' | '__protected__' | '__readonly__' | '__hidden__' | '__activeFields__'
 
@@ -58,10 +59,17 @@ export class ActiveModel {
 
   protected static setDefaultAttributes (data: AnyClassInstance): AnyClassInstance | object {
     const attributes: Record<string, any> = this.__attributes__ ? Object.fromEntries(this.__attributes__.entries()) : {}
-    const resolveValue = (prop: string) => typeof attributes?.[prop] === 'function' ? attributes?.[prop]?.() : attributes?.[prop]
     for (const prop in attributes) {
       if (Object.prototype.hasOwnProperty.call(attributes, prop)) {
-        data[prop] = Reflect.has(data, prop) ? data[prop] : resolveValue(prop)
+        if (Reflect.has(data, prop)) {
+          continue
+        }
+
+        const value = getValue(attributes?.[prop])
+        if (checkComplexValue(value)) {
+          markSanitized(value)
+        }
+        data[prop] = value
       }
     }
     return data
@@ -256,7 +264,9 @@ export class ActiveModel {
    * @return {*}
    */
   static sanitize (data: object | ActiveModel): Partial<InstanceType<typeof this>> {
-    return cloneDeepWith(data, this.cloneCustomizer.bind(this))
+    const cloned = cloneDeepWith(data, this.cloneCustomizer.bind(this))
+    markSanitized(cloned)
+    return cloned
   }
 
   /**
@@ -264,47 +274,63 @@ export class ActiveModel {
    * @param data
    * @param opts
    */
-  static create<T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource = {}, opts: FactoryOptions = { lazy: false, tracked: false }): InstanceType<T> {
+  static create<T extends typeof ActiveModel> (
+    this: T,
+    data: RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource = {} as any,
+    opts: FactoryOptions = { lazy: false, tracked: false, sanitize: true }
+  ): InstanceType<T> {
     if (data instanceof this && opts.lazy) {
       return data as InstanceType<T>
     }
-    // console.group('create', this)
+
+    data ??= {}
+
     const { saveInitialState, setInstance, startCreating, endCreating, saveRaw } = useMeta()
+
     startCreating()
+
     const model = new this()
     setInstance(model)
 
     if (opts.tracked) {
       saveRaw(data)
     }
-    const source = this.sanitize(data || {})
+    if ((opts.sanitize ?? true) && !checkSanitized(data)) {
+      data = this.sanitize(data)
+    }
 
-    // model = this.wrap(model)
-    this.fill(model, this.setDefaultAttributes(source)) as InstanceType<T>
+    endCreating()
+
+    this.fill(model, this.setDefaultAttributes(data)) as InstanceType<T>
     if (opts.tracked) {
       saveInitialState(model)
     }
-    endCreating()
-    // console.groupEnd()
+
+    unmarkSanitized(data)
+
     return model as InstanceType<T>
   }
 
-  static createLazy <T extends typeof ActiveModel> (this: T, data: T | ActiveModelSource = {}, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }): InstanceType<T> {
-    return this.create<T>(data, { lazy: true, tracked: opts.tracked })
+  static createLazy <T extends typeof ActiveModel> (
+    this: T,
+    data: RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource = {},
+    opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }
+  ): InstanceType<T> {
+    return this.create<T>(data, { lazy: true, tracked: opts.tracked, sanitize: false })
   }
   /**
    * Batch factory for creating instance collection
    * @param data
    * @param opts
    */
-  static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: FactoryOptions = { lazy: false, tracked: false }) {
+  static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: FactoryOptions = { lazy: false, tracked: false, sanitize: true }) {
     return data
       .filter((s: unknown) => s)
       .map(item => this.create(item, opts))
   }
 
   static createFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false} ) {
-    return this.createFromCollection(data, { lazy: true, tracked: opts.tracked}  )
+    return this.createFromCollection(data, { lazy: true, tracked: opts.tracked, sanitize: false }  )
   }
 
   static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: FactoryOptions = { lazy: false, tracked: false} ) {
@@ -350,9 +376,16 @@ export class ActiveModel {
   }
 
   protected static cloneCustomizer (value: any, key: number | string | undefined, parent: any): any {
-    if (value instanceof ActiveModel && Boolean(parent)) {
-      return this.wrap(cloneDeepWith(value, this.cloneCustomizer.bind(this)))
+    const isRoot = !parent
+    const isPrimitive = checkPrimitiveValue(value)
+    if (isRoot || isPrimitive) return
+
+    let sanitized = cloneDeepWith(value, this.cloneCustomizer.bind(this))
+    if (value instanceof ActiveModel) {
+      sanitized = this.wrap(sanitized)
     }
+    markSanitized(sanitized)
+    return sanitized
   }
 
   /**
@@ -448,7 +481,11 @@ export class ActiveModel {
     if ( isCreating() ) {
       return Ctor.wrap(this)
     }
-    data = Ctor.sanitize(data || {})
+
+    data ??= {}
+    if (!checkSanitized(data)) {
+      data = Ctor.sanitize(data)
+    }
     const model = Ctor.wrap(this)
     return Ctor.fill(model, Ctor.setDefaultAttributes(data))
   }
