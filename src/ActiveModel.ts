@@ -372,7 +372,7 @@ export class ActiveModel {
   }
 
   protected static cloneCustomizer (value: any, key: number | string | undefined, parent: any): any {
-    if (parent && typeof parent === 'object') checkSanitized(parent)
+    if (parent && typeof parent === 'object') markSanitized(parent)
     if (value instanceof ActiveModel && Boolean(parent)) {
       return this.wrap(cloneDeepWith(value, this.cloneCustomizer.bind(this)))
     }
