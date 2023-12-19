@@ -1,6 +1,6 @@
 import type { ActiveModelSource, AnyClassInstance, FactoryOptions, Getter, Setter, Validator } from './types'
 import { cloneDeepWith } from 'lodash'
-import { checkSanitized, markSanitized, useMeta } from './meta'
+import { checkSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
 import { ModelProperties, RecursivePartialActiveModel, checkComplexValue, checkPrimitiveValue, getValue } from './utils'
 
 type StaticContainers = '__getters__' | '__setters__' | '__attributes__' | '__validators__' | '__fillable__' | '__protected__' | '__readonly__' | '__hidden__' | '__activeFields__'
@@ -306,6 +306,8 @@ export class ActiveModel {
       saveInitialState(model)
     }
 
+    unmarkSanitized(data)
+
     return model as InstanceType<T>
   }
 
@@ -321,14 +323,14 @@ export class ActiveModel {
    * @param data
    * @param opts
    */
-  static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: FactoryOptions = { lazy: false, tracked: false }) {
+  static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: FactoryOptions = { lazy: false, tracked: false, sanitize: true }) {
     return data
       .filter((s: unknown) => s)
       .map(item => this.create(item, opts))
   }
 
   static createFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false} ) {
-    return this.createFromCollection(data, { lazy: true, tracked: opts.tracked}  )
+    return this.createFromCollection(data, { lazy: true, tracked: opts.tracked, sanitize: false }  )
   }
 
   static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: FactoryOptions = { lazy: false, tracked: false} ) {

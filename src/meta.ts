@@ -15,6 +15,10 @@ let creating = false
 export function markSanitized (value: {}) {
   sanitizedValues.add(value)
 }
+
+export function unmarkSanitized (value: {}) {
+  sanitizedValues.delete(value)
+}
 export function checkSanitized (value: {}) {
   if (!value || typeof value !== 'object') return true
   return sanitizedValues.has(value)
