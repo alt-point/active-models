@@ -1,6 +1,6 @@
 {
   "name": "@alt-point/active-models",
-  "version": "3.0.6",
+  "version": "3.0.7",
   "description": "Reactive DTO models with Proxy and more useful classes, decorators, Black-jack and whores",
   "main": "./dist/index.js",
   "module": "./dist/index.es.js",

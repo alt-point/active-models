@@ -57,7 +57,7 @@ export class ActiveModel {
   }
 
 
-  protected static setDefaultAttributes (data: AnyClassInstance): AnyClassInstance | object {
+  protected static setDefaultAttributes (data: AnyClassInstance): Partial<InstanceType<typeof this>> {
     const attributes: Record<string, any> = this.__attributes__ ? Object.fromEntries(this.__attributes__.entries()) : {}
     for (const prop in attributes) {
       if (Object.prototype.hasOwnProperty.call(attributes, prop)) {
@@ -289,25 +289,26 @@ export class ActiveModel {
 
     startCreating()
 
-    const model = new this()
-    setInstance(model)
-
-    if (opts.tracked) {
-      saveRaw(data)
-    }
     if ((opts.sanitize ?? true) && !checkSanitized(data)) {
       data = this.sanitize(data)
     }
-
-    endCreating()
-
+    const model = this.wrap(new this())
+    
     this.fill(model, this.setDefaultAttributes(data)) as InstanceType<T>
+    
+    setInstance(model)
+    
+    if (opts.tracked) {
+      saveRaw(data)
+    }
+    
     if (opts.tracked) {
       saveInitialState(model)
     }
 
     unmarkSanitized(data)
-
+    endCreating()
+    
     return model as InstanceType<T>
   }
 
@@ -400,7 +401,6 @@ export class ActiveModel {
    * @param { ActiveModel } instance Instance for wrapping
    */
   protected static wrap <RType extends ActiveModel, P = keyof InstanceType<typeof this> | string | symbol>(instance: RType): RType {
-    const self = this
     return new Proxy(instance, {
       get (target, prop, receiver) {
         return (<typeof ActiveModel>target.constructor).getter(target, prop, receiver)
@@ -418,18 +418,22 @@ export class ActiveModel {
         if (isEqual) {
           return Reflect.set(target, prop, value, receiver)
         }
-
-        if (value instanceof ActiveModel) {
-          value.on(EventType.touched, () => {
-            target[isTouched] = true
-          })
-        }
-
+        
         if (!isActiveField) {
           return Reflect.set(target, prop, value, receiver)
         }
-
-
+        
+        const defineListenerTouchValue = (value: any) => {
+          if (value instanceof ActiveModel) {
+            value.on(EventType.touched, () => {
+              target[isTouched] = true
+            })
+          }
+          return value
+        }
+        
+        Array.isArray(value) ? value.map(v => defineListenerTouchValue(v)): defineListenerTouchValue(value)
+        
         const Ctor: typeof ActiveModel = (<typeof ActiveModel> target.constructor)
         if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
           return false
@@ -479,7 +483,7 @@ export class ActiveModel {
     const { isCreating } = useMeta()
     const Ctor = (<typeof ActiveModel> this.constructor)
     if ( isCreating() ) {
-      return Ctor.wrap(this)
+      return this
     }
 
     data ??= {}

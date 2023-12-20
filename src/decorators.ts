@@ -64,7 +64,7 @@ const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryCo
 
   const Model = factory
   Ctor.defineSetter(prop, (m, p, v, r) => {
-    const value = Array.isArray(v) ? Model.createFromCollectionLazy(v) : (v ? Model.createLazy(v) : v)
+    const value = Array.isArray(v) ? Model.createFromCollectionLazy(v) : Model.createLazy(v)
     return Reflect.set(m, p, value, r)
   })
 
