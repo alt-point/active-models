@@ -18,38 +18,50 @@ type Listener = (model: any) => void
 
 export class ActiveModel {
 
-  [events] = new Map<EventType,Set<Listener>>([
-    [EventType.created, new Set<Listener>()],
-    [EventType.touched, new Set<Listener>()],
-  ]);
 
   [isTouched]: boolean = false;
 
-  emit (event: EventType, payload?: any) {
-    for (const cb of this[events].get(event)!) {
-      cb(payload)
+  get emitter () {
+    return {
+      [events]: new Map<EventType, Set<Listener>>([
+        [ EventType.created, new Set<Listener>() ],
+        [ EventType.touched, new Set<Listener>() ],
+      ]),
+      emit(event: EventType, payload?: any) {
+        if (!new Set(Object.values(EventType)).has(event)) {
+          console.warn(`Event ${event} not found`)
+          return
+        }
+
+        for (const cb of this[events].get(event) || new Set()) {
+          cb(payload)
+        }
+      },
+      on(event: EventType, cb: Listener) {
+        if (typeof cb !== 'function') {
+          throw new Error('Listener must be a function!', cb)
+        }
+        
+        const unbind = () => this[events].get(event)!.delete(cb)
+        this[events].get(event)!.add(cb)
+        return unbind
+      },
+      once(event: EventType, cb: Listener) {
+        let unbind;
+        
+        const closure = (payload?: any) => {
+          cb(payload)
+          unbind = () => this[events].get(event)!.delete(cb)
+          unbind()
+          return unbind
+        }
+        
+        this[events].get(event)!.add(closure)
+        return unbind
+      }
     }
   }
-
-  on (event: EventType, cb: Listener) {
-    const unbind = () => this[events].get(event)!.delete(cb)
-    this[events].get(event)!.add(cb)
-    return unbind
-  }
-
-  once (event: EventType, cb: Listener) {
-    let unbind;
-
-    const closure = (payload?: any) => {
-      cb(payload)
-      unbind = () => this[events].get(event)!.delete(cb)
-      unbind()
-      return unbind
-    }
-
-    this[events].get(event)!.add(closure)
-    return unbind
-  }
+  
 
   protected static defineStaticProperty (propertyName: StaticContainers, fallback: () => any) {
     this[propertyName] = this.hasOwnProperty(propertyName) ? this[propertyName]!: fallback()
@@ -294,9 +306,11 @@ export class ActiveModel {
     }
     const model = this.wrap(new this())
     
-    this.fill(model, this.setDefaultAttributes(data)) as InstanceType<T>
-    
     setInstance(model)
+    
+    endCreating()
+    
+    this.fill(model, this.setDefaultAttributes(data)) as InstanceType<T>
     
     if (opts.tracked) {
       saveRaw(data)
@@ -307,7 +321,6 @@ export class ActiveModel {
     }
 
     unmarkSanitized(data)
-    endCreating()
     
     return model as InstanceType<T>
   }
@@ -362,7 +375,7 @@ export class ActiveModel {
       if (!ownFields.has(prop) && !force) {
         continue
       }
-      Reflect.set(model, prop, Reflect.get(data,prop))
+      Reflect.set(model, prop, Reflect.get(data, prop))
     }
     return model
   }
@@ -412,7 +425,7 @@ export class ActiveModel {
         const isEqual = Object.is(target[prop], value)
         if (!isEqual && isNotCreating()) {
           target[isTouched] = true
-          target.emit(EventType.touched)
+          target.emitter.emit(EventType.touched)
         }
 
         if (isEqual) {
@@ -425,14 +438,13 @@ export class ActiveModel {
         
         const defineListenerTouchValue = (value: any) => {
           if (value instanceof ActiveModel) {
-            value.on(EventType.touched, () => {
+            value.emitter.on(EventType.touched, () => {
               target[isTouched] = true
             })
           }
-          return value
         }
         
-        Array.isArray(value) ? value.map(v => defineListenerTouchValue(v)): defineListenerTouchValue(value)
+        Array.isArray(value) ? value.forEach(v => defineListenerTouchValue(v)): defineListenerTouchValue(value)
         
         const Ctor: typeof ActiveModel = (<typeof ActiveModel> target.constructor)
         if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
