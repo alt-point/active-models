@@ -17,8 +17,6 @@ enum EventType {
 type Listener = (model: any) => void
 
 export class ActiveModel {
-
-
   [isTouched]: boolean = false;
 
   get emitter () {
@@ -41,27 +39,27 @@ export class ActiveModel {
         if (typeof cb !== 'function') {
           throw new Error('Listener must be a function!', cb)
         }
-        
+
         const unbind = () => this[events].get(event)!.delete(cb)
         this[events].get(event)!.add(cb)
         return unbind
       },
       once(event: EventType, cb: Listener) {
         let unbind;
-        
+
         const closure = (payload?: any) => {
           cb(payload)
           unbind = () => this[events].get(event)!.delete(cb)
           unbind()
           return unbind
         }
-        
+
         this[events].get(event)!.add(closure)
         return unbind
       }
     }
   }
-  
+
 
   protected static defineStaticProperty (propertyName: StaticContainers, fallback: () => any) {
     this[propertyName] = this.hasOwnProperty(propertyName) ? this[propertyName]!: fallback()
@@ -295,7 +293,7 @@ export class ActiveModel {
       return data as InstanceType<T>
     }
 
-    data ??= {}
+    if (checkPrimitiveValue(data)) data = {}
 
     const { saveInitialState, setInstance, startCreating, endCreating, saveRaw } = useMeta()
 
@@ -305,23 +303,23 @@ export class ActiveModel {
       data = this.sanitize(data)
     }
     const model = this.wrap(new this())
-    
+
     setInstance(model)
-    
+
     endCreating()
-    
+
     this.fill(model, this.setDefaultAttributes(data)) as InstanceType<T>
-    
+
     if (opts.tracked) {
       saveRaw(data)
     }
-    
+
     if (opts.tracked) {
       saveInitialState(model)
     }
 
     unmarkSanitized(data)
-    
+
     return model as InstanceType<T>
   }
 
@@ -431,11 +429,11 @@ export class ActiveModel {
         if (isEqual) {
           return Reflect.set(target, prop, value, receiver)
         }
-        
+
         if (!isActiveField) {
           return Reflect.set(target, prop, value, receiver)
         }
-        
+
         const defineListenerTouchValue = (value: any) => {
           if (value instanceof ActiveModel) {
             value.emitter.on(EventType.touched, () => {
@@ -443,9 +441,9 @@ export class ActiveModel {
             })
           }
         }
-        
+
         Array.isArray(value) ? value.forEach(v => defineListenerTouchValue(v)): defineListenerTouchValue(value)
-        
+
         const Ctor: typeof ActiveModel = (<typeof ActiveModel> target.constructor)
         if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
           return false
@@ -498,7 +496,7 @@ export class ActiveModel {
       return this
     }
 
-    data ??= {}
+    if (checkPrimitiveValue(data)) data = {}
     if (!checkSanitized(data)) {
       data = Ctor.sanitize(data)
     }
