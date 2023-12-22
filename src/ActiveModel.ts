@@ -1,7 +1,7 @@
 import type { ActiveModelSource, AnyClassInstance, FactoryOptions, Getter, Setter, Validator } from './types'
 import { cloneDeepWith } from 'lodash'
 import { checkSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
-import { ModelProperties, RecursivePartialActiveModel, checkComplexValue, checkPrimitiveValue, getValue } from './utils'
+import { ModelProperties, RecursivePartialActiveModel, checkComplexValue, checkPrimitiveValue, getValue, traverse } from './utils'
 
 type StaticContainers = '__getters__' | '__setters__' | '__attributes__' | '__validators__' | '__fillable__' | '__protected__' | '__readonly__' | '__hidden__' | '__activeFields__'
 
@@ -275,7 +275,11 @@ export class ActiveModel {
    */
   static sanitize (data: object | ActiveModel): Partial<InstanceType<typeof this>> {
     const cloned = cloneDeepWith(data, this.cloneCustomizer.bind(this))
-    markSanitized(cloned)
+
+    traverse(cloned, (node) => {
+      markSanitized(node)
+    })
+
     return cloned
   }
 
@@ -388,16 +392,9 @@ export class ActiveModel {
   }
 
   protected static cloneCustomizer (value: any, key: number | string | undefined, parent: any): any {
-    const isRoot = !parent
-    const isPrimitive = checkPrimitiveValue(value)
-    if (isRoot || isPrimitive) return
-
-    let sanitized = cloneDeepWith(value, this.cloneCustomizer.bind(this))
-    if (value instanceof ActiveModel) {
-      sanitized = this.wrap(sanitized)
+    if (value instanceof ActiveModel && Boolean(parent)) {
+      return this.wrap(cloneDeepWith(value, this.cloneCustomizer.bind(this)))
     }
-    markSanitized(sanitized)
-    return sanitized
   }
 
   /**
