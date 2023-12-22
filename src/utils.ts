@@ -18,6 +18,24 @@ export function checkPrimitiveValue (
 ): value is primitiveType {
   return !checkComplexValue(value);
 }
+export function traverse (root: any, action: (data: {}) => void) {
+  if (!root) return
+
+  const nodes = [] as Array<{}>
+  let current: undefined | {[k: string | number]: any} = root
+
+  while (current) {
+    action(current)
+
+    Object.keys(current).forEach(key => {
+      if (checkComplexValue(current![key])) {
+        nodes.push(current![key])
+      }
+    })
+
+    current = nodes.pop()
+  }
+}
 
 export type RecursivePartial<T> = {
   [P in keyof T]?: T[P] extends Record<any, any>? RecursivePartial<T[P]> : T[P]
