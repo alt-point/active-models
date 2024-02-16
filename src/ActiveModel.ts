@@ -1,74 +1,53 @@
-import type { ActiveModelSource, AnyClassInstance, FactoryOptions, Getter, Setter, Validator } from './types'
-import { cloneDeepWith } from 'lodash'
+import {
+  ActiveModelSource,
+  AnyClassInstance,
+  FactoryOptions,
+  Getter,
+  Setter,
+  StaticContainers as SC,
+  Validator,
+  EventType, ActiveModelHookListener
+} from './types'
+import { cloneDeepWith, isNull } from 'lodash'
 import { checkSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
 import { ModelProperties, RecursivePartialActiveModel, checkComplexValue, checkPrimitiveValue, getValue, traverse } from './utils'
-
-type StaticContainers = '__getters__' | '__setters__' | '__attributes__' | '__validators__' | '__fillable__' | '__protected__' | '__readonly__' | '__hidden__' | '__activeFields__'
+import { useEmitter } from "./emitter";
+import { HandlerMapFrom, HandlerMapTo, MapSource, MapTarget, useMapper } from "./mapper";
 
 const isTouched = Symbol('@touched')
 
 const events = Symbol('@events')
 
-enum EventType {
-  touched = 'touched',
-  created = 'created'
-}
-
-type Listener = (model: any) => void
-
 export class ActiveModel {
   [isTouched]: boolean = false;
-
+  
   get emitter () {
+    const { getListeners, addListener } = useEmitter(this)
     return {
-      [events]: new Map<EventType, Set<Listener>>([
-        [ EventType.created, new Set<Listener>() ],
-        [ EventType.touched, new Set<Listener>() ],
-      ]),
       emit(event: EventType, payload?: any) {
-        if (!new Set(Object.values(EventType)).has(event)) {
-          console.warn(`Event ${event} not found`)
-          return
-        }
-
-        for (const cb of this[events].get(event) || new Set()) {
+        for (const cb of getListeners(event)) {
           cb(payload)
         }
       },
-      on(event: EventType, cb: Listener) {
-        if (typeof cb !== 'function') {
-          throw new Error('Listener must be a function!', cb)
-        }
-
-        const unbind = () => this[events].get(event)!.delete(cb)
-        this[events].get(event)!.add(cb)
-        return unbind
+      on(event: EventType, cb: ActiveModelHookListener) {
+        return addListener(event, cb)
       },
-      once(event: EventType, cb: Listener) {
-        let unbind;
-
-        const closure = (payload?: any) => {
-          cb(payload)
-          unbind = () => this[events].get(event)!.delete(cb)
-          unbind()
-          return unbind
-        }
-
-        this[events].get(event)!.add(closure)
-        return unbind
+      once(event: EventType, cb: ActiveModelHookListener) {
+        return addListener(event, cb, true)
       }
     }
   }
 
 
-  protected static defineStaticProperty (propertyName: StaticContainers, fallback: () => any) {
+  protected static defineStaticProperty (propertyName: SC, fallback: () => any) {
+    // @ts-ignore
     this[propertyName] = this.hasOwnProperty(propertyName) ? this[propertyName]!: fallback()
     return this
   }
 
 
   protected static setDefaultAttributes (data: AnyClassInstance): Partial<InstanceType<typeof this>> {
-    const attributes: Record<string, any> = this.__attributes__ ? Object.fromEntries(this.__attributes__.entries()) : {}
+    const attributes: Record<string, any> = this[SC.__attributes__] ? Object.fromEntries(this[SC.__attributes__]?.entries() || []) : {}
     for (const prop in attributes) {
       if (Object.prototype.hasOwnProperty.call(attributes, prop)) {
         if (Reflect.has(data, prop)) {
@@ -86,50 +65,50 @@ export class ActiveModel {
   }
 
   protected static fieldIsReadOnly (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
-    return this.__readonly__?.has(prop) ?? false
+    return this[SC.__readonly__]?.has(prop) ?? false
   }
 
   protected static fieldIsHidden (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
-    return this.__hidden__?.has(prop) ?? false
+    return this[SC.__hidden__]?.has(prop) ?? false
   }
 
   protected static fieldIsFillable (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
-    return this.__fillable__?.has(prop) ?? false
+    return this[SC.__fillable__]?.has(prop) ?? false
   }
 
   protected static fieldIsProtected (prop:  string | keyof InstanceType<typeof this> | symbol): boolean {
-    return this.__protected__?.has(prop) ?? false
+    return this[SC.__protected__]?.has(prop) ?? false
   }
-
+  
+  
   protected static getter<Result = unknown>(target: ActiveModel, prop: string | keyof InstanceType<typeof this> | symbol, receiver?: ActiveModel): Result {
     const Ctor = (<typeof ActiveModel> target.constructor)
     const resolvedGetter = Ctor?.resolveGetter?.(prop)
     return resolvedGetter?.(target, prop as string, receiver) ?? Reflect.get(target, prop, receiver)
   }
 
-  protected static __getters__?: Map<string | keyof InstanceType<typeof this> | symbol, Getter<InstanceType<typeof this>>>
-  protected static __setters__?: Map<string | keyof InstanceType<typeof this> | symbol, Setter<InstanceType<typeof this>>>
-  protected static __attributes__?: Map<string | keyof InstanceType<typeof this> | symbol, any>
-  protected static __validators__?: Map<string | keyof InstanceType<typeof this> | symbol, Validator<any>>
-  protected static __fillable__?: Set<string | keyof InstanceType<typeof this> | symbol>
-  protected static __protected__?: Set<string | keyof InstanceType<typeof this> | symbol>
-  protected static __readonly__?: Set<string | keyof InstanceType<typeof this> | symbol>
-  protected static __hidden__?: Set<string | keyof InstanceType<typeof this> | symbol>
-  protected static __activeFields__?: Set<string | keyof InstanceType<typeof this> | symbol>
-
+  protected static [SC.__getters__]?: Map<string | keyof InstanceType<typeof this> | symbol, Getter<InstanceType<typeof this>>>
+  protected static [SC.__setters__]?: Map<string | keyof InstanceType<typeof this> | symbol, Setter<InstanceType<typeof this>>>
+  protected static [SC.__attributes__]?: Map<string | keyof InstanceType<typeof this> | symbol, any>
+  protected static [SC.__validators__]?: Map<string | keyof InstanceType<typeof this> | symbol, Validator<any>>
+  protected static [SC.__fillable__]?: Set<string | keyof InstanceType<typeof this> | symbol>
+  protected static [SC.__protected__]?: Set<string | keyof InstanceType<typeof this> | symbol>
+  protected static [SC.__readonly__]?: Set<string | keyof InstanceType<typeof this> | symbol>
+  protected static [SC.__hidden__]?: Set<string | keyof InstanceType<typeof this> | symbol>
+  protected static [SC.__activeFields__]?: Set<string | keyof InstanceType<typeof this> | symbol>
 
   /**
    * Add field name to hidden scope
    * @param prop
    */
   static addToHidden (...prop: Array<string | keyof InstanceType<typeof this> | symbol>): void {
-    this.defineStaticProperty('__hidden__', () => new Set(this.__hidden__ || []))
-    prop.forEach(p => this.__hidden__!.add(p))
+    this.defineStaticProperty(SC.__hidden__, () => new Set(this[SC.__hidden__] || []))
+    prop.forEach(p => this[SC.__hidden__]!.add(p))
   }
 
   static addToFields (...prop: Array<string | keyof InstanceType<typeof this> | symbol>): void {
-    this.defineStaticProperty('__activeFields__', () => new Set(this.__activeFields__ || []))
-    prop.forEach(p => this.__activeFields__!.add(p))
+    this.defineStaticProperty(SC.__activeFields__, () => new Set(this[SC.__activeFields__] || []))
+    prop.forEach(p => this[SC.__activeFields__]!.add(p))
   }
 
   protected static isActiveField (prop: string | keyof InstanceType<typeof this> | symbol) {
@@ -142,7 +121,7 @@ export class ActiveModel {
    */
   static addToReadonly (prop: string | keyof InstanceType<typeof this> | symbol): void {
     this.addToFields(prop)
-    this.defineStaticProperty('__readonly__', () => new Set(this.__readonly__ || []))
+    this.defineStaticProperty(SC.__readonly__, () => new Set(this[SC.__readonly__] || []))
     this.__readonly__!.add(prop)
   }
 
@@ -152,8 +131,8 @@ export class ActiveModel {
    */
   static addToProtected (prop: string | keyof InstanceType<typeof this> | symbol): void {
     this.addToFields(prop)
-    this.defineStaticProperty('__protected__', () => new Set(this.__protected__ || []))
-    this.__protected__!.add(prop)
+    this.defineStaticProperty(SC.__protected__, () => new Set(this[SC.__protected__] || []))
+    this[SC.__protected__]!.add(prop)
   }
 
   /**
@@ -162,8 +141,8 @@ export class ActiveModel {
    */
   static addToFillable (prop: string | keyof InstanceType<typeof this> | symbol): void {
     this.addToFields(prop)
-    this.defineStaticProperty('__fillable__', () => new Set(this.__fillable__ || []))
-    this.__fillable__!.add(prop)
+    this.defineStaticProperty(SC.__fillable__, () => new Set(this[SC.__fillable__] || []))
+    this[SC.__fillable__]!.add(prop)
   }
 
 
@@ -174,8 +153,8 @@ export class ActiveModel {
    */
   static defineGetter (prop: string | keyof InstanceType<typeof this> | symbol, handler: Getter<any>): void {
     this.addToFields(prop)
-    this.defineStaticProperty('__getters__', () => new Map(this.__getters__ || []))
-    this.__getters__!.set(prop, handler)
+    this.defineStaticProperty(SC.__getters__, () => new Map(this[SC.__getters__] || []))
+    this[SC.__getters__]!.set(prop, handler)
   }
 
   /**
@@ -183,7 +162,7 @@ export class ActiveModel {
    * @param prop
    */
   static resolveGetter (prop: string | keyof InstanceType<typeof this> | symbol): Getter<any> | undefined {
-    const getter = this.__getters__?.get(prop)
+    const getter = this[SC.__getters__]?.get(prop)
     return getter?.bind(this)
   }
 
@@ -194,8 +173,8 @@ export class ActiveModel {
    */
   static defineSetter (prop: string | keyof InstanceType<typeof this> | symbol, handler: Setter<any>): void {
     this.addToFields(prop)
-    this.defineStaticProperty('__setters__', () => new Map(this.__setters__ || []))
-    this.__setters__!.set(prop, handler)
+    this.defineStaticProperty(SC.__setters__, () => new Map(this[SC.__setters__] || []))
+    this[SC.__setters__]!.set(prop, handler)
   }
 
   /**
@@ -203,7 +182,7 @@ export class ActiveModel {
    * @param prop
    */
   protected static resolveSetter (prop: string | keyof InstanceType<typeof this> | symbol): Setter<any> | undefined {
-    const setter = this.__setters__?.get(prop)
+    const setter = this[SC.__setters__]?.get(prop)
     return setter?.bind(this)
   }
 
@@ -214,8 +193,8 @@ export class ActiveModel {
    */
   static defineValidator (prop: string | keyof InstanceType<typeof this> | symbol, handler: Validator<any>): void {
     this.addToFields(prop)
-    this.defineStaticProperty('__validators__', () => new Map(this.__validators__ || []))
-    this.__validators__!.set(prop, handler)
+    this.defineStaticProperty(SC.__validators__, () => new Map(this[SC.__validators__] || []))
+    this[SC.__validators__]!.set(prop, handler)
   }
 
   /**
@@ -223,7 +202,7 @@ export class ActiveModel {
    * @param prop
    */
   static resolveValidator(prop: string | keyof InstanceType<typeof this> | symbol): Validator<any> | undefined {
-    const validator = this.__validators__?.get(prop)
+    const validator = this[SC.__validators__]?.get(prop)
     return validator?.bind(this)
   }
 
@@ -234,8 +213,8 @@ export class ActiveModel {
    */
   static defineAttribute (prop: string | keyof InstanceType<typeof this> | symbol, value: any): void {
     this.addToFields(prop)
-    this.defineStaticProperty('__attributes__', () => new Map(this.__attributes__ || []))
-    this.__attributes__!.set(prop, value)
+    this.defineStaticProperty(SC.__attributes__, () => new Map(this[SC.__attributes__] || []))
+    this[SC.__attributes__]!.set(prop, value)
   }
 
   /**
@@ -345,13 +324,18 @@ export class ActiveModel {
       .map(item => this.create(item, opts))
   }
 
-  static createFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false} ) {
+  static createFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false } ) {
     return this.createFromCollection(data, { lazy: true, tracked: opts.tracked, sanitize: false }  )
   }
 
-  static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: FactoryOptions = { lazy: false, tracked: false} ) {
+  static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: FactoryOptions = { lazy: false, tracked: false } ) {
     return this.createFromCollection<T>(await data, opts)
   }
+  
+  static async asyncCreateFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }  ) {
+    return this.createFromCollectionLazy<T>(await data, opts)
+  }
+  
 
   /**
    * Filling data to **only own fields**
@@ -416,40 +400,47 @@ export class ActiveModel {
       set (target, prop, value, receiver) {
         const { isNotCreating } = useMeta()
         const isActiveField = (<typeof ActiveModel>target.constructor).isActiveField(prop)
+        const oldValue = Reflect.get(target, prop, receiver)
         // @ts-ignore
-        const isEqual = Object.is(target[prop], value)
+        const isEqual = Object.is(oldValue, value)
         if (!isEqual && isNotCreating()) {
           target[isTouched] = true
           target.emitter.emit(EventType.touched)
         }
-
-        if (isEqual) {
+        
+        if (isEqual || !isActiveField) {
+          
           return Reflect.set(target, prop, value, receiver)
         }
-
-        if (!isActiveField) {
-          return Reflect.set(target, prop, value, receiver)
-        }
-
         const defineListenerTouchValue = (value: any) => {
+          
           if (value instanceof ActiveModel) {
             value.emitter.on(EventType.touched, () => {
               target[isTouched] = true
             })
           }
         }
-
         Array.isArray(value) ? value.forEach(v => defineListenerTouchValue(v)): defineListenerTouchValue(value)
-
+        
         const Ctor: typeof ActiveModel = (<typeof ActiveModel> target.constructor)
+        
         if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
           return false
         }
-
         // validate value
+        
         Ctor.resolveValidator(prop)?.(target, prop as string, value)
+        
+        target.emitter.emit(EventType.beforeSetValue, { target, prop, value, oldValue })
 
-        return Ctor.resolveSetter(prop)?.(target, prop as string, value, receiver) ?? Reflect.set(target, prop, value, receiver)
+        const result = Ctor.resolveSetter(prop)?.(target, prop as string, value, receiver) ?? Reflect.set(target, prop, value, receiver)
+        target.emitter.emit(EventType.afterSetValue, { target, prop, value, oldValue })
+        
+        // nullabling definition
+        if (!isNull(oldValue) && isNull(value)) {
+          target.emitter.emit(EventType.nulling, { target, prop, value, oldValue })
+        }
+        return result
       },
       apply (target, thisArg, argumentsList) {
         return Reflect.apply(target as unknown as Function, thisArg, argumentsList)
@@ -458,7 +449,9 @@ export class ActiveModel {
         if ((<typeof ActiveModel> target.constructor).fieldIsProtected(prop)) {
           throw new TypeError(`Property "${prop as string}" is protected!`)
         }
-
+        
+        target.emitter.emit(EventType.beforeDeletingAttribute, { target, prop})
+        
         return Reflect.deleteProperty(target, prop)
       },
       has (target, prop: string | symbol) {
@@ -499,5 +492,15 @@ export class ActiveModel {
     }
     const model = Ctor.wrap(this)
     return Ctor.fill(model, Ctor.setDefaultAttributes(data))
+  }
+  // mapping
+  static mapTo (target: MapTarget, handler: HandlerMapTo ) {
+    const { setMapTo } = useMapper(this)
+    setMapTo(target, handler)
+  }
+  
+  mapTo (target: MapTarget): MapTarget | undefined {
+    const { mapTo } = useMapper(this.constructor as typeof ActiveModel)
+    return mapTo(target)?.(this)
   }
 }

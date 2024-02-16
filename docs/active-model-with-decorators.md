@@ -37,36 +37,45 @@ export default class Order extends ActiveModel {
   @ActiveField({
     fillable: true
   })
-  id: string = ''
+  id?: string = undefined
   
   @ActiveField({
-    fillable: true,
-    value: [],
+    value: () => [], // что бы не шарился стейт, лучше фабрику передавать для комплексных значений
+    // можно через сеттер, это грамоздко, но контрольно
     setter (model: Order, prop: string, value: Array<Good | object> = [], receiver :any) {
       value = (Array.isArray(value) ? value : [])
-        .map(item => Good.create(item))
-      Reflect.set(model, prop, value, receiver)
-    }
+        .map(item => Good.createLazy(item))
+      return Reflect.set(model, prop, value, receiver)
+    },
+    // либо через фабрику
+   factory: [Good, () => []]
   })
   goods: Array<Good> = []  
   
   @ActiveField({
-    fillable: true,
     validator (model, prop, value) {
       OrderStatuses.validate(value)
     }
   })
   status: string = OrderStatuses.default
-
-  @ActiveField({
-    fillable: true
-  })
-  createdAt: string = ''
   
   @ActiveField({
-    fillable: true
+   on: {
+     afterSetValue ({ target, prop, value }) {
+       Reflect.set(target, 'userId', value?.id)
+     }
+   }
   })
-  updatedAt: string = ''
+  user?: User
+  
+  @ActiveField()
+  userId?: string // да, это можно было сделать через геттер, это просто пример для иллюстрации функций
+ 
+  @ActiveField()
+  createdAt: string = ''
+  
+  @ActiveField()
+  updatedAt?: string
   
   // Можем сразу подсчитывать количество товаров в заказе
   get goodsCount () {
@@ -91,19 +100,19 @@ class Api {
     $client //  http клиент, в нашем случае будет @nuxt/http
 
     async ordersList () {
-      return (await this.$client.$get('orders/')).map(o => Order.create(o))
+      return await Order.asyncCreateFromCollectionLazy(this.$client.$get('orders/'))
     }
 
     async ordersCreate (model = new Order()) {
-      return Order.create(await this.$client.$post('orders/', Order.create(model)))    
+      return Order.createLazy(await this.$client.$post('orders/', Order.createLazy(model)))    
     }
     
     async ordersRead (id: string) {
-      return Order.create(await this.$client.$get(`orders/${id}/`))
+      return Order.createLazy(await this.$client.$get(`orders/${id}/`))
     }
 
     async ordersUpdate (id: string, model: Order) {
-      return Order.create(await this.$client.$patch(`orders/${id}/`, Order.create(model)))    
+      return Order.createLazy(await this.$client.$patch(`orders/${id}/`, Order.createLazy(model)))    
     }
 
 }
@@ -213,7 +222,7 @@ export default {
     async load () {
       // если нет айдишника - заполняем model из props.value
       if (!this.id) {
-        this.model = Order.create(this.value)
+        this.model = Order.create(this.value) // create - разорвёт все ссылки, создаст чистый объект. craeteLazy - поверит на причастность к конструктору и пропустит, если объект является уже инстансом класа
         return
       }
       

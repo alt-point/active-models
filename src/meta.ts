@@ -5,8 +5,10 @@ type State = {
   creating: boolean
   isDirty: boolean
   initialState?: ActiveModel | undefined
-  raw?: any
+  raw?: any,
 }
+
+
 const sharedState = new WeakMap<ActiveModel,State>()
 export const sanitizedValues = new WeakSet()
 
@@ -102,6 +104,8 @@ const requiredInstance = (instance?: ActiveModel) => {
   
   return instance
 }
+
+
 
 export const useMeta = (instance?: ActiveModel) => {
   let inst = instance

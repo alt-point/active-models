@@ -6,8 +6,9 @@
 Какие проблемы поможет решить?
 
 - [x] Реализовать модели данных с реактивными свойствами ([`ActiveModel`](#activemodel));
-- [x] Контролировать целостность структур данных (`ActiveModel.fillable`, `ActiveModel.hidden`, `ActiveModel.protected`);
+- [x] Контролировать целостность структур данных (`fillable`, `hidden`, `protected`);
 - [x] Контролировать тип и целостность данных в каждом конкретном свойстве в рантайме;
+- [x] подписаться на изменения данных в свойствах модели;
 
 Installation
 ---
@@ -30,7 +31,7 @@ npm install --save @alt-point/active-models
 
 **Назначение**: контроль целостности структуры и типов данных моделей приходящих из внешних источников/подсистем ([DTO](https://en.wikipedia.org/wiki/Data_transfer_object))
 
-[Пример](docs/active-model.md), иллюстрирующий применение, [пример с декораторами](docs/active-model-with-decorators.md)
+[Пример](docs/active-model-with-decorators.md), иллюстрирующий применение
 
 
 @Decorators
@@ -50,27 +51,15 @@ type ActiveFieldDescriptor = object & {
     protected?: boolean // запрещено удалять поле из модели
     attribute?: any // Значение по умолчанию для поля модели в момент создания объекта
     value?: any // алиас для `attribute`
+    factory?: typeof ActiveModel | [typeof ActiveModel, () => ActiveModel] // Фабрика (extends ActiveModel) для обработки значения. Массивы так же обрабатывает.
+    on?: // листенеры на события модельки, цепляются на конкретное свойство
+      beforeSetValue?: ({ target, prop, value, oldValue }) => void // вызовется перед установкой значение 
+      afterSetValue?: ({ target, prop, value, oldValue }) => void // сразу после установки значения
+      beforeDeletingAttribute?: ({ target, prop }) => void // перед удалением свойства из модели
+      nulling?: ({ target, prop, value, oldValue }) => void  // если у свойства было значение и вместо него установили null
+    once?: // всё тоже самое, что и в on
 }
 ```
-
->
-> **Notice:**
->
-> Для того, что бы были задействованы атрибуты (значения по умолчанию для полей модели) необходимо
-> создавать экземпляр модели через фабричный метод `ActiveModel.create(data)`, либо же определить логику установки
-> значений в конструкторе явно, например так
->
-> ```ts
->  class SomeModeal extends ActiveModel {
->    constructor (data?: any) {
->        super(data)
->        if (data) {
->            this.fill(data)
->        }
->    }
->  }
->```
-
 
 ***
 

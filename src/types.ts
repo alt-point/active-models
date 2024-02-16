@@ -15,6 +15,19 @@ export type Setter<M extends ActiveModel = ActiveModel, V = any> = (model: M, pr
 export type Validator<M extends ActiveModel = ActiveModel, V = any> = (model: M, prop: string, value: V) => boolean | void
 
 export type FactoryConfig = [Model: typeof ActiveModel, DefaultData?: any] |  typeof ActiveModel
+
+export enum EventType {
+  touched = 'touched',
+  created = 'created',
+  beforeSetValue = 'beforeSetValue',
+  afterSetValue = 'afterSetValue',
+  beforeDeletingAttribute = 'beforeDeletingAttribute',
+  nulling = 'nulling'
+}
+
+export type PropEvent = Exclude<EventType, EventType.touched | EventType.created>
+export type ActiveModelHookListener = (model: any) => void
+
 export type ActiveFieldDescriptor<T = unknown> = {
   setter?: Setter<any>
   getter?: Getter<any>
@@ -25,11 +38,27 @@ export type ActiveFieldDescriptor<T = unknown> = {
   protected?: boolean
   attribute?: any
   value?: any
-  factory?: FactoryConfig
+  factory?: FactoryConfig,
+  on?: Partial<Record<PropEvent, ActiveModelHookListener>>,
+  once?: Partial<Record<PropEvent, ActiveModelHookListener>>
 }
+
+
 
 export type FactoryOptions = {
   lazy?: boolean
   sanitize?: boolean
   tracked?: boolean
+}
+
+export enum StaticContainers {
+  __getters__ = '__getters__',
+  __setters__ = '__setters__',
+  __attributes__ = '__attributes__',
+  __validators__ = '__validators__',
+  __fillable__ = '__fillable__',
+  __protected__ = '__protected__',
+  __readonly__ = '__readonly__',
+  __hidden__ = '__hidden__',
+  __activeFields__ = '__activeFields__',
 }

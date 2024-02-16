@@ -4,7 +4,7 @@
 If your project has a lot of data models, or the same models are used throughout the project, 
 then it makes sense to create classes that represent these data structures and their relations.
 
-Takel the classic example of `Order`.
+Take the classic example of `Order`.
 The same class is used:
 - In listings;
 - In order creation (`create`);
@@ -42,38 +42,30 @@ export const OrderStatuses = new Enum(['new', 'complete', 'shipping'], 'new')
 
 export default class Order extends ActiveModel {
   
-  @ActiveField({
-    fillable: true
-  })
+  @ActiveField()
   id: string = ''
   
   @ActiveField({
-    fillable: true,
-    value: [],
+    value: () => [],
     setter (model: Order, prop: string, value: Array<Item | object> = [], receiver :any) {
-      value = (Array.isArray(value) ? value : [])
-        .map(item => Item.create(item))
-      Reflect.set(model, prop, value, receiver)
-    }
+      return Reflect.set(model, prop, Item.craeteFromCollectionLazy(value), receiver)
+    },
+    // or factory
+    factory: [Item, () => []]
   })
   goods: Array<Item> = []  
   
   @ActiveField({
-    fillable: true,
     validator (model, prop, value) {
       OrderStatuses.validate(value)
     }
   })
   status: string = OrderStatuses.default
 
-  @ActiveField({
-    fillable: true
-  })
+  @ActiveField()
   createdAt: string = ''
   
-  @ActiveField({
-    fillable: true
-  })
+  @ActiveField()
   updatedAt: string = ''
   
   // We can easily count the amount of `Item`s inside our Order
@@ -97,23 +89,22 @@ import { Order } from './models'
 
 class Api {
     $client //  http-client, `@nuxt/http` in this case
-
+  
     async ordersList () {
-      return (await this.$client.$get('orders/')).map(o => Order.create(o))
+      return await Order.asyncCreateFromCollectionLazy(this.$client.$get('orders/'))
     }
-
+    
     async ordersCreate (model = new Order()) {
-      return Order.create(await this.$client.$post('orders/', Order.create(model)))    
+      return Order.createLazy(await this.$client.$post('orders/', Order.createLazy(model)))
     }
     
     async ordersRead (id: string) {
-      return Order.create(await this.$client.$get(`orders/${id}/`))
+      return Order.createLazy(await this.$client.$get(`orders/${id}/`))
     }
-
-    async ordersUpdate (id: string, model: Order) {
-      return Order.create(await this.$client.$patch(`orders/${id}/`, Order.create(model)))    
+    
+    async ordersUpdate (id: string, model: Order) { 
+      return Order.createLazy(await this.$client.$patch(`orders/${id}/`, Order.createLazy(model)))
     }
-
 }
   ///
 

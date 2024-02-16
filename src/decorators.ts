@@ -1,6 +1,7 @@
 import { ActiveModel } from './'
-import type { ActiveFieldDescriptor, FactoryConfig } from './types'
+import type { ActiveFieldDescriptor, ActiveModelHookListener, FactoryConfig, PropEvent } from './types'
 import { getValue } from './utils'
+import { useEmitter } from "./emitter";
 
 const defaultOpts: ActiveFieldDescriptor = {
   fillable: true
@@ -72,6 +73,12 @@ const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryCo
 
 export function ActiveFactory (factory: FactoryConfig, isOptional: boolean = false) {
   return function (target: ActiveModel, prop: string): void {
+    const Ctor = <typeof ActiveModel>target.constructor
+    
+    Ctor.addToFields(prop)
+    
+    Ctor.addToFillable(prop)
+    
     factoryDecorator(target, prop, factory, isOptional)
   }
 }
@@ -117,6 +124,31 @@ export function ActiveField<T extends ActiveModel>(opts: ActiveFieldDescriptor =
     if (options.validator) {
       Ctor.defineValidator(prop, options.validator)
     }
-
+    
+    if (options.on) {
+      const { addListener } = useEmitter(Ctor)
+      
+      for (const [eventName, listener ] of Object.entries(options.on as Record<PropEvent, ActiveModelHookListener>)) {
+        addListener(eventName as PropEvent, (payload) => {
+          if (payload?.prop === prop) {
+            listener?.(payload)
+          }
+        })
+      }
+      
+    }
+    
+    if (options.once) {
+      
+      const { addListener } = useEmitter(Ctor)
+      for (const [eventName, listener ] of Object.entries(options.once as Record<PropEvent, ActiveModelHookListener>)) {
+        addListener(eventName as PropEvent, (payload) => {
+          if (payload?.prop === prop) {
+            listener?.(payload)
+          }
+        }, true)
+      }
+    }
+    
   }
 }
