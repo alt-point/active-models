@@ -29,7 +29,7 @@ export enum EventType {
 export type PropEvent = Exclude<EventType, EventType.touched | EventType.created>
 export type ActiveModelHookListener = (model: any) => void
 
-type PrimitiveValue = string | number | null | undefined
+type PrimitiveValue = string | number | null | undefined | boolean
 
 export type AttributeValue =  (() => PrimitiveValue | []) | PrimitiveValue
 

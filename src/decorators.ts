@@ -97,7 +97,7 @@ export function ActiveFactory (factory: FactoryConfig, isOptional: boolean = fal
  * @constructor
  * @param opts<ActiveFieldDescriptor>
  */
-export function ActiveField<T extends ActiveModel>(opts: ActiveFieldDescriptor | AttributeValue = defaultOpts) {
+export function ActiveField<T extends ActiveModel>(opts?: ActiveFieldDescriptor | AttributeValue) {
   
    if (typeof opts !== 'object' || opts === null) {
      opts = {
