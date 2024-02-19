@@ -31,7 +31,7 @@ export type ActiveModelHookListener = (model: any) => void
 
 type PrimitiveValue = string | number | null | undefined | boolean
 
-export type AttributeValue =  (() => PrimitiveValue | []) | PrimitiveValue
+export type AttributeValue =  (() => any) | PrimitiveValue
 
 export type ActiveFieldDescriptor<T = unknown> = {
   setter?: Setter<any>
