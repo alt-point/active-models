@@ -1,6 +1,6 @@
 import { ActiveModel } from "./ActiveModel"
 
-export function getValue<T> (data: () => T | T): T {
+export function getValue<T> (data?: () => T | T): T | undefined {
   if (typeof data === "function") {
     return data();
   }

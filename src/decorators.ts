@@ -1,10 +1,19 @@
 import { ActiveModel } from './'
-import type { ActiveFieldDescriptor, ActiveModelHookListener, FactoryConfig, PropEvent } from './types'
+import {
+  ActiveFieldDescriptor,
+  ActiveModelHookListener,
+  AttributeValue,
+  FactoryBase,
+  FactoryConfig,
+  PropEvent
+} from './types'
 import { getValue } from './utils'
 import { useEmitter } from "./emitter";
 
 const defaultOpts: ActiveFieldDescriptor = {
-  fillable: true
+  fillable: true,
+  protected: true,
+  value: undefined
 }
 
 export function GetterMethod(property: string) {
@@ -88,8 +97,17 @@ export function ActiveFactory (factory: FactoryConfig, isOptional: boolean = fal
  * @constructor
  * @param opts<ActiveFieldDescriptor>
  */
-export function ActiveField<T extends ActiveModel>(opts: ActiveFieldDescriptor = defaultOpts) {
-  const options: ActiveFieldDescriptor = Object.assign({ fillable: true, protected: true }, opts)
+export function ActiveField<T extends ActiveModel>(opts: ActiveFieldDescriptor | AttributeValue = defaultOpts) {
+  
+   if (typeof opts !== 'object') {
+     opts = {
+       value: opts as AttributeValue
+     }
+   }
+   
+  const options: ActiveFieldDescriptor = Object.assign({}, defaultOpts, opts)
+  
+  
   return function (target: ActiveModel, prop: string): void {
     const Ctor = <typeof ActiveModel>target.constructor
 
