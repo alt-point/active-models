@@ -99,7 +99,7 @@ export function ActiveFactory (factory: FactoryConfig, isOptional: boolean = fal
  */
 export function ActiveField<T extends ActiveModel>(opts: ActiveFieldDescriptor | AttributeValue = defaultOpts) {
   
-   if (typeof opts !== 'object') {
+   if (typeof opts !== 'object' || opts === null) {
      opts = {
        value: opts as AttributeValue
      }
