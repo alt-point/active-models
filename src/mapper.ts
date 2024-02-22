@@ -1,6 +1,6 @@
-import { ActiveModel } from "./ActiveModel";
+import { ActiveModel } from './ActiveModel'
 
-export type MapTarget = symbol | string | null | typeof ActiveModel
+export type MapTarget = symbol | string | null | object | typeof ActiveModel | ActiveModel
 export type MapSource = object | null | ActiveModel
 
 export type HandlerMapFrom = (source: MapSource) => ActiveModel
@@ -22,8 +22,13 @@ export const useMapper = (Ctor: typeof ActiveModel) => {
     return MapperTo.get(Ctor)!.get(target)
   }
   
+  const hasMapping = (target: MapTarget) => {
+    return MapperTo.get(Ctor)!.has(target)
+  }
+  
   return {
     setMapTo,
+    hasMapping,
     mapTo
   }
 }

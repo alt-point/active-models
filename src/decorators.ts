@@ -49,6 +49,16 @@ export function isProtected () {
   }
 }
 
+const validateModelType = (Model: typeof ActiveModel, prop: string) => {
+  if (!Model) {
+    throw new ReferenceError(`Missing required factory model for prop "${prop}"!`)
+  }
+  if (!(Model.prototype instanceof ActiveModel)) {
+    console.warn(`Model factory for prop "${prop}" must be instanceof ActiveModel!`, Model)
+    throw new Error(`Model factory for prop "${prop}" must be instanceof ActiveModel!`)
+  }
+}
+
 const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryConfig, isOptional?: boolean) => {
   if (!factory) {
     return
@@ -56,7 +66,9 @@ const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryCo
   const Ctor = <typeof ActiveModel>target.constructor
   if (Array.isArray(factory)) {
     const [Model, DefaultValueFactory] = factory
-
+    
+    validateModelType(Model, prop)
+    
     Ctor.defineSetter(prop, (m, p, v, r) => {
       if (Array.isArray(v)) {
         return Reflect.set(m,p, Model.createFromCollectionLazy(v), r)
@@ -73,6 +85,7 @@ const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryCo
   }
 
   const Model = factory
+  validateModelType(Model, prop)
   Ctor.defineSetter(prop, (m, p, v, r) => {
     const value = Array.isArray(v) ? Model.createFromCollectionLazy(v) : Model.createLazy(v)
     return Reflect.set(m, p, value, r)
@@ -99,7 +112,7 @@ export function ActiveFactory (factory: FactoryConfig, isOptional: boolean = fal
  */
 export function ActiveField<T extends ActiveModel>(opts?: ActiveFieldDescriptor | AttributeValue) {
   
-   if (typeof opts !== 'object' || opts === null) {
+   if (typeof opts !== 'object' || opts === null || opts === undefined) {
      opts = {
        value: opts as AttributeValue
      }

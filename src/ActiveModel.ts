@@ -499,8 +499,12 @@ export class ActiveModel {
     setMapTo(target, handler)
   }
   
-  mapTo (target: MapTarget): MapTarget | undefined {
-    const { mapTo } = useMapper(this.constructor as typeof ActiveModel)
-    return mapTo(target)?.(this)
+  mapTo(target: MapTarget, lazy = true): MapTarget | this {
+    const { mapTo, hasMapping } = useMapper(this.constructor as typeof ActiveModel)
+    
+    if (!hasMapping(target) && !lazy) {
+      throw new Error(`Mapping fo target not found`)
+    }
+    return hasMapping(target) ? mapTo(target)?.(this)! : this.clone()
   }
 }
