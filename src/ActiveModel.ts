@@ -10,9 +10,9 @@ import {
 } from './types'
 import { cloneDeepWith, isNull } from 'lodash'
 import { checkSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
-import { ModelProperties, RecursivePartialActiveModel, checkComplexValue, checkPrimitiveValue, getValue, traverse } from './utils'
-import { useEmitter } from "./emitter";
-import { HandlerMapFrom, HandlerMapTo, MapSource, MapTarget, useMapper } from "./mapper";
+import { type ModelProperties, type RecursivePartialActiveModel, checkComplexValue, checkPrimitiveValue, getValue, traverse } from './utils'
+import { useEmitter } from './emitter'
+import { type HandlerMapTo, type MapTarget, useMapper } from "./mapper";
 
 const isTouched = Symbol('@touched')
 
@@ -493,13 +493,26 @@ export class ActiveModel {
     const model = Ctor.wrap(this)
     return Ctor.fill(model, Ctor.setDefaultAttributes(data))
   }
-  // mapping
-  static mapTo (target: MapTarget, handler: HandlerMapTo ) {
-    const { setMapTo } = useMapper(this)
+  
+  /**
+   * Define mapping handler for current model to target
+   * @param target
+   * @param handler
+   */
+  static mapTo<T extends typeof ActiveModel>(
+    this: T,
+    target: MapTarget,
+    handler: HandlerMapTo<T> ): void {
+    const { setMapTo } = useMapper<T>(this as T)
     setMapTo(target, handler)
   }
   
-  mapTo(target: MapTarget, lazy = true): MapTarget | this {
+  /**
+   *
+   * @param target
+   * @param lazy
+   */
+  mapTo (target: MapTarget, lazy = true): MapTarget | this {
     const { mapTo, hasMapping } = useMapper(this.constructor as typeof ActiveModel)
     
     if (!hasMapping(target) && !lazy) {

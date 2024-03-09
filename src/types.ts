@@ -1,4 +1,4 @@
-import { ActiveModel } from './ActiveModel'
+import { type ActiveModel } from './ActiveModel'
 
 export type ActiveModelSource = undefined | object | null
 
