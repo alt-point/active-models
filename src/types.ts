@@ -1,5 +1,6 @@
 import { type ActiveModel } from './ActiveModel'
 
+export type ConstructorType = abstract new (...args: any[]) => any
 export type ActiveModelSource = undefined | object | null
 
 export type EnumItemType = string | Symbol | null

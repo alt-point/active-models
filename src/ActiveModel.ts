@@ -1,12 +1,14 @@
 import {
-  ActiveModelSource,
-  AnyClassInstance,
-  FactoryOptions,
-  Getter,
-  Setter,
+  type ActiveModelSource,
+  type AnyClassInstance,
+  type FactoryOptions,
+  type Getter,
+  type Setter,
   StaticContainers as SC,
-  Validator,
-  EventType, ActiveModelHookListener
+  type Validator,
+  EventType,
+  type ActiveModelHookListener,
+  type ConstructorType
 } from './types'
 import { cloneDeepWith, isNull } from 'lodash'
 import { checkSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
@@ -499,12 +501,12 @@ export class ActiveModel {
    * @param target
    * @param handler
    */
-  static mapTo<RT extends typeof ActiveModel = any, T extends typeof ActiveModel = typeof ActiveModel>(
+  static mapTo<RT extends ConstructorType | any = any, T extends typeof ActiveModel = typeof ActiveModel>(
     this: T,
     target: RT extends MapTarget ? RT : MapTarget,
-    handler: HandlerMapTo<T, RT extends typeof ActiveModel ? InstanceType<RT> : any> ): void {
+    handler: HandlerMapTo<T, RT extends ConstructorType ? InstanceType<RT> : any> ): void {
     const { setMapTo } = useMapper<RT, T>(this as T)
-    setMapTo<RT extends typeof ActiveModel ? InstanceType<RT> : RT>(target, handler)
+    setMapTo<RT extends ConstructorType ? InstanceType<RT> : RT>(target, handler)
   }
   
   /**

@@ -1,7 +1,8 @@
-import { ActiveModel } from "./ActiveModel"
+import { ActiveModel } from './ActiveModel'
 
-export function getValue<T> (data?: () => T | T): T | undefined {
+export function getValue<T> (data?: T | (() => T) | undefined) {
   if (typeof data === "function") {
+    // @ts-ignore
     return data();
   }
   return data;
