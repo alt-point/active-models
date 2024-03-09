@@ -499,12 +499,12 @@ export class ActiveModel {
    * @param target
    * @param handler
    */
-  static mapTo<T extends typeof ActiveModel>(
+  static mapTo<RT extends typeof ActiveModel = any, T extends typeof ActiveModel = typeof ActiveModel>(
     this: T,
-    target: MapTarget,
-    handler: HandlerMapTo<T> ): void {
-    const { setMapTo } = useMapper<T>(this as T)
-    setMapTo(target, handler)
+    target: RT extends MapTarget ? RT : MapTarget,
+    handler: HandlerMapTo<T, RT extends typeof ActiveModel ? InstanceType<RT> : any> ): void {
+    const { setMapTo } = useMapper<RT, T>(this as T)
+    setMapTo<RT extends typeof ActiveModel ? InstanceType<RT> : RT>(target, handler)
   }
   
   /**
