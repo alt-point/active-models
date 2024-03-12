@@ -307,7 +307,15 @@ export class ActiveModel {
 
     return model as InstanceType<T>
   }
-
+  
+  static async asyncCreate<T extends typeof ActiveModel> (
+    this: T,
+    data: Promise<RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource> = Promise.resolve({}) as any,
+    opts: FactoryOptions = { lazy: false, tracked: false, sanitize: true }
+  ): Promise<InstanceType<T>> {
+    return this.create(await data, opts)
+  }
+  
   static createLazy <T extends typeof ActiveModel> (
     this: T,
     data: RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource = {},
@@ -315,6 +323,15 @@ export class ActiveModel {
   ): InstanceType<T> {
     return this.create<T>(data, { lazy: true, tracked: opts.tracked, sanitize: false })
   }
+  
+  static async asyncCreateLazy<T extends typeof ActiveModel> (
+    this: T,
+    data: Promise<RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource> = Promise.resolve({}) as any,
+    opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }
+  ): Promise<InstanceType<T>> {
+    return this.createLazy(await data, opts)
+  }
+  
   /**
    * Batch factory for creating instance collection
    * @param data
