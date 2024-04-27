@@ -108,11 +108,10 @@ this.$notify('Alert!')
 
 ## TODO:
 - [ ] refactor readonly fields behavior: filling only creating;
-- [ ] 
-- [ ] Добавить больше примеров использования;
-- [ ] Тесты;
+- [ ] add more examples;
+- [ ] tests;
 - [x] TS;
-- [ ] Добавить примеры использования моделей на `node.js`;
+- [ ] add examples for server (`node.js`);
 - [x] Translate to english and others languages;
 
 ### Credits
