@@ -1,7 +1,7 @@
 @alt-point/active-models
 ===
 
-Пакет с базовыми классами на `es6`/`TS` для упрощения работы со структурами данных.
+Пакет с базовыми классами на `TS` для упрощения работы со структурами данных.
 
 Какие проблемы поможет решить?
 
@@ -106,25 +106,14 @@ this.$notify.silent('Write notice to console!')
 this.$notify('Alert!')
 ```
 
-## `Enum`
-`enum` реализованный на `Map`
-
-```js
-
-const OrderStatuses = new Enum(['new', 'complete', 'shipping'], 'new')
-
-OrderStatuses.values() // ['new', 'complete', 'shipping']
-OrderStatuses.validate('G-gurda') // throw Value must be include one of type: new, complete, 'shipping; Provide value "G-gurda"
-OrderStatuses.default // 'new'
-
-```
-
 ## TODO:
+- [ ] refactor readonly fields behavior: filling only creating;
+- [ ] 
 - [ ] Добавить больше примеров использования;
 - [ ] Тесты;
 - [x] TS;
 - [ ] Добавить примеры использования моделей на `node.js`;
-- [ ] Translate to english and others languages;
+- [x] Translate to english and others languages;
 
 ### Credits
-[Alex D. Bubenchikov](https://t.me/surrealistik), [surrealistik@alt-point.com](mailto:surrealistik@alt-point.com?subject=ActiveModels)
+[Alex D. Bubenchikov](https://t.me/surrealistik), [surrealistik@alt-point.ru](mailto:surrealistik@alt-point.com?subject=ActiveModels)

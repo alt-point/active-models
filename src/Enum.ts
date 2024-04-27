@@ -1,4 +1,8 @@
 import type { EnumItemType } from './types'
+
+/**
+ * @deprecated
+ */
 export class Enum {
   readonly #map: Map<EnumItemType,EnumItemType> = new Map()
   readonly #default: EnumItemType | undefined = undefined

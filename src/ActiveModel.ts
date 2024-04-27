@@ -10,19 +10,32 @@ import {
   type ActiveModelHookListener,
   type ConstructorType
 } from './types'
-import { cloneDeepWith, isNull } from 'lodash'
-import { checkSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
-import { type ModelProperties, type RecursivePartialActiveModel, checkComplexValue, checkPrimitiveValue, getValue, traverse } from './utils'
+import cloneDeepWith from 'lodash.clonedeepwith'
+import { isSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
+import {
+  type ModelProperties,
+  type RecursivePartialActiveModel,
+  isComplexValue,
+  isPrimitiveValue,
+  getValue,
+  traverse,
+  isNull,
+  isPOJOSSafetyValue, isSymbol
+} from './utils'
 import { useEmitter } from './emitter'
 import { type HandlerMapTo, type MapTarget, useMapper } from "./mapper";
 
 const isTouched = Symbol('@touched')
 
-const events = Symbol('@events')
-
+/**
+ * Class ActiveModel
+ */
 export class ActiveModel {
   [isTouched]: boolean = false;
   
+  /**
+   *
+   */
   get emitter () {
     const { getListeners, addListener } = useEmitter(this)
     return {
@@ -57,7 +70,7 @@ export class ActiveModel {
         }
 
         const value = getValue(attributes?.[prop])
-        if (checkComplexValue(value)) {
+        if (isComplexValue(value)) {
           markSanitized(value)
         }
         data[prop] = value
@@ -107,12 +120,21 @@ export class ActiveModel {
     this.defineStaticProperty(SC.__hidden__, () => new Set(this[SC.__hidden__] || []))
     prop.forEach(p => this[SC.__hidden__]!.add(p))
   }
-
+  
+  /**
+   * add properties to fields
+   * @param prop
+   */
   static addToFields (...prop: Array<string | keyof InstanceType<typeof this> | symbol>): void {
     this.defineStaticProperty(SC.__activeFields__, () => new Set(this[SC.__activeFields__] || []))
     prop.forEach(p => this[SC.__activeFields__]!.add(p))
   }
-
+  
+  /**
+   * check property is active field
+   * @param prop
+   * @protected
+   */
   protected static isActiveField (prop: string | keyof InstanceType<typeof this> | symbol) {
     return this?.__activeFields__?.has(prop) ?? false
   }
@@ -138,7 +160,7 @@ export class ActiveModel {
   }
 
   /**
-   * Add field name to fillabe scope
+   * Add field name to fillable scope
    * @param prop
    */
   static addToFillable (prop: string | keyof InstanceType<typeof this> | symbol): void {
@@ -229,14 +251,21 @@ export class ActiveModel {
 
     return Array.isArray(instance) ? instance.map(i => this.toJSON(i)) : Object.keys(instance).reduce((a: { [key: string] : any }, b: string) => {
       // @ts-ignore
-      a[b] = (<typeof ActiveModel> instance.constructor)?.getter?.(instance, b) ?? Reflect.get(instance, b)
+      const value = (<typeof ActiveModel> instance.constructor)?.getter?.(instance, b) ?? Reflect.get(instance, b)
+      if (!isPOJOSSafetyValue(value) || isSymbol(b)) {
+        return a
+      }
+      a[b] = value
       if (typeof a[b] === 'object' || Array.isArray(a[b])) {
         a[b] = this.toJSON(a[b])
       }
       return a
     }, {})
   }
-
+  
+  /**
+   * Convert current instance to JSON structure
+   */
   toJSON () {
     return (<typeof ActiveModel> this.constructor).toJSON(this)
   }
@@ -263,11 +292,34 @@ export class ActiveModel {
 
     return cloned
   }
-
+  
+  
   /**
    * Factory method for create new instance
-   * @param data
-   * @param opts
+   * @param data - source of creating
+   * @param opts - options
+   * @param {boolean} opts.lazy - without forced creating complex values; including current data
+   * @param {boolean} opts.tracked - tracking model touched
+   * @param {boolean} opts.sanitize - unlink all references to the model and complex values in its properties
+   *
+   * @example Basic usage
+   *
+   * ```typescript
+   *
+   * import { ActiveField, ActiveModel } from '@alt-point/active-models/src'
+   *
+   * class Car extends ActiveModel {
+   *
+   *    @ActiveField()
+   *    chassis?: string = undefined
+   *
+   *    @ActiveField('Ivan')
+   *    driver: string = 'Ivan'
+   * }
+   *
+   * Car.create({ chassis: 'Porche' })
+   *
+   * ```
    */
   static create<T extends typeof ActiveModel> (
     this: T,
@@ -278,13 +330,13 @@ export class ActiveModel {
       return data as InstanceType<T>
     }
 
-    if (checkPrimitiveValue(data)) data = {}
+    if (isPrimitiveValue(data)) data = {}
 
     const { saveInitialState, setInstance, startCreating, endCreating, saveRaw } = useMeta()
 
     startCreating()
 
-    if ((opts.sanitize ?? true) && !checkSanitized(data)) {
+    if ((opts.sanitize ?? true) && !isSanitized(data)) {
       data = this.sanitize(data)
     }
     const model = this.wrap(new this())
@@ -308,6 +360,18 @@ export class ActiveModel {
     return model as InstanceType<T>
   }
   
+  /**
+   * Create model from promise
+   * @see create
+   * @param {Promise<RecursivePartialActiveModel<ModelProperties<T>>} data
+   * @param opts
+   *
+   * @example
+   *
+   * ```typescript
+   * const carModel = await Car.asyncCreate( CarService.findOne(carId) )
+   * ```
+   */
   static async asyncCreate<T extends typeof ActiveModel> (
     this: T,
     data: Promise<RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource> = Promise.resolve({}) as any,
@@ -316,6 +380,12 @@ export class ActiveModel {
     return this.create(await data, opts)
   }
   
+  /**
+   * Call create with options.lazy = true
+   * @see create
+   * @param data
+   * @param opts
+   */
   static createLazy <T extends typeof ActiveModel> (
     this: T,
     data: RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource = {},
@@ -324,6 +394,12 @@ export class ActiveModel {
     return this.create<T>(data, { lazy: true, tracked: opts.tracked, sanitize: false })
   }
   
+  /**
+   * Call create by awaited data result with options.lazy = true
+   * @see create
+   * @param data
+   * @param opts
+   */
   static async asyncCreateLazy<T extends typeof ActiveModel> (
     this: T,
     data: Promise<RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource> = Promise.resolve({}) as any,
@@ -342,15 +418,30 @@ export class ActiveModel {
       .filter((s: unknown) => s)
       .map(item => this.create(item, opts))
   }
-
+  
+  /**
+   * Batch factory for lazy creating instance collection
+   * @param data
+   * @param opts
+   */
   static createFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false } ) {
     return this.createFromCollection(data, { lazy: true, tracked: opts.tracked, sanitize: false }  )
   }
-
+  
+  /**
+   * Async batch factory for lazy creating instance collection by promise result
+   * @param data
+   * @param opts
+   */
   static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: FactoryOptions = { lazy: false, tracked: false } ) {
     return this.createFromCollection<T>(await data, opts)
   }
   
+  /**
+   * Async lazy creating collection of current model instance
+   * @param data
+   * @param opts
+   */
   static async asyncCreateFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }  ) {
     return this.createFromCollectionLazy<T>(await data, opts)
   }
@@ -387,13 +478,13 @@ export class ActiveModel {
 
 
   /**
-   *
+   * Clone current instance with unlinked references
    */
   clone (): this {
     const Ctor = (<typeof ActiveModel> this.constructor)
     return cloneDeepWith(this, Ctor.cloneCustomizer.bind(Ctor))
   }
-
+  
   protected static cloneCustomizer (value: any, key: number | string | undefined, parent: any): any {
     if (value instanceof ActiveModel && Boolean(parent)) {
       return this.wrap(cloneDeepWith(value, this.cloneCustomizer.bind(this)))
@@ -401,7 +492,7 @@ export class ActiveModel {
   }
 
   /**
-   *
+   * Get registered getters of curent model
    */
   static getGetters (): Array<string | keyof InstanceType<typeof this>  | symbol> {
     return [...this?.__getters__?.keys() ?? []]
@@ -492,7 +583,10 @@ export class ActiveModel {
     const { isTouched } = useMeta(this)
     return isTouched()
   }
-
+  
+  /**
+   * Starting tracking changes data in current instance
+   */
   startTracking () {
     const { saveInitialState } = useMeta(this)
     saveInitialState(this)
@@ -505,8 +599,8 @@ export class ActiveModel {
       return this
     }
 
-    if (checkPrimitiveValue(data)) data = {}
-    if (!checkSanitized(data)) {
+    if (isPrimitiveValue(data)) data = {}
+    if (!isSanitized(data)) {
       data = Ctor.sanitize(data)
     }
     const model = Ctor.wrap(this)
@@ -527,7 +621,7 @@ export class ActiveModel {
   }
   
   /**
-   *
+   * Run mapping current instance to target
    * @param target
    * @param lazy
    */

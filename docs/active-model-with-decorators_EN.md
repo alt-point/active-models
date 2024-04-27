@@ -88,10 +88,10 @@ API:
 import { Order } from './models'
 
 class Api {
-    $client //  http-client, `@nuxt/http` in this case
-  
+    readonly $client: HTTPClient //  http-client, `@nuxt/http` in this case
+    
     async ordersList () {
-      return await Order.asyncCreateFromCollectionLazy(this.$client.$get('orders/'))
+      return await Order.asyncCreateFromCollectionLazy(this.$client.$get<Order[]>('orders/'))
     }
     
     async ordersCreate (model = new Order()) {

@@ -10,15 +10,24 @@ export function getValue<T> (data?: T | (() => T) | undefined) {
 
 export type primitiveType = string | boolean | null | symbol | number | undefined | bigint
 
-export function checkComplexValue (value: unknown): value is {} {
+/**
+ *
+ * @param value
+ */
+export function isComplexValue (value: unknown): value is {} {
   return Boolean(value && Object(value) === value);
 }
 
-export function checkPrimitiveValue (
+/**
+ * checking whether the value is a primitive (no complex)
+ * @param value
+ */
+export function isPrimitiveValue (
   value: unknown
 ): value is primitiveType {
-  return !checkComplexValue(value);
+  return !isComplexValue(value);
 }
+
 export function traverse (root: any, action: (data: {}) => void) {
   if (!root) return
 
@@ -29,13 +38,46 @@ export function traverse (root: any, action: (data: {}) => void) {
     action(current)
 
     Object.keys(current).forEach(key => {
-      if (checkComplexValue(current![key])) {
+      if (isComplexValue(current![key])) {
         nodes.push(current![key])
       }
     })
 
     current = nodes.pop()
   }
+}
+
+/**
+ * checking whether the value is a Null
+ * @param value
+ */
+export const isNull = (value: unknown) => {
+  return value === null
+}
+
+/**
+ * checking whether the value is a function
+ * @param value
+ */
+export const isFunction = (value: unknown) => {
+  return typeof value === 'function'
+}
+
+/**
+ * checking whether the value is a symbol
+ * @param value
+ */
+export const isSymbol = (value: unknown) => {
+  return typeof value === 'symbol'
+    || typeof value === 'object' && Object.prototype.toString.call(value) === '[object Symbol]'
+}
+
+/**
+ * checking whether the value is a POGOs safety data
+ * @param value
+ */
+export const isPOJOSSafetyValue = (value: unknown) => {
+  return !isFunction(value) && !isSymbol(value)
 }
 
 export type RecursivePartial<T> = {

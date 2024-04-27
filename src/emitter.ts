@@ -2,11 +2,12 @@ import { ActiveModel } from "./ActiveModel";
 import { ActiveModelHookListener, EventType } from "./types";
 
 type ListenersContainer = Set<ActiveModelHookListener>
-
 type EventsContainer = Map<EventType, ListenersContainer>
-
 const Registry = new WeakMap<typeof ActiveModel | ActiveModel, EventsContainer>()
 
+/**
+ * Make events container
+ */
 const makeContainer = (): EventsContainer => {
   const map: EventsContainer = new Map()
   
@@ -18,7 +19,10 @@ const makeContainer = (): EventsContainer => {
   
 }
 
-
+/**
+ * Helper for emitter
+ * @param target
+ */
 export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
   if (!Registry.has(target)) {
     Registry.set(target, makeContainer())
@@ -38,6 +42,12 @@ export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
     }
   }
   
+  /**
+   * Add event listener by event type
+   * @param eventName
+   * @param listener
+   * @param once
+   */
   const addListener = (eventName: EventType, listener: ActiveModelHookListener, once = false) => {
     
     if (typeof listener !== 'function') {
@@ -66,11 +76,19 @@ export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
     return unbind
     
   }
-  
+  /**
+   * Get all event listeners by event nem
+   * @param eventName
+   */
   const getListeners = (eventName: EventType): ListenersContainer => {
     return events.get(eventName)!
   }
   
+  /**
+   * remove listener
+   * @param eventName
+   * @param listener
+   */
   const removeListener = (eventName: EventType, listener: ActiveModelHookListener) => {
     getListeners(eventName)!.delete(listener)
   }

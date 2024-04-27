@@ -1,5 +1,5 @@
 import { type  ActiveModel } from './ActiveModel'
-import { ConstructorType } from "./types";
+import { ConstructorType } from './types'
 
 export type MapSource = ConstructorType | typeof ActiveModel
 export type MapTarget = typeof ActiveModel | ActiveModel | symbol | string | null | object
@@ -10,6 +10,10 @@ type MapToMapper<H = HandlerMapTo<MapSource>> = WeakMap<MapSource, Map<MapTarget
 
 const MapperTo: MapToMapper = new WeakMap()
 
+/**
+ * Private module function for managing mapper
+ * @param Ctor
+ */
 export const useMapper = <RT = any, T extends MapSource = typeof ActiveModel>(Ctor: T) => {
   if (!MapperTo.has(Ctor)) {
     MapperTo.set(Ctor, new Map())

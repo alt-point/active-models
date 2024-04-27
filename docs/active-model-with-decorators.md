@@ -24,45 +24,40 @@
 
 ---
 
-```ts
+```typescript
 
 import { ActiveModel, Enum, ActiveField } from '@alt-point/active-models'
 import { Good } from './models'
 
-// Мы хотим контролировать то, что проставляется в поле status, потому определяем enum
-export const OrderStatuses = new Enum(['new', 'complete', 'shipping'], 'new')
+enum OrderStatuses { 
+  new = 'new',
+  complete = 'complete',
+  shipping = 'shipping' 
+}
 
-export default class Order extends ActiveModel {
+export class Order extends ActiveModel {
   
-  @ActiveField({
-    fillable: true
-  })
+  @ActiveField()
   id?: string = undefined
   
   @ActiveField({
     value: () => [], // что бы не шарился стейт, лучше фабрику передавать для комплексных значений
     // можно через сеттер, это грамоздко, но контрольно
     setter (model: Order, prop: string, value: Array<Good | object> = [], receiver :any) {
-      value = (Array.isArray(value) ? value : [])
-        .map(item => Good.createLazy(item))
-      return Reflect.set(model, prop, value, receiver)
+      return Reflect.set(model, prop, Good.createFromCollectionLazy(value), receiver)
     },
     // либо через фабрику
    factory: [Good, () => []]
   })
   goods: Array<Good> = []  
   
-  @ActiveField({
-    validator (model, prop, value) {
-      OrderStatuses.validate(value)
-    }
-  })
-  status: string = OrderStatuses.default
+  @ActiveField(OrderStatuses.new)
+  status: OrderStatuses = OrderStatuses.new
   
   @ActiveField({
    on: {
      afterSetValue ({ target, prop, value }) {
-       Reflect.set(target, 'userId', value?.id)
+       Reflect.set(target, 'userId', value?.id) // после установки значения в свойство user, фиксируем его идентификатор в значение поля `userId`
      }
    }
   })
@@ -92,27 +87,36 @@ export default class Order extends ActiveModel {
 
 В `api`: 
 
-```ts
+```typescript
 
 import { Order } from './models'
 
 class Api {
-    $client //  http клиент, в нашем случае будет @nuxt/http
+    readonly $client: HTTPClient //  http клиент, в нашем случае будет @nuxt/http
 
     async ordersList () {
-      return await Order.asyncCreateFromCollectionLazy(this.$client.$get('orders/'))
+      // Получаем по api масив заказов, используем асинхронную фабрику
+      return await Order.asyncCreateFromCollectionLazy(this.$client.$get<Order[]>('orders/'))
     }
 
-    async ordersCreate (model = new Order()) {
-      return Order.createLazy(await this.$client.$post('orders/', Order.createLazy(model)))    
+    ordersCreate (model: Order) {
+      return Order.asyncCreateLazy( //  вслучае, если после созданяия нам возвращается модель, а не только идентификатор
+        this.$client.$post<Order>('orders/', 
+          Order.createLazy(model) // приводим тип к структуре в рантайме через ленивую фабрику
+        )
+      )    
     }
     
-    async ordersRead (id: string) {
-      return Order.createLazy(await this.$client.$get(`orders/${id}/`))
+    ordersRead (id: string) {
+      return Order.asyncCreateLazy(athis.$client.$get<Order>(`orders/${id}/`))
     }
-
+    
     async ordersUpdate (id: string, model: Order) {
-      return Order.createLazy(await this.$client.$patch(`orders/${id}/`, Order.createLazy(model)))    
+      return Order.asyncCreateLazy(
+        this.$client.$patch<Order>(`orders/${id}/`, 
+          Order.createLazy(model)
+        )
+      )    
     }
 
 }
@@ -222,12 +226,12 @@ export default {
     async load () {
       // если нет айдишника - заполняем model из props.value
       if (!this.id) {
-        this.model = Order.create(this.value) // create - разорвёт все ссылки, создаст чистый объект. craeteLazy - поверит на причастность к конструктору и пропустит, если объект является уже инстансом класа
+        this.model = Order.create(this.value) // create - разорвёт все ссылки, создаст чистый объект. craeteLazy - поверит на причастность к конструктору и пропустит, если объект уже является инстансом класcа
         return
       }
       
       this.loading = true
-      this.model = Order.create(await this.$api.ordersRead(this.id))        
+      this.model = await this.$api.ordersRead(this.id)        
       this.loading = false    
     }
   }
