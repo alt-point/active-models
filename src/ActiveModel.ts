@@ -10,7 +10,7 @@ import {
   type ActiveModelHookListener,
   type ConstructorType
 } from './types'
-import cloneDeepWith from 'lodash.clonedeepwith'
+import cloneDeepWith from 'lodash/clonedeepwith'
 import { isSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
 import {
   type ModelProperties,
@@ -462,10 +462,11 @@ export class ActiveModel {
    * Filling data to **only own fields** of instance
    * @param model
    * @param data
-   * @param force
+   * @param force - if need note detect property is fillable
    * @protected
    */
   protected static fill (model: InstanceType<typeof this>, data: Partial<InstanceType<typeof this>>, force = false): InstanceType<typeof this> {
+    this.beforeFill(model, data)
     const ownFields = new Set([...Reflect.ownKeys(model), ...this?.__fillable__ || []])
     for (const prop in data) {
       if (!ownFields.has(prop) && !force) {
@@ -474,6 +475,15 @@ export class ActiveModel {
       Reflect.set(model, prop, Reflect.get(data, prop))
     }
     return model
+  }
+  
+  /**
+   * static hook then calling before fill
+   * @param model
+   * @param data
+   */
+  static beforeFill (model: InstanceType<typeof this>, data: Partial<InstanceType<typeof this>>) {
+    //
   }
 
 
@@ -485,14 +495,14 @@ export class ActiveModel {
     return cloneDeepWith(this, Ctor.cloneCustomizer.bind(Ctor))
   }
   
-  protected static cloneCustomizer (value: any, key: number | string | undefined, parent: any): any {
+  protected static cloneCustomizer (value: any, _key: number | string | undefined, parent: any): any {
     if (value instanceof ActiveModel && Boolean(parent)) {
       return this.wrap(cloneDeepWith(value, this.cloneCustomizer.bind(this)))
     }
   }
 
   /**
-   * Get registered getters of curent model
+   * Get registered getters of current model
    */
   static getGetters (): Array<string | keyof InstanceType<typeof this>  | symbol> {
     return [...this?.__getters__?.keys() ?? []]
@@ -519,7 +529,6 @@ export class ActiveModel {
         }
         
         if (isEqual || !isActiveField) {
-          
           return Reflect.set(target, prop, value, receiver)
         }
         const defineListenerTouchValue = (value: any) => {
