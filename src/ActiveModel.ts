@@ -529,6 +529,7 @@ export class ActiveModel {
         }
         
         if (isEqual || !isActiveField) {
+          // if value for current property is equal previews value or property is not ActiveField → eager return with delegate set value to property
           return Reflect.set(target, prop, value, receiver)
         }
         const defineListenerTouchValue = (value: any) => {
@@ -642,4 +643,26 @@ export class ActiveModel {
     }
     return hasMapping(target) ? mapTo(target)?.(this)! : this.clone()
   }
+  
+  /**
+   * Check model has mapping configuration for target
+   * @param target
+   */
+  hasMapping (target: MapTarget) {
+    const { hasMapping } = useMapper(this.constructor as typeof ActiveModel)
+    return hasMapping(target)
+  }
+  
+  /**
+   * Check exist mapping for current model to target
+   * @param target
+   */
+  static hasMapping<RT extends ConstructorType | any = any, T extends typeof ActiveModel = typeof ActiveModel>(
+    this: T,
+    target: RT extends MapTarget ? RT : MapTarget
+  ) {
+    const { hasMapping } = useMapper<RT, T>(this as T)
+    return hasMapping(this)
+  }
+  
 }
