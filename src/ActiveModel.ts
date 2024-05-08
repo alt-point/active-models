@@ -10,7 +10,7 @@ import {
   type ActiveModelHookListener,
   type ConstructorType
 } from './types'
-import cloneDeepWith from 'lodash/clonedeepwith'
+import cloneDeepWith from 'lodash.clonedeepwith/index'
 import { isSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
 import {
   type ModelProperties,

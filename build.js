@@ -54,7 +54,7 @@ const result = formats.map(async (format) => {
     format,
     exports: 'named',
     globals: {
-      lodash: 'lodash'
+      lodash: 'lodash',
     },
     sourcemap: true,
     name: format === 'umd' ? pkg.name : undefined
