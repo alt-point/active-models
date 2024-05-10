@@ -49,8 +49,6 @@ export type ActiveFieldDescriptor<T = unknown> = {
   once?: Partial<Record<PropEvent, ActiveModelHookListener>>
 }
 
-
-
 export type FactoryOptions = {
   lazy?: boolean
   sanitize?: boolean
@@ -69,3 +67,11 @@ export enum StaticContainers {
   __activeFields__ = '__activeFields__',
 }
 
+// mapper types
+
+export type MapSource = ConstructorType | typeof ActiveModel
+export type MapTarget = typeof ActiveModel | ActiveModel | symbol | string | null | object | unknown
+
+export type HandlerMapTo<T extends MapSource, RT = unknown> = (source: InstanceType<T>, ...args: unknown[]) => RT
+
+export type MapToMapper<H = HandlerMapTo<MapSource>> = WeakMap<MapSource, Map<MapTarget, H>>
