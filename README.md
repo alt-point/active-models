@@ -1,3 +1,11 @@
+![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
+```bash
+       _ ___ ___      _         _   _   _     __ 
+  /\  /   |   | \  / |_   |\/| / \ | \ |_ |  (_  
+ /--\ \_  |  _|_ \/  |_   |  | \_/ |_/ |_ |_ __) 
+                                                 
+```
+
 @alt-point/active-models
 ===
 
@@ -63,48 +71,10 @@ type ActiveFieldDescriptor = object & {
 
 ***
 
+More:
 
-## `CallableModel`
-
-Базовый класс, реализованный также через `Proxy`, чтобы можно было обращаться с объектом как с функцией.
-
-Пример использования:
-
-```js
-
-import { CallableModel } from '@alt-point/active-models'
-
-class Notify extends CallableModel {
-  // Define
-  __call (...args) {
-      return this.success(...args)
-  }
-
-  success (successMessage) {
-     alert(successMessage)
-  }
-
-  silent (message) {
-    console.log('Silent message:' + message)
-  }
-
-}
-```
-
-Дальше можем создать объект класса `Notify` как плагин в `Nuxt.js/Vue.js` и использовать:
-
-```js
-// плагин
-export default (ctx, inject) => {
-  ctx.$notify = new Notify()
-  inject('notify', new Notify())
-}
-
-
-// в компоненте теперь можно юзать:
-this.$notify.silent('Write notice to console!')
-this.$notify('Alert!')
-```
+- [Mapping](./docs/Mapping.md) 
+- [Callable Model](./docs/CallableModel.md) 
 
 ## TODO:
 - [ ] refactor readonly fields behavior: filling only creating;
