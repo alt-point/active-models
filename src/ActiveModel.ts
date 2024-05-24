@@ -253,7 +253,7 @@ export class ActiveModel {
     return Array.isArray(instance) ? instance.map(i => this.toJSON(i)) : Object.keys(instance).reduce((a: { [key: string] : unknown }, b: string) => {
       // @ts-ignore
       const value = (<typeof ActiveModel> instance.constructor)?.getter?.(instance, b) ?? Reflect.get(instance, b)
-      if (!isPOJOSSafetyValue(value) || isSymbol(b)) {
+      if (!isPOJOSSafetyValue(value)) {
         return a
       }
       a[b] = value
