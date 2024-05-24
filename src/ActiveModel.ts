@@ -33,7 +33,7 @@ const isTouched = Symbol('@touched')
  */
 export class ActiveModel {
   [isTouched]: boolean = false;
-  
+
   /**
    *
    */
@@ -95,8 +95,8 @@ export class ActiveModel {
   protected static fieldIsProtected (prop:  string | keyof InstanceType<typeof this> | symbol): boolean {
     return this[SC.__protected__]?.has(prop) ?? false
   }
-  
-  
+
+
   protected static getter<Result = unknown>(target: ActiveModel, prop: string | keyof InstanceType<typeof this> | symbol, receiver?: ActiveModel): Result {
     const Ctor = (<typeof ActiveModel> target.constructor)
     const resolvedGetter = Ctor?.resolveGetter?.(prop)
@@ -121,7 +121,7 @@ export class ActiveModel {
     this.defineStaticProperty(SC.__hidden__, () => new Set(this[SC.__hidden__] || []))
     prop.forEach(p => this[SC.__hidden__]!.add(p))
   }
-  
+
   /**
    * add properties to fields
    * @param prop
@@ -130,7 +130,7 @@ export class ActiveModel {
     this.defineStaticProperty(SC.__activeFields__, () => new Set(this[SC.__activeFields__] || []))
     prop.forEach(p => this[SC.__activeFields__]!.add(p))
   }
-  
+
   /**
    * check property is active field
    * @param prop
@@ -257,13 +257,13 @@ export class ActiveModel {
         return a
       }
       a[b] = value
-      if (typeof a[b] === 'object' || Array.isArray(a[b])) {
-        a[b] = this.toJSON(a[b] as object || [])
+      if ((typeof a[b] === 'object' && a[b] !== null) || Array.isArray(a[b])) {
+        a[b] = this.toJSON(a[b] as object)
       }
       return a
     }, {})
   }
-  
+
   /**
    * Convert current instance to JSON structure
    */
@@ -293,8 +293,8 @@ export class ActiveModel {
 
     return cloned
   }
-  
-  
+
+
   /**
    * Factory method for create new instance
    * @param data - source of creating
@@ -360,7 +360,7 @@ export class ActiveModel {
 
     return model as InstanceType<T>
   }
-  
+
   /**
    * Create model from promise
    * @see create
@@ -380,7 +380,7 @@ export class ActiveModel {
   ): Promise<InstanceType<T>> {
     return this.create(await data, opts)
   }
-  
+
   /**
    * Call create with options.lazy = true
    * @see create
@@ -394,7 +394,7 @@ export class ActiveModel {
   ): InstanceType<T> {
     return this.create<T>(data, { lazy: true, tracked: opts.tracked, sanitize: false })
   }
-  
+
   /**
    * Call create by awaited data result with options.lazy = true
    * @see create
@@ -408,7 +408,7 @@ export class ActiveModel {
   ): Promise<InstanceType<T>> {
     return this.createLazy(await data, opts)
   }
-  
+
   /**
    * Batch factory for creating instance collection
    * @param data
@@ -419,7 +419,7 @@ export class ActiveModel {
       .filter((s: unknown) => s)
       .map(item => this.create(item, opts))
   }
-  
+
   /**
    * Batch factory for lazy creating instance collection
    * @param data
@@ -428,7 +428,7 @@ export class ActiveModel {
   static createFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false } ) {
     return this.createFromCollection(data, { lazy: true, tracked: opts.tracked, sanitize: false }  )
   }
-  
+
   /**
    * Async batch factory for lazy creating instance collection by promise result
    * @param data
@@ -437,7 +437,7 @@ export class ActiveModel {
   static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: FactoryOptions = { lazy: false, tracked: false } ) {
     return this.createFromCollection<T>(await data, opts)
   }
-  
+
   /**
    * Async lazy creating collection of current model instance
    * @param data
@@ -446,7 +446,7 @@ export class ActiveModel {
   static async asyncCreateFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }  ) {
     return this.createFromCollectionLazy<T>(await data, opts)
   }
-  
+
 
   /**
    * Filling data to **only own fields**
@@ -477,7 +477,7 @@ export class ActiveModel {
     }
     return model
   }
-  
+
   /**
    * static hook then calling before fill
    * @param model
@@ -495,7 +495,7 @@ export class ActiveModel {
     const Ctor = (<typeof ActiveModel> this.constructor)
     return cloneDeepWith(this, Ctor.cloneCustomizer.bind(Ctor))
   }
-  
+
   protected static cloneCustomizer (value: object | ActiveModel, _key: number | string | undefined, parent: unknown): unknown {
     if (value instanceof ActiveModel && Boolean(parent)) {
       return this.wrap(cloneDeepWith(value, this.cloneCustomizer.bind(this)))
@@ -522,18 +522,18 @@ export class ActiveModel {
         const { isNotCreating } = useMeta()
         const isActiveField = (<typeof ActiveModel>target.constructor).isActiveField(prop)
         const oldValue = Reflect.get(target, prop, receiver)
-        
+
         const isEqual = Object.is(oldValue, value)
         if (!isEqual && isNotCreating()) {
           target[isTouched] = true
           target.emitter.emit(EventType.touched)
         }
-        
+
         if (isEqual || !isActiveField) {
           // if value for current property is equal previews value or property is not ActiveField → eager return with delegate set value to property
           return Reflect.set(target, prop, value, receiver)
         }
-        
+
         const defineListenerTouchValue = (value: unknown) => {
           if (value instanceof ActiveModel) {
             value.emitter.on(EventType.touched, () => {
@@ -542,21 +542,21 @@ export class ActiveModel {
           }
         }
         Array.isArray(value) ? value.forEach(v => defineListenerTouchValue(v)): defineListenerTouchValue(value)
-        
+
         const Ctor: typeof ActiveModel = (<typeof ActiveModel> target.constructor)
-        
+
         if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
           return false
         }
         // validate value
-        
+
         Ctor.resolveValidator(prop)?.(target, prop as string, value)
-        
+
         target.emitter.emit(EventType.beforeSetValue, { target, prop, value, oldValue })
 
         const result = Ctor.resolveSetter(prop)?.(target, prop as string, value, receiver) ?? Reflect.set(target, prop, value, receiver)
         target.emitter.emit(EventType.afterSetValue, { target, prop, value, oldValue })
-        
+
         // nullabling definition
         if (!isNull(oldValue) && isNull(value)) {
           target.emitter.emit(EventType.nulling, { target, prop, value, oldValue })
@@ -570,9 +570,9 @@ export class ActiveModel {
         if ((<typeof ActiveModel> target.constructor).fieldIsProtected(prop)) {
           throw new TypeError(`Property "${prop as string}" is protected!`)
         }
-        
+
         target.emitter.emit(EventType.beforeDeletingAttribute, { target, prop})
-        
+
         return Reflect.deleteProperty(target, prop)
       },
       has (target, prop: string | symbol) {
@@ -594,7 +594,7 @@ export class ActiveModel {
     const { isTouched } = useMeta(this)
     return isTouched()
   }
-  
+
   /**
    * Starting tracking changes data in current instance
    */
@@ -621,7 +621,7 @@ export class ActiveModel {
     const model = Ctor.wrap(this)
     return Ctor.fill(model, Ctor.setDefaultAttributes(data))
   }
-  
+
   /**
    * Define mapping handler for current model to target
    * @param target
@@ -634,7 +634,7 @@ export class ActiveModel {
     const { setMapTo } = useMapper<RT, T>(this as T)
     setMapTo<RT extends ConstructorType ? InstanceType<RT> : RT>(target, handler)
   }
-  
+
   /**
    * Run mapping current instance to target
    * @param target
@@ -643,13 +643,13 @@ export class ActiveModel {
    */
   mapTo (target: MapTarget, lazy = true, ...args: unknown[]): MapTarget | this {
     const { mapTo, hasMapping } = useMapper(this.constructor as typeof ActiveModel)
-    
+
     if (!hasMapping(target) && !lazy) {
       throw new Error(`Mapping fo target not found`)
     }
     return hasMapping(target) ? mapTo(target)?.(this, ...args)! : this.clone()
   }
-  
+
   /**
    * Check model has mapping configuration for target
    * @param target
@@ -658,7 +658,7 @@ export class ActiveModel {
     const { hasMapping } = useMapper(this.constructor as typeof ActiveModel)
     return hasMapping(target)
   }
-  
+
   /**
    * Check exist mapping for current model to target
    * @param target
@@ -670,5 +670,5 @@ export class ActiveModel {
     const { hasMapping } = useMapper<RT, T>(this as T)
     return hasMapping(target)
   }
-  
+
 }
