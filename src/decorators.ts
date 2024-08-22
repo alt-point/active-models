@@ -1,9 +1,8 @@
 import { ActiveModel } from './'
-import {
+import type {
   ActiveFieldDescriptor,
   ActiveModelHookListener,
   AttributeValue,
-  FactoryBase,
   FactoryConfig,
   PropEvent
 } from './types'
@@ -66,9 +65,9 @@ const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryCo
   const Ctor = <typeof ActiveModel>target.constructor
   if (Array.isArray(factory)) {
     const [Model, DefaultValueFactory] = factory
-    
+
     validateModelType(Model, prop)
-    
+
     Ctor.defineSetter(prop, (m, p, v, r) => {
       if (Array.isArray(v)) {
         return Reflect.set(m,p, Model.createFromCollectionLazy(v), r)
@@ -96,11 +95,11 @@ const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryCo
 export function ActiveFactory (factory: FactoryConfig, isOptional: boolean = false) {
   return function (target: ActiveModel, prop: string): void {
     const Ctor = <typeof ActiveModel>target.constructor
-    
+
     Ctor.addToFields(prop)
-    
+
     Ctor.addToFillable(prop)
-    
+
     factoryDecorator(target, prop, factory, isOptional)
   }
 }
@@ -111,16 +110,16 @@ export function ActiveFactory (factory: FactoryConfig, isOptional: boolean = fal
  * @param opts<ActiveFieldDescriptor>
  */
 export function ActiveField<T extends ActiveModel>(opts?: ActiveFieldDescriptor | AttributeValue) {
-  
+
    if (typeof opts !== 'object' || opts === null || opts === undefined) {
      opts = {
        value: opts as AttributeValue
      }
    }
-   
+
   const options: ActiveFieldDescriptor = Object.assign({}, defaultOpts, opts)
-  
-  
+
+
   return function (target: ActiveModel, prop: string): void {
     const Ctor = <typeof ActiveModel>target.constructor
 
@@ -155,10 +154,10 @@ export function ActiveField<T extends ActiveModel>(opts?: ActiveFieldDescriptor 
     if (options.validator) {
       Ctor.defineValidator(prop, options.validator)
     }
-    
+
     if (options.on) {
       const { addListener } = useEmitter(Ctor)
-      
+
       for (const [eventName, listener ] of Object.entries(options.on as Record<PropEvent, ActiveModelHookListener>)) {
         addListener(eventName as PropEvent, (payload) => {
           if (payload?.prop === prop) {
@@ -166,11 +165,11 @@ export function ActiveField<T extends ActiveModel>(opts?: ActiveFieldDescriptor 
           }
         })
       }
-      
+
     }
-    
+
     if (options.once) {
-      
+
       const { addListener } = useEmitter(Ctor)
       for (const [eventName, listener ] of Object.entries(options.once as Record<PropEvent, ActiveModelHookListener>)) {
         addListener(eventName as PropEvent, (payload) => {
@@ -180,6 +179,6 @@ export function ActiveField<T extends ActiveModel>(opts?: ActiveFieldDescriptor 
         }, true)
       }
     }
-    
+
   }
 }
