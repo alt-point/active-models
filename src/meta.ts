@@ -1,6 +1,6 @@
 import { ActiveModel } from './ActiveModel'
 import deepEqual from 'fast-deep-equal/es6'
-import { cloneDeep } from "lodash"
+import cloneDeep from "lodash-es/cloneDeep"
 type State = {
   creating: boolean
   isDirty: boolean
