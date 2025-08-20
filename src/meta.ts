@@ -1,17 +1,17 @@
 import { ActiveModel } from './ActiveModel'
 import deepEqual from 'fast-deep-equal/es6'
-import { cloneDeep } from "lodash"
+import cloneDeep from 'lodash-es/cloneDeep'
 type State = {
   creating: boolean
   isDirty: boolean
   initialState?: ActiveModel | undefined
-  raw?: any,
+  raw?: any
 }
 
 /**
  * Shared state of model, for use in life cycle
  */
-const sharedState = new WeakMap<ActiveModel,State>()
+const sharedState = new WeakMap<ActiveModel, State>()
 
 /**
  * registry of sanitized values
@@ -51,10 +51,10 @@ export function isSanitized (value: {}) {
  * @param data
  */
 const upsertState = (instance: ActiveModel, data: Partial<State>) => {
-  if(!sharedState.has(instance)) {
+  if (!sharedState.has(instance)) {
     sharedState.set(instance, {
       creating: false,
-      isDirty: false
+      isDirty: false,
     })
   }
   const record = sharedState.get(instance)!
@@ -96,7 +96,10 @@ export const isNotCreating = (): boolean => {
  * @param instance
  * @param initialState
  */
-export const saveInitialState = (instance: ActiveModel, initialState: ActiveModel) => {
+export const saveInitialState = (
+  instance: ActiveModel,
+  initialState: ActiveModel
+) => {
   initialState = deepFreeze(cloneDeep(initialState))
   upsertState(instance, { initialState })
 }
@@ -120,9 +123,9 @@ export const isTouched = (instance: ActiveModel) => {
   if (!meta) {
     return undefined
   }
-  
-  const { initialState} = meta
-  
+
+  const { initialState } = meta
+
   return deepEqual(instance, initialState)
 }
 
@@ -130,20 +133,20 @@ export const isTouched = (instance: ActiveModel) => {
  * Reqursive deep freaze object
  * @param value
  */
-function deepFreeze(value: any) {
-  if (!((value && typeof value === "object") || typeof value === "function")) {
+function deepFreeze (value: any) {
+  if (!((value && typeof value === 'object') || typeof value === 'function')) {
     return value
   }
-  const propNames = Reflect.ownKeys(value);
-  
+  const propNames = Reflect.ownKeys(value)
+
   for (const name of propNames) {
     const v = value[name]
-    if ((v && typeof value === "object") || typeof v === "function") {
-      deepFreeze(v);
+    if ((v && typeof value === 'object') || typeof v === 'function') {
+      deepFreeze(v)
     }
   }
-  
-  return Object.freeze(value);
+
+  return Object.freeze(value)
 }
 
 /**
@@ -154,10 +157,9 @@ const requiredInstance = (instance?: ActiveModel) => {
   if (!instance) {
     throw new Error(`Instance extends ActiveModel is required for this method!`)
   }
-  
+
   return instance
 }
-
 
 /**
  * Helper for use model meta data
@@ -173,9 +175,9 @@ export const useMeta = (instance?: ActiveModel) => {
     endCreating,
     isCreating,
     isNotCreating,
-    saveInitialState: (initialState: ActiveModel) =>  saveInitialState(requiredInstance(inst), initialState),
+    saveInitialState: (initialState: ActiveModel) =>
+      saveInitialState(requiredInstance(inst), initialState),
     saveRaw: (raw: any) => saveRaw(requiredInstance(inst), raw),
-    isTouched: () => isTouched(requiredInstance(inst))
+    isTouched: () => isTouched(requiredInstance(inst)),
   }
 }
-

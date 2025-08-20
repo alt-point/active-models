@@ -9,9 +9,10 @@ import {
   EventType,
   type ActiveModelHookListener,
   type ConstructorType,
-  type HandlerMapTo, type MapTarget,
+  type HandlerMapTo,
+  type MapTarget,
 } from './types'
-import cloneDeepWith from 'lodash.clonedeepwith/index'
+import cloneDeepWith from 'lodash-es/cloneDeepWith'
 import { isSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
 import {
   type ModelProperties,
@@ -21,7 +22,7 @@ import {
   getValue,
   traverse,
   isNull,
-  isPOJOSSafetyValue, isSymbol
+  isPOJOSSafetyValue,
 } from './utils'
 import { useEmitter } from './emitter'
 import { useMapper } from './mapper'
@@ -32,7 +33,7 @@ const isTouched = Symbol('@touched')
  * Class ActiveModel
  */
 export class ActiveModel {
-  [isTouched]: boolean = false;
+  [isTouched]: boolean = false
 
   /**
    *
@@ -40,30 +41,37 @@ export class ActiveModel {
   get emitter () {
     const { getListeners, addListener } = useEmitter(this)
     return {
-      emit(event: EventType, payload?: unknown) {
+      emit (event: EventType, payload?: unknown) {
         for (const cb of getListeners(event)) {
           cb(payload)
         }
       },
-      on(event: EventType, cb: ActiveModelHookListener) {
+      on (event: EventType, cb: ActiveModelHookListener) {
         return addListener(event, cb)
       },
-      once(event: EventType, cb: ActiveModelHookListener) {
+      once (event: EventType, cb: ActiveModelHookListener) {
         return addListener(event, cb, true)
-      }
+      },
     }
   }
 
-
-  protected static defineStaticProperty (propertyName: SC, fallback: () => unknown) {
+  protected static defineStaticProperty (
+    propertyName: SC,
+    fallback: () => unknown
+  ) {
     // @ts-ignore
-    this[propertyName] = this.hasOwnProperty(propertyName) ? this[propertyName]!: fallback()
+    this[propertyName] = this.hasOwnProperty(propertyName)
+      ? this[propertyName]!
+      : fallback()
     return this
   }
 
-
-  protected static setDefaultAttributes (data: AnyClassInstance): Partial<InstanceType<typeof this>> {
-    const attributes: Record<string, unknown> = this[SC.__attributes__] ? Object.fromEntries(this[SC.__attributes__]?.entries() || []) : {}
+  protected static setDefaultAttributes (
+    data: AnyClassInstance
+  ): Partial<InstanceType<typeof this>> {
+    const attributes: Record<string, unknown> = this[SC.__attributes__]
+      ? Object.fromEntries(this[SC.__attributes__]?.entries() || [])
+      : {}
     for (const prop in attributes) {
       if (Object.prototype.hasOwnProperty.call(attributes, prop)) {
         if (Reflect.has(data, prop)) {
@@ -80,55 +88,101 @@ export class ActiveModel {
     return data
   }
 
-  protected static fieldIsReadOnly (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
+  protected static fieldIsReadOnly (
+    prop: string | keyof InstanceType<typeof this> | symbol
+  ): boolean {
     return this[SC.__readonly__]?.has(prop) ?? false
   }
 
-  protected static fieldIsHidden (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
+  protected static fieldIsHidden (
+    prop: string | keyof InstanceType<typeof this> | symbol
+  ): boolean {
     return this[SC.__hidden__]?.has(prop) ?? false
   }
 
-  protected static fieldIsFillable (prop: string | keyof InstanceType<typeof this> | symbol): boolean {
+  protected static fieldIsFillable (
+    prop: string | keyof InstanceType<typeof this> | symbol
+  ): boolean {
     return this[SC.__fillable__]?.has(prop) ?? false
   }
 
-  protected static fieldIsProtected (prop:  string | keyof InstanceType<typeof this> | symbol): boolean {
+  protected static fieldIsProtected (
+    prop: string | keyof InstanceType<typeof this> | symbol
+  ): boolean {
     return this[SC.__protected__]?.has(prop) ?? false
   }
 
-
-  protected static getter<Result = unknown>(target: ActiveModel, prop: string | keyof InstanceType<typeof this> | symbol, receiver?: ActiveModel): Result {
-    const Ctor = (<typeof ActiveModel> target.constructor)
+  protected static getter<Result = unknown> (
+    target: ActiveModel,
+    prop: string | keyof InstanceType<typeof this> | symbol,
+    receiver?: ActiveModel
+  ): Result {
+    const Ctor = <typeof ActiveModel>target.constructor
     const resolvedGetter = Ctor?.resolveGetter?.(prop)
-    return resolvedGetter?.(target, prop as string, receiver) ?? Reflect.get(target, prop, receiver)
+    return (
+      resolvedGetter?.(target, prop as string, receiver) ??
+      Reflect.get(target, prop, receiver)
+    )
   }
 
-  protected static [SC.__getters__]?: Map<string | keyof InstanceType<typeof this> | symbol, Getter<InstanceType<typeof this>>>
-  protected static [SC.__setters__]?: Map<string | keyof InstanceType<typeof this> | symbol, Setter<InstanceType<typeof this>>>
-  protected static [SC.__attributes__]?: Map<string | keyof InstanceType<typeof this> | symbol, any>
-  protected static [SC.__validators__]?: Map<string | keyof InstanceType<typeof this> | symbol, Validator<any>>
-  protected static [SC.__fillable__]?: Set<string | keyof InstanceType<typeof this> | symbol>
-  protected static [SC.__protected__]?: Set<string | keyof InstanceType<typeof this> | symbol>
-  protected static [SC.__readonly__]?: Set<string | keyof InstanceType<typeof this> | symbol>
-  protected static [SC.__hidden__]?: Set<string | keyof InstanceType<typeof this> | symbol>
-  protected static [SC.__activeFields__]?: Set<string | keyof InstanceType<typeof this> | symbol>
+  protected static [SC.__getters__]?: Map<
+    string | keyof InstanceType<typeof this> | symbol,
+    Getter<InstanceType<typeof this>>
+  >
+  protected static [SC.__setters__]?: Map<
+    string | keyof InstanceType<typeof this> | symbol,
+    Setter<InstanceType<typeof this>>
+  >
+  protected static [SC.__attributes__]?: Map<
+    string | keyof InstanceType<typeof this> | symbol,
+    any
+  >
+  protected static [SC.__validators__]?: Map<
+    string | keyof InstanceType<typeof this> | symbol,
+    Validator<any>
+  >
+  protected static [SC.__fillable__]?: Set<
+    string | keyof InstanceType<typeof this> | symbol
+  >
+  protected static [SC.__protected__]?: Set<
+    string | keyof InstanceType<typeof this> | symbol
+  >
+  protected static [SC.__readonly__]?: Set<
+    string | keyof InstanceType<typeof this> | symbol
+  >
+  protected static [SC.__hidden__]?: Set<
+    string | keyof InstanceType<typeof this> | symbol
+  >
+  protected static [SC.__activeFields__]?: Set<
+    string | keyof InstanceType<typeof this> | symbol
+  >
 
   /**
    * Add field name to hidden scope
    * @param prop
    */
-  static addToHidden (...prop: Array<string | keyof InstanceType<typeof this> | symbol>): void {
-    this.defineStaticProperty(SC.__hidden__, () => new Set(this[SC.__hidden__] || []))
-    prop.forEach(p => this[SC.__hidden__]!.add(p))
+  static addToHidden (
+    ...prop: Array<string | keyof InstanceType<typeof this> | symbol>
+  ): void {
+    this.defineStaticProperty(
+      SC.__hidden__,
+      () => new Set(this[SC.__hidden__] || [])
+    )
+    prop.forEach((p) => this[SC.__hidden__]!.add(p))
   }
 
   /**
    * add properties to fields
    * @param prop
    */
-  static addToFields (...prop: Array<string | keyof InstanceType<typeof this> | symbol>): void {
-    this.defineStaticProperty(SC.__activeFields__, () => new Set(this[SC.__activeFields__] || []))
-    prop.forEach(p => this[SC.__activeFields__]!.add(p))
+  static addToFields (
+    ...prop: Array<string | keyof InstanceType<typeof this> | symbol>
+  ): void {
+    this.defineStaticProperty(
+      SC.__activeFields__,
+      () => new Set(this[SC.__activeFields__] || [])
+    )
+    prop.forEach((p) => this[SC.__activeFields__]!.add(p))
   }
 
   /**
@@ -136,7 +190,9 @@ export class ActiveModel {
    * @param prop
    * @protected
    */
-  protected static isActiveField (prop: string | keyof InstanceType<typeof this> | symbol) {
+  protected static isActiveField (
+    prop: string | keyof InstanceType<typeof this> | symbol
+  ) {
     return this?.__activeFields__?.has(prop) ?? false
   }
 
@@ -144,9 +200,14 @@ export class ActiveModel {
    *  Add field name to readonly scope
    * @param prop
    */
-  static addToReadonly (prop: string | keyof InstanceType<typeof this> | symbol): void {
+  static addToReadonly (
+    prop: string | keyof InstanceType<typeof this> | symbol
+  ): void {
     this.addToFields(prop)
-    this.defineStaticProperty(SC.__readonly__, () => new Set(this[SC.__readonly__] || []))
+    this.defineStaticProperty(
+      SC.__readonly__,
+      () => new Set(this[SC.__readonly__] || [])
+    )
     this.__readonly__!.add(prop)
   }
 
@@ -154,9 +215,14 @@ export class ActiveModel {
    * Add field name to protected scope
    * @param prop
    */
-  static addToProtected (prop: string | keyof InstanceType<typeof this> | symbol): void {
+  static addToProtected (
+    prop: string | keyof InstanceType<typeof this> | symbol
+  ): void {
     this.addToFields(prop)
-    this.defineStaticProperty(SC.__protected__, () => new Set(this[SC.__protected__] || []))
+    this.defineStaticProperty(
+      SC.__protected__,
+      () => new Set(this[SC.__protected__] || [])
+    )
     this[SC.__protected__]!.add(prop)
   }
 
@@ -164,21 +230,31 @@ export class ActiveModel {
    * Add field name to fillable scope
    * @param prop
    */
-  static addToFillable (prop: string | keyof InstanceType<typeof this> | symbol): void {
+  static addToFillable (
+    prop: string | keyof InstanceType<typeof this> | symbol
+  ): void {
     this.addToFields(prop)
-    this.defineStaticProperty(SC.__fillable__, () => new Set(this[SC.__fillable__] || []))
+    this.defineStaticProperty(
+      SC.__fillable__,
+      () => new Set(this[SC.__fillable__] || [])
+    )
     this[SC.__fillable__]!.add(prop)
   }
-
 
   /**
    * define getter
    * @param prop
    * @param handler
    */
-  static defineGetter (prop: string | keyof InstanceType<typeof this> | symbol, handler: Getter<any>): void {
+  static defineGetter (
+    prop: string | keyof InstanceType<typeof this> | symbol,
+    handler: Getter<any>
+  ): void {
     this.addToFields(prop)
-    this.defineStaticProperty(SC.__getters__, () => new Map(this[SC.__getters__] || []))
+    this.defineStaticProperty(
+      SC.__getters__,
+      () => new Map(this[SC.__getters__] || [])
+    )
     this[SC.__getters__]!.set(prop, handler)
   }
 
@@ -186,7 +262,9 @@ export class ActiveModel {
    * resolve getter
    * @param prop
    */
-  static resolveGetter (prop: string | keyof InstanceType<typeof this> | symbol): Getter<any> | undefined {
+  static resolveGetter (
+    prop: string | keyof InstanceType<typeof this> | symbol
+  ): Getter<any> | undefined {
     const getter = this[SC.__getters__]?.get(prop)
     return getter?.bind(this)
   }
@@ -196,9 +274,15 @@ export class ActiveModel {
    * @param prop
    * @param handler
    */
-  static defineSetter (prop: string | keyof InstanceType<typeof this> | symbol, handler: Setter<any>): void {
+  static defineSetter (
+    prop: string | keyof InstanceType<typeof this> | symbol,
+    handler: Setter<any>
+  ): void {
     this.addToFields(prop)
-    this.defineStaticProperty(SC.__setters__, () => new Map(this[SC.__setters__] || []))
+    this.defineStaticProperty(
+      SC.__setters__,
+      () => new Map(this[SC.__setters__] || [])
+    )
     this[SC.__setters__]!.set(prop, handler)
   }
 
@@ -206,7 +290,9 @@ export class ActiveModel {
    * resolve setter for field by name
    * @param prop
    */
-  protected static resolveSetter (prop: string | keyof InstanceType<typeof this> | symbol): Setter<any> | undefined {
+  protected static resolveSetter (
+    prop: string | keyof InstanceType<typeof this> | symbol
+  ): Setter<any> | undefined {
     const setter = this[SC.__setters__]?.get(prop)
     return setter?.bind(this)
   }
@@ -216,9 +302,15 @@ export class ActiveModel {
    * @param prop
    * @param handler
    */
-  static defineValidator (prop: string | keyof InstanceType<typeof this> | symbol, handler: Validator<any>): void {
+  static defineValidator (
+    prop: string | keyof InstanceType<typeof this> | symbol,
+    handler: Validator<any>
+  ): void {
     this.addToFields(prop)
-    this.defineStaticProperty(SC.__validators__, () => new Map(this[SC.__validators__] || []))
+    this.defineStaticProperty(
+      SC.__validators__,
+      () => new Map(this[SC.__validators__] || [])
+    )
     this[SC.__validators__]!.set(prop, handler)
   }
 
@@ -226,7 +318,9 @@ export class ActiveModel {
    * Resolve validator for field by name
    * @param prop
    */
-  static resolveValidator(prop: string | keyof InstanceType<typeof this> | symbol): Validator<any> | undefined {
+  static resolveValidator (
+    prop: string | keyof InstanceType<typeof this> | symbol
+  ): Validator<any> | undefined {
     const validator = this[SC.__validators__]?.get(prop)
     return validator?.bind(this)
   }
@@ -236,39 +330,59 @@ export class ActiveModel {
    * @param prop
    * @param value
    */
-  static defineAttribute (prop: string | keyof InstanceType<typeof this> | symbol, value: any): void {
+  static defineAttribute (
+    prop: string | keyof InstanceType<typeof this> | symbol,
+    value: any
+  ): void {
     this.addToFields(prop)
-    this.defineStaticProperty(SC.__attributes__, () => new Map(this[SC.__attributes__] || []))
+    this.defineStaticProperty(
+      SC.__attributes__,
+      () => new Map(this[SC.__attributes__] || [])
+    )
     this[SC.__attributes__]!.set(prop, value)
   }
 
   /**
    * Static method for converting to JSON
    */
-  static toJSON (instance: object | object[] | ActiveModel | ActiveModel[]): object | object[] {
+  static toJSON (
+    instance: object | object[] | ActiveModel | ActiveModel[]
+  ): object | object[] {
     if (typeof instance !== 'object' || instance === null) {
       return instance
     }
 
-    return Array.isArray(instance) ? instance.map(i => this.toJSON(i)) : Object.keys(instance).reduce((a: { [key: string] : unknown }, b: string) => {
-      // @ts-ignore
-      const value = (<typeof ActiveModel> instance.constructor)?.getter?.(instance, b) ?? Reflect.get(instance, b)
-      if (!isPOJOSSafetyValue(value)) {
-        return a
-      }
-      a[b] = value
-      if ((typeof a[b] === 'object' && a[b] !== null) || Array.isArray(a[b])) {
-        a[b] = this.toJSON(a[b] as object)
-      }
-      return a
-    }, {})
+    return Array.isArray(instance)
+      ? instance.map((i) => this.toJSON(i))
+      : Object.keys(instance).reduce(
+        (a: { [key: string]: unknown }, b: string) => {
+          // @ts-ignore
+          const value =
+            (<typeof ActiveModel>instance.constructor)?.getter?.(
+              instance as ActiveModel,
+              b
+            ) ?? Reflect.get(instance, b)
+          if (!isPOJOSSafetyValue(value)) {
+            return a
+          }
+          a[b] = value
+          if (
+            (typeof a[b] === 'object' && a[b] !== null) ||
+            Array.isArray(a[b])
+          ) {
+            a[b] = this.toJSON(a[b] as object)
+          }
+          return a
+        },
+        {}
+      )
   }
 
   /**
    * Convert current instance to JSON structure
    */
   toJSON () {
-    return (<typeof ActiveModel> this.constructor).toJSON(this)
+    return (<typeof ActiveModel>this.constructor).toJSON(this)
   }
 
   /**
@@ -284,7 +398,9 @@ export class ActiveModel {
    * @param data
    * @return {*}
    */
-  static sanitize (data: object | ActiveModel): Partial<InstanceType<typeof this>> {
+  static sanitize (
+    data: object | ActiveModel
+  ): Partial<InstanceType<typeof this>> {
     const cloned = cloneDeepWith(data, this.cloneCustomizer.bind(this))
 
     traverse(cloned, (node) => {
@@ -293,7 +409,6 @@ export class ActiveModel {
 
     return cloned
   }
-
 
   /**
    * Factory method for create new instance
@@ -324,7 +439,9 @@ export class ActiveModel {
    */
   static create<T extends typeof ActiveModel> (
     this: T,
-    data: RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource = {} as any,
+    data:
+      | RecursivePartialActiveModel<ModelProperties<T>>
+      | ActiveModelSource = {} as any,
     opts: FactoryOptions = { lazy: false, tracked: false, sanitize: true }
   ): InstanceType<T> {
     if (data instanceof this && opts.lazy) {
@@ -333,7 +450,13 @@ export class ActiveModel {
 
     if (isPrimitiveValue(data)) data = {}
 
-    const { saveInitialState, setInstance, startCreating, endCreating, saveRaw } = useMeta()
+    const {
+      saveInitialState,
+      setInstance,
+      startCreating,
+      endCreating,
+      saveRaw,
+    } = useMeta()
 
     startCreating()
 
@@ -375,7 +498,9 @@ export class ActiveModel {
    */
   static async asyncCreate<T extends typeof ActiveModel> (
     this: T,
-    data: Promise<RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource> = Promise.resolve({}) as any,
+    data: Promise<
+      RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource
+    > = Promise.resolve({}) as any,
     opts: FactoryOptions = { lazy: false, tracked: false, sanitize: true }
   ): Promise<InstanceType<T>> {
     return this.create(await data, opts)
@@ -387,12 +512,18 @@ export class ActiveModel {
    * @param data
    * @param opts
    */
-  static createLazy <T extends typeof ActiveModel> (
+  static createLazy<T extends typeof ActiveModel> (
     this: T,
-    data: RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource = {},
+    data:
+      | RecursivePartialActiveModel<ModelProperties<T>>
+      | ActiveModelSource = {},
     opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }
   ): InstanceType<T> {
-    return this.create<T>(data, { lazy: true, tracked: opts.tracked, sanitize: false })
+    return this.create<T>(data, {
+      lazy: true,
+      tracked: opts.tracked,
+      sanitize: false,
+    })
   }
 
   /**
@@ -403,7 +534,9 @@ export class ActiveModel {
    */
   static async asyncCreateLazy<T extends typeof ActiveModel> (
     this: T,
-    data: Promise<RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource> = Promise.resolve({}) as any,
+    data: Promise<
+      RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource
+    > = Promise.resolve({}) as any,
     opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }
   ): Promise<InstanceType<T>> {
     return this.createLazy(await data, opts)
@@ -414,10 +547,12 @@ export class ActiveModel {
    * @param data
    * @param opts
    */
-  static createFromCollection<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: FactoryOptions = { lazy: false, tracked: false, sanitize: true }) {
-    return data
-      .filter((s: unknown) => s)
-      .map(item => this.create(item, opts))
+  static createFromCollection<T extends typeof ActiveModel> (
+    this: T,
+    data: Array<T | ActiveModelSource>,
+    opts: FactoryOptions = { lazy: false, tracked: false, sanitize: true }
+  ) {
+    return data.filter((s: unknown) => s).map((item) => this.create(item, opts))
   }
 
   /**
@@ -425,8 +560,16 @@ export class ActiveModel {
    * @param data
    * @param opts
    */
-  static createFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Array<T | ActiveModelSource>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false } ) {
-    return this.createFromCollection(data, { lazy: true, tracked: opts.tracked, sanitize: false }  )
+  static createFromCollectionLazy<T extends typeof ActiveModel> (
+    this: T,
+    data: Array<T | ActiveModelSource>,
+    opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }
+  ) {
+    return this.createFromCollection(data, {
+      lazy: true,
+      tracked: opts.tracked,
+      sanitize: false,
+    })
   }
 
   /**
@@ -434,7 +577,11 @@ export class ActiveModel {
    * @param data
    * @param opts
    */
-  static async asyncCreateFromCollection<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: FactoryOptions = { lazy: false, tracked: false } ) {
+  static async asyncCreateFromCollection<T extends typeof ActiveModel> (
+    this: T,
+    data: Promise<Array<T | ActiveModelSource>>,
+    opts: FactoryOptions = { lazy: false, tracked: false }
+  ) {
     return this.createFromCollection<T>(await data, opts)
   }
 
@@ -443,10 +590,13 @@ export class ActiveModel {
    * @param data
    * @param opts
    */
-  static async asyncCreateFromCollectionLazy<T extends typeof ActiveModel>(this: T, data: Promise<Array<T | ActiveModelSource>>, opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }  ) {
+  static async asyncCreateFromCollectionLazy<T extends typeof ActiveModel> (
+    this: T,
+    data: Promise<Array<T | ActiveModelSource>>,
+    opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }
+  ) {
     return this.createFromCollectionLazy<T>(await data, opts)
   }
-
 
   /**
    * Filling data to **only own fields**
@@ -454,7 +604,7 @@ export class ActiveModel {
    * @param force
    */
   fill (data: ActiveModelSource, force = false): this {
-    const Ctor = (<typeof ActiveModel> this.constructor)
+    const Ctor = <typeof ActiveModel>this.constructor
     Ctor.fill(this, Ctor.sanitize(data || {}), force)
     return this
   }
@@ -466,9 +616,16 @@ export class ActiveModel {
    * @param force - if need note detect property is fillable
    * @protected
    */
-  protected static fill (model: InstanceType<typeof this>, data: Partial<InstanceType<typeof this>>, force = false): InstanceType<typeof this> {
+  protected static fill (
+    model: InstanceType<typeof this>,
+    data: Partial<InstanceType<typeof this>>,
+    force = false
+  ): InstanceType<typeof this> {
     this.beforeFill(model, data)
-    const ownFields = new Set([...Reflect.ownKeys(model), ...this?.__fillable__ || []])
+    const ownFields = new Set([
+      ...Reflect.ownKeys(model),
+      ...(this?.__fillable__ || []),
+    ])
     for (const prop in data) {
       if (!ownFields.has(prop) && !force) {
         continue
@@ -483,20 +640,26 @@ export class ActiveModel {
    * @param model
    * @param data
    */
-  static beforeFill (model: InstanceType<typeof this>, data: Partial<InstanceType<typeof this>>) {
+  static beforeFill (
+    model: InstanceType<typeof this>,
+    data: Partial<InstanceType<typeof this>>
+  ) {
     //
   }
-
 
   /**
    * Clone current instance with unlinked references
    */
   clone (): this {
-    const Ctor = (<typeof ActiveModel> this.constructor)
+    const Ctor = <typeof ActiveModel>this.constructor
     return cloneDeepWith(this, Ctor.cloneCustomizer.bind(Ctor))
   }
 
-  protected static cloneCustomizer (value: object | ActiveModel, _key: number | string | undefined, parent: unknown): unknown {
+  protected static cloneCustomizer (
+    value: object | ActiveModel,
+    _key: number | string | undefined,
+    parent: unknown
+  ): unknown {
     if (value instanceof ActiveModel && Boolean(parent)) {
       return this.wrap(cloneDeepWith(value, this.cloneCustomizer.bind(this)))
     }
@@ -505,22 +668,33 @@ export class ActiveModel {
   /**
    * Get registered getters of current model
    */
-  static getGetters (): Array<string | keyof InstanceType<typeof this>  | symbol> {
-    return [...this?.__getters__?.keys() ?? []]
+  static getGetters (): Array<
+    string | keyof InstanceType<typeof this> | symbol
+  > {
+    return [...(this?.__getters__?.keys() ?? [])]
   }
 
   /**
    * Wrap an instance in a proxy for traps to work
    * @param { ActiveModel } instance Instance for wrapping
    */
-  protected static wrap <RType extends ActiveModel, P = keyof InstanceType<typeof this> | string | symbol>(instance: RType): RType {
+  protected static wrap<
+    RType extends ActiveModel,
+    P = keyof InstanceType<typeof this> | string | symbol
+  > (instance: RType): RType {
     return new Proxy(instance, {
       get (target, prop, receiver) {
-        return (<typeof ActiveModel>target.constructor).getter(target, prop, receiver)
+        return (<typeof ActiveModel>target.constructor).getter(
+          target,
+          prop,
+          receiver
+        )
       },
       set (target, prop, value, receiver) {
         const { isNotCreating } = useMeta()
-        const isActiveField = (<typeof ActiveModel>target.constructor).isActiveField(prop)
+        const isActiveField = (<typeof ActiveModel>(
+          target.constructor
+        )).isActiveField(prop)
         const oldValue = Reflect.get(target, prop, receiver)
 
         const isEqual = Object.is(oldValue, value)
@@ -541,9 +715,11 @@ export class ActiveModel {
             })
           }
         }
-        Array.isArray(value) ? value.forEach(v => defineListenerTouchValue(v)): defineListenerTouchValue(value)
+        Array.isArray(value)
+          ? value.forEach((v) => defineListenerTouchValue(v))
+          : defineListenerTouchValue(value)
 
-        const Ctor: typeof ActiveModel = (<typeof ActiveModel> target.constructor)
+        const Ctor: typeof ActiveModel = <typeof ActiveModel>target.constructor
 
         if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
           return false
@@ -552,26 +728,47 @@ export class ActiveModel {
 
         Ctor.resolveValidator(prop)?.(target, prop as string, value)
 
-        target.emitter.emit(EventType.beforeSetValue, { target, prop, value, oldValue })
+        target.emitter.emit(EventType.beforeSetValue, {
+          target,
+          prop,
+          value,
+          oldValue,
+        })
 
-        const result = Ctor.resolveSetter(prop)?.(target, prop as string, value, receiver) ?? Reflect.set(target, prop, value, receiver)
-        target.emitter.emit(EventType.afterSetValue, { target, prop, value, oldValue })
+        const result =
+          Ctor.resolveSetter(prop)?.(target, prop as string, value, receiver) ??
+          Reflect.set(target, prop, value, receiver)
+        target.emitter.emit(EventType.afterSetValue, {
+          target,
+          prop,
+          value,
+          oldValue,
+        })
 
         // nullabling definition
         if (!isNull(oldValue) && isNull(value)) {
-          target.emitter.emit(EventType.nulling, { target, prop, value, oldValue })
+          target.emitter.emit(EventType.nulling, {
+            target,
+            prop,
+            value,
+            oldValue,
+          })
         }
         return result
       },
       apply (target, thisArg, argumentsList) {
-        return Reflect.apply(target as unknown as Function, thisArg, argumentsList)
+        return Reflect.apply(
+          target as unknown as Function,
+          thisArg,
+          argumentsList
+        )
       },
       deleteProperty (target, prop: string | symbol) {
-        if ((<typeof ActiveModel> target.constructor).fieldIsProtected(prop)) {
+        if ((<typeof ActiveModel>target.constructor).fieldIsProtected(prop)) {
           throw new TypeError(`Property "${prop as string}" is protected!`)
         }
 
-        target.emitter.emit(EventType.beforeDeletingAttribute, { target, prop})
+        target.emitter.emit(EventType.beforeDeletingAttribute, { target, prop })
 
         return Reflect.deleteProperty(target, prop)
       },
@@ -579,11 +776,12 @@ export class ActiveModel {
         return Reflect.has(target, prop)
       },
       ownKeys (target) {
-        const Ctor = <typeof ActiveModel> target.constructor
+        const Ctor = <typeof ActiveModel>target.constructor
         const getters = Ctor.getGetters() as Array<string | symbol>
-        return Array.from(new Set(Reflect.ownKeys(target).concat(getters)))
-          .filter(property => !Ctor.fieldIsHidden(property as string))
-      }
+        return Array.from(
+          new Set(Reflect.ownKeys(target).concat(getters))
+        ).filter((property) => !Ctor.fieldIsHidden(property as string))
+      },
     }) as RType
   }
 
@@ -603,10 +801,10 @@ export class ActiveModel {
     saveInitialState(this)
   }
 
-  constructor (data: ActiveModelSource = {}) {
+  constructor(data: ActiveModelSource = {}) {
     const { isCreating } = useMeta()
-    const Ctor = (<typeof ActiveModel> this.constructor)
-    if ( isCreating() ) {
+    const Ctor = <typeof ActiveModel>this.constructor
+    if (isCreating()) {
       return this
     }
 
@@ -627,12 +825,19 @@ export class ActiveModel {
    * @param target
    * @param handler
    */
-  static mapTo<RT extends ConstructorType | unknown = unknown, T extends typeof ActiveModel = typeof ActiveModel>(
+  static mapTo<
+    RT extends ConstructorType | unknown = unknown,
+    T extends typeof ActiveModel = typeof ActiveModel
+  > (
     this: T,
     target: RT extends MapTarget ? RT : MapTarget,
-    handler: HandlerMapTo<T, RT extends ConstructorType ? InstanceType<RT> : RT> ): void {
+    handler: HandlerMapTo<T, RT extends ConstructorType ? InstanceType<RT> : RT>
+  ): void {
     const { setMapTo } = useMapper<RT, T>(this as T)
-    setMapTo<RT extends ConstructorType ? InstanceType<RT> : RT>(target, handler)
+    setMapTo<RT extends ConstructorType ? InstanceType<RT> : RT>(
+      target,
+      handler
+    )
   }
 
   /**
@@ -642,7 +847,9 @@ export class ActiveModel {
    * @param args
    */
   mapTo (target: MapTarget, lazy = true, ...args: unknown[]): MapTarget | this {
-    const { mapTo, hasMapping } = useMapper(this.constructor as typeof ActiveModel)
+    const { mapTo, hasMapping } = useMapper(
+      this.constructor as typeof ActiveModel
+    )
 
     if (!hasMapping(target) && !lazy) {
       throw new Error(`Mapping fo target not found`)
@@ -663,12 +870,11 @@ export class ActiveModel {
    * Check exist mapping for current model to target
    * @param target
    */
-  static hasMapping<RT extends ConstructorType | unknown = unknown, T extends typeof ActiveModel = typeof ActiveModel>(
-    this: T,
-    target: RT extends MapTarget ? RT : MapTarget
-  ) {
+  static hasMapping<
+    RT extends ConstructorType | unknown = unknown,
+    T extends typeof ActiveModel = typeof ActiveModel
+  > (this: T, target: RT extends MapTarget ? RT : MapTarget) {
     const { hasMapping } = useMapper<RT, T>(this as T)
     return hasMapping(target)
   }
-
 }

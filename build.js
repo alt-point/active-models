@@ -53,9 +53,6 @@ const result = formats.map(async (format) => {
     file: `dist/${format === 'cjs' ? 'index' : `index.${format}`}.js`,
     format,
     exports: 'named',
-    globals: {
-      lodash: 'lodash',
-    },
     sourcemap: true,
     name: format === 'umd' ? pkg.name : undefined
   }

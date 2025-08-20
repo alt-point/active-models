@@ -4,14 +4,17 @@ import type { EnumItemType } from './types'
  * @deprecated
  */
 export class Enum {
-  readonly #map: Map<EnumItemType,EnumItemType> = new Map()
+  readonly #map: Map<EnumItemType, EnumItemType> = new Map()
   readonly #default: EnumItemType | undefined = undefined
 
   /**
    * @param entries
    * @param defaultValue
    */
-  constructor (entries: EnumItemType[] = [], defaultValue: EnumItemType | undefined = undefined) {
+  constructor(
+    entries: EnumItemType[] = [],
+    defaultValue: EnumItemType | undefined = undefined
+  ) {
     for (const key of entries) {
       this.#map.set(key, key)
     }
@@ -39,7 +42,7 @@ export class Enum {
    * @param key
    * @return {any}
    */
-  get (key: EnumItemType): EnumItemType| undefined {
+  get (key: EnumItemType): EnumItemType | undefined {
     return this.#map.get(key)
   }
 
@@ -49,7 +52,7 @@ export class Enum {
    * @return {boolean}
    */
   has (key: EnumItemType | undefined): boolean {
-    return key=== undefined ? false : this.#map.has(key)
+    return key === undefined ? false : this.#map.has(key)
   }
 
   /**
@@ -73,11 +76,15 @@ export class Enum {
    * @param value
    */
   validate (value: EnumItemType[] | EnumItemType): boolean {
-    value  = Array.isArray(value) ? value : [value]
+    value = Array.isArray(value) ? value : [value]
 
     for (const v of value) {
       if (!this.has(v)) {
-        throw new Error(`Value must be include one of type: ${this.values().join(', ')}; Provide value "${v}"`)
+        throw new Error(
+          `Value must be include one of type: ${this.values().join(
+            ', '
+          )}; Provide value "${v}"`
+        )
       }
     }
 

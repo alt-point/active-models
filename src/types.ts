@@ -5,18 +5,40 @@ export type ActiveModelSource = undefined | object | null
 
 export type EnumItemType = string | Symbol | null
 
-export type AnyClassInstance = { new (...args: any[]): any } | {
-  [key: string]: any
-} | object | any
+export type AnyClassInstance =
+  | { new(...args: any[]): any }
+  | {
+    [key: string]: any
+  }
+  | object
+  | any
 
-export type Getter<M extends ActiveModel = ActiveModel, R = unknown> = (model: M, prop: string, receiver?: any ) => R
+export type Getter<M extends ActiveModel = ActiveModel, R = unknown> = (
+  model: M,
+  prop: string,
+  receiver?: any
+) => R
 
-export type Setter<M extends ActiveModel = ActiveModel, V = any> = (model: M, prop: string, value: V, receiver?: any ) => boolean
+export type Setter<M extends ActiveModel = ActiveModel, V = any> = (
+  model: M,
+  prop: string,
+  value: V,
+  receiver?: any
+) => boolean
 
-export type Validator<M extends ActiveModel = ActiveModel, V = any> = (model: M, prop: string, value: V) => boolean | void
+export type Validator<M extends ActiveModel = ActiveModel, V = any> = (
+  model: M,
+  prop: string,
+  value: V
+) => boolean | void
 
 export type FactoryBase = typeof ActiveModel
-export type FactoryConfig = [Model: FactoryBase, DefaultData?: () => ((FactoryBase | Array<FactoryBase>) | any) | undefined] |  FactoryBase
+export type FactoryConfig =
+  | [
+    Model: FactoryBase,
+    DefaultData?: () => ((FactoryBase | Array<FactoryBase>) | any) | undefined
+  ]
+  | FactoryBase
 
 export enum EventType {
   touched = 'touched',
@@ -24,15 +46,18 @@ export enum EventType {
   beforeSetValue = 'beforeSetValue',
   afterSetValue = 'afterSetValue',
   beforeDeletingAttribute = 'beforeDeletingAttribute',
-  nulling = 'nulling'
+  nulling = 'nulling',
 }
 
-export type PropEvent = Exclude<EventType, EventType.touched | EventType.created>
+export type PropEvent = Exclude<
+  EventType,
+  EventType.touched | EventType.created
+>
 export type ActiveModelHookListener = (model: any) => void
 
 type PrimitiveValue = string | number | null | undefined | boolean
 
-export type AttributeValue =  (() => any) | PrimitiveValue
+export type AttributeValue = (() => any) | PrimitiveValue
 
 export type ActiveFieldDescriptor<T = unknown> = {
   setter?: Setter<any>
@@ -44,8 +69,8 @@ export type ActiveFieldDescriptor<T = unknown> = {
   protected?: boolean
   attribute?: AttributeValue
   value?: AttributeValue
-  factory?: FactoryConfig,
-  on?: Partial<Record<PropEvent, ActiveModelHookListener>>,
+  factory?: FactoryConfig
+  on?: Partial<Record<PropEvent, ActiveModelHookListener>>
   once?: Partial<Record<PropEvent, ActiveModelHookListener>>
 }
 
@@ -70,8 +95,21 @@ export enum StaticContainers {
 // mapper types
 
 export type MapSource = ConstructorType | typeof ActiveModel
-export type MapTarget = typeof ActiveModel | ActiveModel | symbol | string | null | object | unknown
+export type MapTarget =
+  | typeof ActiveModel
+  | ActiveModel
+  | symbol
+  | string
+  | null
+  | object
+  | unknown
 
-export type HandlerMapTo<T extends MapSource, RT = unknown> = (source: InstanceType<T>, ...args: unknown[]) => RT
+export type HandlerMapTo<T extends MapSource, RT = unknown> = (
+  source: InstanceType<T>,
+  ...args: unknown[]
+) => RT
 
-export type MapToMapper<H = HandlerMapTo<MapSource>> = WeakMap<MapSource, Map<MapTarget, H>>
+export type MapToMapper<H = HandlerMapTo<MapSource>> = WeakMap<
+  MapSource,
+  Map<MapTarget, H>
+>
