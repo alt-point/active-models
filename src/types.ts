@@ -91,3 +91,25 @@ export enum StaticContainers {
   __hidden__ = '__hidden__',
   __activeFields__ = '__activeFields__',
 }
+
+// mapper types
+
+export type MapSource = ConstructorType | typeof ActiveModel
+export type MapTarget =
+  | typeof ActiveModel
+  | ActiveModel
+  | symbol
+  | string
+  | null
+  | object
+  | unknown
+
+export type HandlerMapTo<T extends MapSource, RT = unknown> = (
+  source: InstanceType<T>,
+  ...args: unknown[]
+) => RT
+
+export type MapToMapper<H = HandlerMapTo<MapSource>> = WeakMap<
+  MapSource,
+  Map<MapTarget, H>
+>

@@ -1,5 +1,5 @@
 import { ActiveModel } from './ActiveModel'
-import { ActiveModelHookListener, EventType } from './types'
+import { type ActiveModelHookListener, EventType } from './types'
 
 type ListenersContainer = Set<ActiveModelHookListener>
 type EventsContainer = Map<EventType, ListenersContainer>

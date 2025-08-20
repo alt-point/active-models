@@ -1,5 +1,5 @@
-import { ActiveModel } from './'
-import {
+import { ActiveModel } from './ActiveModel'
+import type {
   ActiveFieldDescriptor,
   ActiveModelHookListener,
   AttributeValue,

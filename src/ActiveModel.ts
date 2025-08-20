@@ -9,6 +9,8 @@ import {
   EventType,
   type ActiveModelHookListener,
   type ConstructorType,
+  type HandlerMapTo,
+  type MapTarget,
 } from './types'
 import cloneDeepWith from 'lodash-es/cloneDeepWith'
 import { isSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
@@ -21,10 +23,9 @@ import {
   traverse,
   isNull,
   isPOJOSSafetyValue,
-  isSymbol,
 } from './utils'
 import { useEmitter } from './emitter'
-import { type HandlerMapTo, type MapTarget, useMapper } from './mapper'
+import { useMapper } from './mapper'
 
 const isTouched = Symbol('@touched')
 
@@ -40,7 +41,7 @@ export class ActiveModel {
   get emitter () {
     const { getListeners, addListener } = useEmitter(this)
     return {
-      emit (event: EventType, payload?: any) {
+      emit (event: EventType, payload?: unknown) {
         for (const cb of getListeners(event)) {
           cb(payload)
         }
@@ -54,7 +55,10 @@ export class ActiveModel {
     }
   }
 
-  protected static defineStaticProperty (propertyName: SC, fallback: () => any) {
+  protected static defineStaticProperty (
+    propertyName: SC,
+    fallback: () => unknown
+  ) {
     // @ts-ignore
     this[propertyName] = this.hasOwnProperty(propertyName)
       ? this[propertyName]!
@@ -65,7 +69,7 @@ export class ActiveModel {
   protected static setDefaultAttributes (
     data: AnyClassInstance
   ): Partial<InstanceType<typeof this>> {
-    const attributes: Record<string, any> = this[SC.__attributes__]
+    const attributes: Record<string, unknown> = this[SC.__attributes__]
       ? Object.fromEntries(this[SC.__attributes__]?.entries() || [])
       : {}
     for (const prop in attributes) {
@@ -341,27 +345,37 @@ export class ActiveModel {
   /**
    * Static method for converting to JSON
    */
-  static toJSON (instance: ActiveModel | ActiveModel[]): object | object[] {
+  static toJSON (
+    instance: object | object[] | ActiveModel | ActiveModel[]
+  ): object | object[] {
     if (typeof instance !== 'object' || instance === null) {
       return instance
     }
 
     return Array.isArray(instance)
       ? instance.map((i) => this.toJSON(i))
-      : Object.keys(instance).reduce((a: { [key: string]: any }, b: string) => {
-        // @ts-ignore
-        const value =
-          (<typeof ActiveModel>instance.constructor)?.getter?.(instance, b) ??
-          Reflect.get(instance, b)
-        if (!isPOJOSSafetyValue(value) || isSymbol(b)) {
+      : Object.keys(instance).reduce(
+        (a: { [key: string]: unknown }, b: string) => {
+          // @ts-ignore
+          const value =
+            (<typeof ActiveModel>instance.constructor)?.getter?.(
+              instance as ActiveModel,
+              b
+            ) ?? Reflect.get(instance, b)
+          if (!isPOJOSSafetyValue(value)) {
+            return a
+          }
+          a[b] = value
+          if (
+            (typeof a[b] === 'object' && a[b] !== null) ||
+            Array.isArray(a[b])
+          ) {
+            a[b] = this.toJSON(a[b] as object)
+          }
           return a
-        }
-        a[b] = value
-        if (typeof a[b] === 'object' || Array.isArray(a[b])) {
-          a[b] = this.toJSON(a[b])
-        }
-        return a
-      }, {})
+        },
+        {}
+      )
   }
 
   /**
@@ -642,10 +656,10 @@ export class ActiveModel {
   }
 
   protected static cloneCustomizer (
-    value: any,
+    value: object | ActiveModel,
     _key: number | string | undefined,
-    parent: any
-  ): any {
+    parent: unknown
+  ): unknown {
     if (value instanceof ActiveModel && Boolean(parent)) {
       return this.wrap(cloneDeepWith(value, this.cloneCustomizer.bind(this)))
     }
@@ -682,7 +696,7 @@ export class ActiveModel {
           target.constructor
         )).isActiveField(prop)
         const oldValue = Reflect.get(target, prop, receiver)
-        // @ts-ignore
+
         const isEqual = Object.is(oldValue, value)
         if (!isEqual && isNotCreating()) {
           target[isTouched] = true
@@ -693,7 +707,8 @@ export class ActiveModel {
           // if value for current property is equal previews value or property is not ActiveField → eager return with delegate set value to property
           return Reflect.set(target, prop, value, receiver)
         }
-        const defineListenerTouchValue = (value: any) => {
+
+        const defineListenerTouchValue = (value: unknown) => {
           if (value instanceof ActiveModel) {
             value.emitter.on(EventType.touched, () => {
               target[isTouched] = true
@@ -793,10 +808,14 @@ export class ActiveModel {
       return this
     }
 
-    if (isPrimitiveValue(data)) data = {}
+    if (isPrimitiveValue(data)) {
+      data = {}
+    }
+
     if (!isSanitized(data)) {
       data = Ctor.sanitize(data)
     }
+
     const model = Ctor.wrap(this)
     return Ctor.fill(model, Ctor.setDefaultAttributes(data))
   }
@@ -807,15 +826,12 @@ export class ActiveModel {
    * @param handler
    */
   static mapTo<
-    RT extends ConstructorType | any = any,
+    RT extends ConstructorType | unknown = unknown,
     T extends typeof ActiveModel = typeof ActiveModel
   > (
     this: T,
     target: RT extends MapTarget ? RT : MapTarget,
-    handler: HandlerMapTo<
-      T,
-      RT extends ConstructorType ? InstanceType<RT> : any
-    >
+    handler: HandlerMapTo<T, RT extends ConstructorType ? InstanceType<RT> : RT>
   ): void {
     const { setMapTo } = useMapper<RT, T>(this as T)
     setMapTo<RT extends ConstructorType ? InstanceType<RT> : RT>(
@@ -828,8 +844,9 @@ export class ActiveModel {
    * Run mapping current instance to target
    * @param target
    * @param lazy
+   * @param args
    */
-  mapTo (target: MapTarget, lazy = true): MapTarget | this {
+  mapTo (target: MapTarget, lazy = true, ...args: unknown[]): MapTarget | this {
     const { mapTo, hasMapping } = useMapper(
       this.constructor as typeof ActiveModel
     )
@@ -837,7 +854,7 @@ export class ActiveModel {
     if (!hasMapping(target) && !lazy) {
       throw new Error(`Mapping fo target not found`)
     }
-    return hasMapping(target) ? mapTo(target)?.(this)! : this.clone()
+    return hasMapping(target) ? mapTo(target)?.(this, ...args)! : this.clone()
   }
 
   /**
@@ -854,10 +871,10 @@ export class ActiveModel {
    * @param target
    */
   static hasMapping<
-    RT extends ConstructorType | any = any,
+    RT extends ConstructorType | unknown = unknown,
     T extends typeof ActiveModel = typeof ActiveModel
   > (this: T, target: RT extends MapTarget ? RT : MapTarget) {
     const { hasMapping } = useMapper<RT, T>(this as T)
-    return hasMapping(this)
+    return hasMapping(target)
   }
 }
