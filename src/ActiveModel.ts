@@ -634,12 +634,12 @@ export class ActiveModel {
 
   /**
    * static hook then calling before fill
-   * @param model
-   * @param data
+   * @param _model
+   * @param _data
    */
   static beforeFill (
-    model: InstanceType<typeof this>,
-    data: Partial<InstanceType<typeof this>>
+    _model: InstanceType<typeof this>,
+    _data: Partial<InstanceType<typeof this>>
   ) {
     //
   }
