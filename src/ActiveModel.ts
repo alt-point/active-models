@@ -448,7 +448,9 @@ export class ActiveModel {
       return data as InstanceType<T>
     }
 
-    if (isPrimitiveValue(data)) data = {}
+    if (isPrimitiveValue(data)) {
+      data = {}
+    }
 
     const {
       saveInitialState,
@@ -459,7 +461,6 @@ export class ActiveModel {
     } = useMeta()
 
     startCreating()
-
     if ((opts.sanitize ?? true) && !isSanitized(data)) {
       data = this.sanitize(data)
     }
@@ -473,14 +474,10 @@ export class ActiveModel {
 
     if (opts.tracked) {
       saveRaw(data)
-    }
-
-    if (opts.tracked) {
       saveInitialState(model)
     }
 
     unmarkSanitized(data)
-
     return model as InstanceType<T>
   }
 
@@ -637,12 +634,12 @@ export class ActiveModel {
 
   /**
    * static hook then calling before fill
-   * @param model
-   * @param data
+   * @param _model
+   * @param _data
    */
   static beforeFill (
-    model: InstanceType<typeof this>,
-    data: Partial<InstanceType<typeof this>>
+    _model: InstanceType<typeof this>,
+    _data: Partial<InstanceType<typeof this>>
   ) {
     //
   }
@@ -801,10 +798,11 @@ export class ActiveModel {
     saveInitialState(this)
   }
 
-  constructor(data: ActiveModelSource = {}) {
-    const { isCreating } = useMeta()
+  constructor (data: ActiveModelSource = {}) {
+    const { isCreating, endCreating } = useMeta()
     const Ctor = <typeof ActiveModel>this.constructor
     if (isCreating()) {
+      endCreating()
       return this
     }
 
