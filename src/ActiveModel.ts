@@ -448,7 +448,9 @@ export class ActiveModel {
       return data as InstanceType<T>
     }
 
-    if (isPrimitiveValue(data)) data = {}
+    if (isPrimitiveValue(data)) {
+      data = {}
+    }
 
     const {
       saveInitialState,
@@ -459,7 +461,6 @@ export class ActiveModel {
     } = useMeta()
 
     startCreating()
-
     if ((opts.sanitize ?? true) && !isSanitized(data)) {
       data = this.sanitize(data)
     }
@@ -473,14 +474,10 @@ export class ActiveModel {
 
     if (opts.tracked) {
       saveRaw(data)
-    }
-
-    if (opts.tracked) {
       saveInitialState(model)
     }
 
     unmarkSanitized(data)
-
     return model as InstanceType<T>
   }
 
@@ -801,10 +798,11 @@ export class ActiveModel {
     saveInitialState(this)
   }
 
-  constructor(data: ActiveModelSource = {}) {
-    const { isCreating } = useMeta()
+  constructor (data: ActiveModelSource = {}) {
+    const { isCreating, endCreating } = useMeta()
     const Ctor = <typeof ActiveModel>this.constructor
     if (isCreating()) {
+      endCreating()
       return this
     }
 
