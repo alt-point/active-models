@@ -9,12 +9,21 @@
     "sourceMap": true,
     "strict": true,
     "noEmit": true,
+    "baseUrl": ".",
     "lib": [
       "es2018",
       "es2015.proxy",
       "dom",
       "esnext"
-    ]
+    ],
+    "paths": {
+      "~/*": [
+        "./*"
+      ],
+      "@/*": [
+        "./*"
+      ]
+    }
   },
   "lib": [
     "ESNext",
@@ -24,21 +33,11 @@
   "esModuleInterop": true,
   "allowJs": true,
   "sourceMap": true,
-  "strict": true,
   "noEmit": true,
-  "baseUrl": ".",
   "types": [
     "fast-deep-equal",
     "@types/lodash"
   ],
-  "paths": {
-    "~/*": [
-      "./*"
-    ],
-    "@/*": [
-      "./*"
-    ]
-  },
   "exclude": [
     "node_modules"
   ]
