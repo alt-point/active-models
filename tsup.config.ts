@@ -2,9 +2,9 @@ import { defineConfig } from 'tsup'
 
 export default defineConfig({
   entry: ['src/index.ts'],
-  format: ['esm', 'cjs'],      // оба формата
-  dts: true,                    // генерация .d.ts
-  splitting: true,              // code splitting для ESM
+  format: ['esm', 'cjs'],
+  dts: true,
+  splitting: true,
   sourcemap: true,
   clean: true,
   treeshake: true,
