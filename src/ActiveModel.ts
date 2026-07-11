@@ -458,27 +458,29 @@ export class ActiveModel {
       startCreating,
       endCreating,
       saveRaw,
+      runInCreatingContext
     } = useMeta()
+      return runInCreatingContext(() => {
+        startCreating()
+        if ((opts.sanitize ?? true) && !isSanitized(data)) {
+          data = this.sanitize(data  as object)
+        }
+        const model = this.wrap(new this())
 
-    startCreating()
-    if ((opts.sanitize ?? true) && !isSanitized(data)) {
-      data = this.sanitize(data)
-    }
-    const model = this.wrap(new this())
+        setInstance(model)
 
-    setInstance(model)
+        endCreating()
 
-    endCreating()
+        this.fill(model, this.setDefaultAttributes(data)) as InstanceType<T>
 
-    this.fill(model, this.setDefaultAttributes(data)) as InstanceType<T>
+        if (opts.tracked) {
+          saveRaw(data)
+          saveInitialState(model)
+        }
 
-    if (opts.tracked) {
-      saveRaw(data)
-      saveInitialState(model)
-    }
-
-    unmarkSanitized(data)
-    return model as InstanceType<T>
+        unmarkSanitized(data as object)
+        return model as InstanceType<T>
+      })
   }
 
   /**
@@ -489,7 +491,7 @@ export class ActiveModel {
    *
    * @example
    *
-   * ```typescript
+   * ```TypeScript
    * const carModel = await Car.asyncCreate( CarService.findOne(carId) )
    * ```
    */
