@@ -3,19 +3,21 @@ on:
   release:
     types: [published]
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
-     - uses: actions/checkout@v6
-
-     - uses: actions/setup-node@v6
-       with:
-         node-version: '24'
-         registry-url: 'https://registry.npmjs.org'
-         package-manager-cache: false  # never use caching in release builds
-      - run: yarn install
-      - run: yarn build
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Build
+        run: yarn build
       - run: npm publish --access public --force
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
-
