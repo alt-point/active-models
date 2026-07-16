@@ -13,39 +13,40 @@ const Registry = new WeakMap<
  */
 const makeContainer = (): EventsContainer => {
   const map: EventsContainer = new Map()
-
   for (const eventName of Object.values(EventType) as EventType[]) {
     map.set(eventName as EventType, new Set())
   }
-
   return map
 }
+
+const getOwnContainer = (target: typeof ActiveModel | ActiveModel): EventsContainer => {
+  if (!Registry.has(target)) {
+    Registry.set(target, makeContainer())
+  }
+  return Registry.get(target)!
+}
+
 
 /**
  * Helper for emitter
  * @param target
  */
 export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
-  if (!Registry.has(target)) {
-    Registry.set(target, makeContainer())
-  }
+  const ownEvents = getOwnContainer(target)
 
-  const events = Registry.get(target)!
+  const isInstance = typeof target === 'object'
+  const Ctor = isInstance ? (target.constructor as typeof ActiveModel) : undefined
 
-  // check exist listeners by constructor
-  if (
-    typeof target === 'object' &&
-    Registry.has(target?.constructor as typeof ActiveModel)
-  ) {
-    const eventsByConstructor = Registry.get(
-      target?.constructor as typeof ActiveModel
-    )!
-    for (const [eventName, listeners] of eventsByConstructor.entries()) {
-      const container = events.get(eventName)!
-      for (const listener of listeners) {
-        container.add(listener)
-      }
-    }
+  /**
+   * remove listener
+   * @param eventName
+   * @param listener
+   */
+  const removeListener = (
+    eventName: EventType,
+    listener: ActiveModelHookListener
+  ) => {
+    ownEvents.get(eventName)!.delete(listener)
   }
 
   /**
@@ -60,48 +61,46 @@ export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
     once = false
   ) => {
     if (typeof listener !== 'function') {
-      throw new Error('Listener must be a function!', listener)
+      throw new Error('Listener must be a function!')
     }
 
-    const container = events.get(eventName)!
+    const container = ownEvents.get(eventName)!
 
     if (once) {
-      let unbind
-      const closure = (payload?: any) => {
+      const closure: ActiveModelHookListener = (payload) => {
         listener(payload)
-        unbind = () => removeListener(eventName, listener)
-        unbind()
-        return unbind
+        removeListener(eventName, closure)
       }
       container.add(closure)
-
-      return unbind
+      return () => removeListener(eventName, closure)
     }
 
-    const unbind = () => removeListener(eventName, listener)
-
     container.add(listener)
-
-    return unbind
-  }
-  /**
-   * Get all event listeners by event nem
-   * @param eventName
-   */
-  const getListeners = (eventName: EventType): ListenersContainer => {
-    return events.get(eventName)!
+    return () => removeListener(eventName, listener)
   }
 
   /**
-   * remove listener
+   * Get all event listeners by event name.
    * @param eventName
-   * @param listener
    */
-  const removeListener = (
-    eventName: EventType,
-    listener: ActiveModelHookListener
-  ) => {
-    getListeners(eventName)!.delete(listener)
+  const getListeners = (eventName: EventType): Iterable<ActiveModelHookListener> => {
+    const own = ownEvents.get(eventName)!
+
+    if (!Ctor) {
+      return own
+    }
+
+    const ctorEvents = Registry.get(Ctor)
+    const inherited = ctorEvents?.get(eventName)
+
+    if (!inherited || inherited.size === 0) {
+      return own
+    }
+
+    return (function* () {
+      yield* inherited
+      yield* own
+    })()
   }
 
   return {
@@ -110,3 +109,4 @@ export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
     removeListener,
   }
 }
+
