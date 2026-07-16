@@ -10,11 +10,20 @@
     "strict": true,
     "noEmit": true,
     "baseUrl": ".",
+    "esModuleInterop": true,
+    "allowJs": true,
+    "skipLibCheck": true,
     "lib": [
       "es2018",
       "es2015.proxy",
       "dom",
-      "esnext"
+      "esnext",
+      "esnext.asynciterable"
+    ],
+    "types": [
+      "node",
+      "lodash-es",
+      "fast-deep-equal"
     ],
     "paths": {
       "~/*": [
@@ -25,18 +34,8 @@
       ]
     }
   },
-  "lib": [
-    "ESNext",
-    "ESNext.AsyncIterable",
-    "DOM"
-  ],
-  "esModuleInterop": true,
-  "allowJs": true,
-  "sourceMap": true,
-  "noEmit": true,
-  "types": [
-    "fast-deep-equal",
-    "@types/lodash"
+  "include": [
+    "src"
   ],
   "exclude": [
     "node_modules"

@@ -1,6 +1,6 @@
 {
   "name": "@alt-point/active-models",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "description": "Reactive DTO models with Proxy and more useful classes, decorators, Black-jack and hookers",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -27,12 +27,45 @@
     ".": {
       "source": "./src/index.ts",
       "import": {
-        "types": "./dist/index.d.ts",
+        "types": "./dist/index.d.mts",
         "default": "./dist/index.mjs"
       },
       "require": {
-        "types": "./dist/index.d.cts",
+        "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
+      }
+    },
+    "./ActiveModel": {
+      "source": "./src/ActiveModel.ts",
+      "import": {
+        "types": "./dist/ActiveModel.d.mts",
+        "default": "./dist/ActiveModel.mjs"
+      },
+      "require": {
+        "types": "./dist/ActiveModel.d.ts",
+        "default": "./dist/ActiveModel.js"
+      }
+    },
+    "./CallableModel": {
+      "source": "./src/CallableModel.ts",
+      "import": {
+        "types": "./dist/CallableModel.d.mts",
+        "default": "./dist/CallableModel.mjs"
+      },
+      "require": {
+        "types": "./dist/CallableModel.d.ts",
+        "default": "./dist/CallableModel.js"
+      }
+    },
+    "./decorators": {
+      "source": "./src/decorators.ts",
+      "import": {
+        "types": "./dist/decorators.d.mts",
+        "default": "./dist/decorators.mjs"
+      },
+      "require": {
+        "types": "./dist/decorators.d.ts",
+        "default": "./dist/decorators.js"
       }
     }
   },

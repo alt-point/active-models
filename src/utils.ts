@@ -104,7 +104,6 @@ export type StaticContainers =
   | '__activeFields__'
 export type BaseMethods =
   | 'clone'
-  | 'clone'
   | 'emit'
   | 'fill'
   | 'isTouched'
