@@ -26,7 +26,7 @@
 
 ```typescript
 
-import { ActiveModel, Enum, ActiveField } from '@alt-point/active-models'
+import { ActiveModel, ActiveField } from '@alt-point/active-models'
 import { Good } from './models'
 
 enum OrderStatuses { 
@@ -99,7 +99,7 @@ class Api {
       return await Order.asyncCreateFromCollectionLazy(this.$client.$get<Order[]>('orders/'))
     }
 
-    ordersCreate (model: Order) {
+    async ordersCreate (model: Order) {
       return Order.asyncCreateLazy( //  вслучае, если после созданяия нам возвращается модель, а не только идентификатор
         this.$client.$post<Order>('orders/', 
           Order.createLazy(model) // приводим тип к структуре в рантайме через ленивую фабрику
@@ -107,8 +107,8 @@ class Api {
       )    
     }
     
-    ordersRead (id: string) {
-      return Order.asyncCreateLazy(athis.$client.$get<Order>(`orders/${id}/`))
+    async ordersRead (id: string) {
+      return Order.asyncCreateLazy(this.$client.$get<Order>(`orders/${id}/`))
     }
     
     async ordersUpdate (id: string, model: Order) {
@@ -226,7 +226,7 @@ export default {
     async load () {
       // если нет айдишника - заполняем model из props.value
       if (!this.id) {
-        this.model = Order.create(this.value) // create - разорвёт все ссылки, создаст чистый объект. craeteLazy - поверит на причастность к конструктору и пропустит, если объект уже является инстансом класcа
+        this.model = Order.create(this.value) // create - разорвёт все ссылки, создаст чистый объект. createLazy - поверит на причастность к конструктору и пропустит, если объект уже является инстансом класcа
         return
       }
       
