@@ -265,7 +265,13 @@ describe('EventType.created', () => {
     expect(count).toBe(1)
   })
 
-  it('does not fire for new Model(data) - construction is not actually complete when the base constructor returns', () => {
+  it('fires for new Model(data) too, but deferred to a microtask - not synchronously', async () => {
+    // The subclass's own class-field initializers run *after* the base
+    // constructor returns (see the new-Model(data)-vs-create(data) gotcha),
+    // so at no point does the constructor itself control a moment where
+    // construction is truly finished - only a microtask, scheduled after
+    // the constructor returns, is guaranteed to run after every initializer
+    // up the prototype chain has already executed.
     let fired = false
     class User extends ActiveModel {
       @ActiveField() name: string = ''
@@ -274,7 +280,40 @@ describe('EventType.created', () => {
       }
     }
     new User({ name: 'Alice' })
-    expect(fired).toBe(false)
+    expect(fired).toBe(false) // not yet - still in the same synchronous tick
+    await Promise.resolve()
+    expect(fired).toBe(true)
+  })
+
+  it('for new Model(data), reports the true final state - including the initializer-clobbers-data gotcha', async () => {
+    let nameAtCreated: string | undefined
+    class Clobbered extends ActiveModel {
+      @ActiveField() name: string = 'DEFAULT'
+      static beforeFill (model: any) {
+        model.emitter.on(EventType.created, () => { nameAtCreated = model.name })
+      }
+    }
+    const clobbered = new Clobbered({ name: 'Alice' })
+    await Promise.resolve()
+    // the field initializer clobbered the data - created honestly reports that
+    expect(nameAtCreated).toBe('DEFAULT')
+    expect(clobbered.name).toBe('DEFAULT')
+
+    let nameAtCreated2: string | undefined
+    class NotClobbered extends ActiveModel {
+      @ActiveField() name: string = 'DEFAULT'
+      constructor (data?: any) {
+        super(data)
+        if (data) this.fill(data)
+      }
+      static beforeFill (model: any) {
+        model.emitter.on(EventType.created, () => { nameAtCreated2 = model.name })
+      }
+    }
+    const notClobbered = new NotClobbered({ name: 'Alice' })
+    await Promise.resolve()
+    expect(nameAtCreated2).toBe('Alice')
+    expect(notClobbered.name).toBe('Alice')
   })
 
   it('bubbles up from nested factory models: child created fires before parent created', () => {
@@ -295,6 +334,30 @@ describe('EventType.created', () => {
     const parent = Parent.create({ child: { label: 'a' } })
     expect(order).toEqual(['child', 'parent'])
     expect(parent.child).toBeInstanceOf(Child)
+  })
+
+  it('bubbling order holds even when the parent is built via new Model(data)', async () => {
+    // The nested Child is still created through Child.createLazy() (factory
+    // fields always go through create(), never `new Child()`), so it fires
+    // synchronously during the parent's fill() - well before the parent's
+    // own, microtask-deferred created.
+    const order: string[] = []
+    class Child extends ActiveModel {
+      @ActiveField() label: string = ''
+      static beforeFill (model: any) {
+        model.emitter.on(EventType.created, () => { order.push('child') })
+      }
+    }
+    class Parent extends ActiveModel {
+      @ActiveField({ factory: Child }) child?: Child
+      static beforeFill (model: any) {
+        model.emitter.on(EventType.created, () => { order.push('parent') })
+      }
+    }
+
+    new Parent({ child: { label: 'a' } })
+    await Promise.resolve()
+    expect(order).toEqual(['child', 'parent'])
   })
 
   it('fires once per instance for createFromCollection', () => {

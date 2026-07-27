@@ -561,18 +561,18 @@ export class ActiveModel {
 
         unmarkSanitized(data as object)
 
-        // Fires exactly once, after this model - and, transitively, every nested
-        // model a `factory` field created along the way - is fully built. Nested
-        // factory fields are constructed synchronously inside fill() above via
-        // their own create() call, so their `created` has already fired by this
-        // point: children finish (and emit) before their parent does, with no
-        // extra propagation code needed - just the natural order of a
-        // synchronous call stack. Only create() (and createLazy/asyncCreate/
-        // createFromCollection/... - they all funnel through this method)
-        // emits it; new Model(data) cannot, because the subclass's own
-        // class-field initializers still run *after* the constructor returns
-        // (see the new-Model(data)-vs-create(data) note), so "fully created"
-        // isn't true yet at any point the constructor itself controls.
+        // Fires exactly once, synchronously, after this model - and,
+        // transitively, every nested model a `factory` field created along
+        // the way - is fully built. Nested factory fields are constructed
+        // synchronously inside fill() above via their own create() call, so
+        // their `created` has already fired by this point: children finish
+        // (and emit) before their parent does, with no extra propagation
+        // code needed - just the natural order of a synchronous call stack.
+        // This can fire synchronously (unlike the constructor's deferred
+        // version below) because by this point every class-field initializer
+        // already ran: create() builds the raw instance with `new this()`
+        // *before* wrapping it (see sealNonFillable above), so those
+        // initializers ran unintercepted, ahead of fill().
         model.emitter.emit(EventType.created)
 
         return model as InstanceType<T>
@@ -942,7 +942,23 @@ export class ActiveModel {
     }
 
     const model = Ctor.wrap(this)
-    return Ctor.fill(model, Ctor.stripNonFillable(Ctor.setDefaultAttributes(data)))
+    const filled = Ctor.fill(model, Ctor.stripNonFillable(Ctor.setDefaultAttributes(data)))
+
+    // Deferred, unlike create()'s synchronous emit: at this point in the
+    // constructor, the subclass's own class-field initializers (e.g.
+    // `prop: T = value`) have NOT run yet - per JS semantics, since this
+    // constructor returns a different object (the proxy), they run *after*
+    // this constructor body finishes, against the returned `filled`. A
+    // microtask is the only point that's reliably after ALL of that
+    // synchronous construction (constructor + every field initializer up the
+    // prototype chain) has finished, since nothing here ever awaits -
+    // firing synchronously here would be honest about "fill() is done" but
+    // not about "this model is fully built".
+    queueMicrotask(() => {
+      filled.emitter.emit(EventType.created)
+    })
+
+    return filled
   }
 
   /**
