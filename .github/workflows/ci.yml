@@ -1,9 +1,10 @@
-name: npm-publish
+name: ci
 on:
-  release:
-    types: [published]
+  push:
+    branches: ['**']
+  pull_request:
 jobs:
-  build-and-publish:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -12,14 +13,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+      - name: Type check
+        run: npx tsc --noEmit -p tsconfig.json
       - name: Test
         run: yarn test
       - name: Build
         run: yarn build
-      - run: npm publish --access public --force
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
