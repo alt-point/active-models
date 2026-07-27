@@ -4,7 +4,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 export default withMermaid(defineConfig({
   title: '@alt-point/active-models',
   description: 'Reactive DTO models with Proxy and more useful classes, decorators, and hooks',
-  base: '/',
+  base: '/active-models/',
   cleanUrls: true,
   themeConfig: {
     // shared across all locales
