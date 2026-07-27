@@ -29,24 +29,36 @@ import { useMapper } from './mapper'
 
 const isTouched = Symbol('@touched')
 
+const makeWrittenTracker = () => {
+  const registry = new WeakMap<ActiveModel, Set<string | symbol>>()
+  return (target: ActiveModel): Set<string | symbol> => {
+    let written = registry.get(target)
+    if (!written) {
+      written = new Set()
+      registry.set(target, written)
+    }
+    return written
+  }
+}
+
 /**
  * Tracks which `readonly` fields have already received their one-time value,
  * per raw instance. A `readonly` field may be set exactly once — via the
  * `create()` factory or via `new Model(data)` — after that, any further
- * write (through `fill()` or direct assignment) is blocked.
+ * write (through `fill()` or direct assignment) is silently ignored.
  */
-const readonlyWritten = new WeakMap<ActiveModel, Set<string | symbol>>()
+const getReadonlyWritten = makeWrittenTracker()
 
-const getReadonlyWritten = (
-  target: ActiveModel
-): Set<string | symbol> => {
-  let written = readonlyWritten.get(target)
-  if (!written) {
-    written = new Set()
-    readonlyWritten.set(target, written)
-  }
-  return written
-}
+/**
+ * Tracks which `fillable: false` fields have already received their one
+ * (and only intended) write — the class-field initializer's own default,
+ * which `new Model(data)` routes through this same proxy after `super()`
+ * returns (see the `set` trap below). Any further write is blocked with a
+ * throw, same as before this tracking existed — `create()`/`new Model(data)`
+ * never let data claim this slot: non-fillable keys are stripped from the
+ * incoming data before `fill()` ever sees them (see `stripNonFillable`).
+ */
+const getFillableWritten = makeWrittenTracker()
 
 /**
  * Class ActiveModel
@@ -105,6 +117,48 @@ export class ActiveModel {
       }
     }
     return data
+  }
+
+  /**
+   * Remove keys for `fillable: false` fields from incoming data before it
+   * ever reaches `fill()`. Without this, a `fillable: false` field's ONLY
+   * legitimate write - its own class-field initializer's default, which
+   * `new Model(data)` routes through this proxy after `super()` returns -
+   * would lose a race against attacker-supplied `data`, since the data-fill
+   * always runs first (see the `set` trap's fillable-tracking comment).
+   */
+  protected static stripNonFillable (
+    data: AnyClassInstance
+  ): Partial<InstanceType<typeof this>> {
+    for (const prop in data) {
+      if (this.isActiveField(prop) && !this.fieldIsFillable(prop)) {
+        delete data[prop]
+      }
+    }
+    return data
+  }
+
+  /**
+   * `create()` constructs the raw instance *before* wrapping it in a proxy
+   * (see `create()` below), specifically so class-field initializers run
+   * unintercepted. That means a `fillable: false` field's default is
+   * established here, outside the proxy - the `set` trap's write-once
+   * tracking never sees it happen and would otherwise treat a later direct
+   * assignment as the still-open "first" write. Mark every non-fillable
+   * field as already-written right after raw construction so the trap
+   * correctly blocks any write to it from this point on.
+   */
+  protected static sealNonFillable (instance: InstanceType<typeof this>): void {
+    const activeFields = this[SC.__activeFields__]
+    if (!activeFields) {
+      return
+    }
+    const written = getFillableWritten(instance)
+    for (const prop of activeFields) {
+      if (!this.fieldIsFillable(prop)) {
+        written.add(prop)
+      }
+    }
   }
 
   protected static fieldIsReadOnly (
@@ -490,13 +544,15 @@ export class ActiveModel {
         if ((opts.sanitize ?? true) && !isSanitized(data)) {
           data = this.sanitize(data  as object)
         }
-        const model = this.wrap(new this())
+        const raw = new this()
+        this.sealNonFillable(raw)
+        const model = this.wrap(raw)
 
         setInstance(model)
 
         endCreating()
 
-        this.fill(model, this.setDefaultAttributes(data)) as InstanceType<T>
+        this.fill(model, this.stripNonFillable(this.setDefaultAttributes(data))) as InstanceType<T>
 
         if (opts.tracked) {
           saveRaw(data)
@@ -746,7 +802,17 @@ export class ActiveModel {
         const Ctor: typeof ActiveModel = <typeof ActiveModel>target.constructor
 
         if (!Ctor.fieldIsFillable(prop)) {
-          return false
+          const written = getFillableWritten(target)
+          if (written.has(prop)) {
+            // A real, later write attempt (data can never reach here - see
+            // stripNonFillable) - block it loudly, same as always.
+            return false
+          }
+          // The one legitimate write: the class-field initializer's own default,
+          // routed through this proxy by `new Model(data)` after `super()` returns.
+          // Record it (so nothing can write this field again) and fall through to
+          // the normal set pipeline below.
+          written.add(prop)
         }
 
         if (Ctor.fieldIsReadOnly(prop)) {
@@ -861,7 +927,7 @@ export class ActiveModel {
     }
 
     const model = Ctor.wrap(this)
-    return Ctor.fill(model, Ctor.setDefaultAttributes(data))
+    return Ctor.fill(model, Ctor.stripNonFillable(Ctor.setDefaultAttributes(data)))
   }
 
   /**
