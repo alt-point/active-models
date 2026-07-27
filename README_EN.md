@@ -3,6 +3,8 @@
 
 A set of tools written in `es6/TS` to make working with data-structures easier.
 
+[Documentation](https://alt-point.github.io/active-models/)
+
 Problems this package tries to solve:
 
 - [x] Implementing data structures with reactive attributes ([`ActiveModel`](#activemodel));
@@ -137,7 +139,7 @@ OrderStatuses.default // 'new'
 
 ## TODO:
 - [ ] More usage examples;
-- [ ] Tests;
+- [x] Tests;
 - [x] TS;
 - [x] Add `node.js` usage examples;
 - [x] Translate to english and others languages;

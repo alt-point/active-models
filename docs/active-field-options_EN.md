@@ -46,7 +46,7 @@ The field's default value. `value` is just an alias for `attribute` - there is n
 (`options.attribute || options.value`, whichever is set, is used).
 
 Applied via `Model.create(data)` (and `new Model(data)` - but see the warning in
-[active-model-advanced_EN.md](active-model-advanced_EN.md#new-modeldata-vs-modelcreatedata-vs-filldata))
+[active-model-advanced_EN.md](active-model-advanced_EN.md#new-model-data-vs-model-create-data-vs-fill-data))
 when the field is **absent** from the data passed in. If the field is present in the data, the data wins.
 
 ```ts
@@ -148,7 +148,7 @@ the `readonly` check - see ["Call order"](#call-order-when-a-value-is-set)):
 |---|---|---|
 | Can a value come from `data` at creation (`create()`/`new Model()`)? | **Yes**, once | **Never** |
 | What happens on a repeated write attempt? | Silently ignored - no exception | Via `fill()`/`create()` - silently ignored; **direct assignment throws** |
-| The only guaranteed source of a value | `data` (if it arrives first) **or** the class-field initializer | **Only** the class-field initializer - `attribute`/`value` doesn't work either, see [`value`/`attribute`](#value--attribute) |
+| The only guaranteed source of a value | `data` (if it arrives first) **or** the class-field initializer | **Only** the class-field initializer - `attribute`/`value` doesn't work either, see [`value`/`attribute`](#value-attribute) |
 | What if the field never got a value from either `data` or the initializer? | Stays open for one write later, via `.fill()` - see the example in [active-model-advanced_EN.md](active-model-advanced_EN.md#readonly) | Stays `undefined` forever - there's no way left to write it |
 | Typical use case | A field configured once at creation (e.g. an ID the caller may supply) that shouldn't change afterwards | A field that must never be determined from the outside at all - e.g. a value the model/server itself is responsible for computing |
 
@@ -377,7 +377,7 @@ class Order extends ActiveModel {
 A full breakdown of all four events (including `nulling`'s exact semantics - it only fires on a transition
 from non-null to `null`, not to `undefined`), the order relative to `validator`/`setter`, and the
 difference from instance-level `model.emitter.on(...)` subscriptions, is in
-[active-model-advanced_EN.md, the "`on` / `once` hooks" section](active-model-advanced_EN.md#on--once-hooks).
+[active-model-advanced_EN.md, the "`on` / `once` hooks" section](active-model-advanced_EN.md#on-once-hooks).
 
 ---
 

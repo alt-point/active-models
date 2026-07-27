@@ -73,7 +73,10 @@
     "build": "tsup",
     "build-dev": "tsup --watch",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "homepage": "https://github.com/alt-point/active-models#readme",
   "author": {
@@ -98,6 +101,7 @@
     "tslib": "^2.6.2",
     "tsup": "^8.5.1",
     "typescript": "^5.4.5",
+    "vitepress": "^1.6.4",
     "vitest": "^4.1.10"
   }
 }

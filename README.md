@@ -3,6 +3,8 @@
 
 Пакет с базовыми классами на `TS` для упрощения работы со структурами данных.
 
+[Документация](https://alt-point.github.io/active-models/)
+
 Какие проблемы поможет решить?
 
 - [x] Реализовать модели данных с реактивными свойствами ([`ActiveModel`](#activemodel));
@@ -129,7 +131,7 @@ OrderStatuses.default // 'new'
 ## TODO:
 - [x] refactor readonly fields behavior: filling only creating;
 - [ ] add more examples;
-- [ ] tests;
+- [x] tests;
 - [x] TS;
 - [x] add examples for server (`node.js`);
 - [x] Translate to english and others languages;

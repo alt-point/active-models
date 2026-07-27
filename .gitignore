@@ -6,3 +6,7 @@ dist/*
 
 # graphify output — symlinked to ~/.graphify/projects/active-models, kept out of the repo
 graphify-out
+
+# VitePress build output/cache
+docs/.vitepress/cache
+docs/.vitepress/dist
