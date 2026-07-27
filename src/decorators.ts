@@ -158,6 +158,10 @@ export function ActiveField<T extends ActiveModel> (
       Ctor.addToProtected(prop)
     }
 
+    if (options.readonly) {
+      Ctor.addToReadonly(prop)
+    }
+
     if (options.attribute || options.value) {
       Ctor.defineAttribute(prop, options.attribute || options.value)
     }

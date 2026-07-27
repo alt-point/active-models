@@ -121,7 +121,13 @@ export class ActiveModel {
     const resolvedGetter = Ctor?.resolveGetter?.(prop)
     return (
       resolvedGetter?.(target, prop as string, receiver) ??
-      Reflect.get(target, prop, receiver)
+      // Bind the receiver to `target` (not the proxy) so that accessing
+      // built-in getters (e.g. `emitter`) through the proxy resolves `this`
+      // to the same raw instance the internal set/delete traps use to emit
+      // events. Otherwise `model.emitter.on(...)` registers against the proxy
+      // while `target.emitter.emit(...)` inside the traps fires against the
+      // raw target, and the listener never sees the event.
+      Reflect.get(target, prop, target)
     )
   }
 
@@ -852,7 +858,7 @@ export class ActiveModel {
     )
 
     if (!hasMapping(target) && !lazy) {
-      throw new Error(`Mapping fo target not found`)
+      throw new Error(`Mapping for target not found`)
     }
     return hasMapping(target) ? mapTo(target)?.(this, ...args)! : this.clone()
   }
