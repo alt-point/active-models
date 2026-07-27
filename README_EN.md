@@ -13,9 +13,36 @@ A set of tools written in `es6/TS` to make working with data-structures easier.
 
 Problems this package tries to solve:
 
-- [x] Implementing data structures with reactive attributes ([`ActiveModel`](#activemodel));
-- [x] Managing the integrity of data structures (`ActiveModel.fillable`, `ActiveModel.hidden`, `ActiveModel.protected`);
-- [x] Keeping track of runtime-types and data integrity of each class attribute;
+#### Reactive data models with controllable properties
+
+How do you build a data model where every property can be intercepted on read, write, and delete —
+without hand-writing getters/setters for each field? [`ActiveModel`](#activemodel) wraps the instance in a
+`Proxy` and exposes the `@ActiveField()` decorator, which lets you define a `setter`/`getter`, a default
+value, and subscribe to change events via `on`/`once` — all at the level of a single field.
+
+#### Data structure integrity
+
+How do you keep external data (an API response, for example) from silently overwriting a protected field,
+deleting a required attribute, or adding stray keys that shouldn't be there? The `fillable`, `readonly`,
+`protected`, and `hidden` options on `@ActiveField()` give fine-grained control: `fillable: false` and
+`readonly: true` block changes after creation, `protected` blocks `delete`, and `hidden` excludes a field
+from enumeration (`Object.keys`, `JSON.stringify`) while keeping it directly accessible.
+
+#### Runtime type and data integrity checks
+
+TypeScript only checks types at compile time — data coming from external sources (an API, localStorage, a
+WebSocket) arrives at runtime with no such guarantee. `validator` on `@ActiveField()` runs on every
+attempted write and throws if the value doesn't match the expected type/shape; `factory` additionally
+wraps nested structures in their own `ActiveModel` automatically, keeping typing and validation intact at
+any depth.
+
+#### Subscribing to changes in model properties
+
+How do you find out that a specific field changed, was nulled out, or was deleted — without wrapping every
+assignment in your own code? The `beforeSetValue`, `afterSetValue`, `nulling`, and `beforeDeletingAttribute`
+events (via `on`/`once` in the decorator), plus the instance-level `touched`/`created` events
+(`model.emitter.on(...)`), give you a single place for side effects: logging, syncing to the UI, cache
+invalidation, and so on.
 
 Installation
 ---
