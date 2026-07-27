@@ -3,3 +3,6 @@
 node_modules
 dist/*
 .DS_Store
+
+# graphify output — symlinked to ~/.graphify/projects/active-models, kept out of the repo
+graphify-out
