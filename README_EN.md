@@ -29,12 +29,12 @@ Active model uses [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScr
 
 Purpose: Structure integrity and type checks for incoming data from external sources/subsystems ([DTO](https://en.wikipedia.org/wiki/Data_transfer_object))
 
-[Usage Example](docs/active-model.md)
-
 [Example using decorators](docs/active-model-with-decorators.md)
 
+Also:
+- [Advanced features](docs/active-model-advanced_EN.md) — validators, `on`/`once` hooks, the difference between `new Model()`/`create()`/`fill()`, serialization, `mapTo()`
+- [Node.js server example](docs/node-example_EN.md) — no Vue/Nuxt, plain `node:http`
 
-You can use either static API or decorators:
 
 Decorators
 ---
@@ -117,6 +117,12 @@ this.$notify('Alert!')
 ```
 
 ## `Enum`
+
+> **Deprecated (`@deprecated`).** The `Enum` class is marked deprecated right in the source
+> (`src/Enum.ts`), though it's still exported from the package. For new models, prefer a native
+> TypeScript `enum` together with a `validator` on the field instead — that's the pattern used in the
+> [decorators example](docs/active-model-with-decorators_EN.md).
+
 An implementation of `enum` using `Map`
 
 ```js
@@ -132,7 +138,7 @@ OrderStatuses.default // 'new'
 - [ ] More usage examples;
 - [ ] Tests;
 - [x] TS;
-- [ ] Add `node.js` usage examples;
+- [x] Add `node.js` usage examples;
 - [x] Translate to english and others languages;
 
 ### Credits
