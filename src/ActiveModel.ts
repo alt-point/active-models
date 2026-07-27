@@ -30,6 +30,25 @@ import { useMapper } from './mapper'
 const isTouched = Symbol('@touched')
 
 /**
+ * Tracks which `readonly` fields have already received their one-time value,
+ * per raw instance. A `readonly` field may be set exactly once — via the
+ * `create()` factory or via `new Model(data)` — after that, any further
+ * write (through `fill()` or direct assignment) is blocked.
+ */
+const readonlyWritten = new WeakMap<ActiveModel, Set<string | symbol>>()
+
+const getReadonlyWritten = (
+  target: ActiveModel
+): Set<string | symbol> => {
+  let written = readonlyWritten.get(target)
+  if (!written) {
+    written = new Set()
+    readonlyWritten.set(target, written)
+  }
+  return written
+}
+
+/**
  * Class ActiveModel
  */
 export class ActiveModel {
@@ -726,8 +745,27 @@ export class ActiveModel {
 
         const Ctor: typeof ActiveModel = <typeof ActiveModel>target.constructor
 
-        if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
+        if (!Ctor.fieldIsFillable(prop)) {
           return false
+        }
+
+        if (Ctor.fieldIsReadOnly(prop)) {
+          const written = getReadonlyWritten(target)
+          if (written.has(prop)) {
+            // Already set once (at creation, via factory or constructor) — locked.
+            // Returning `true` (not `false`) is deliberate: `new Model(data)` wraps
+            // `this` in the proxy and fills it *before* the subclass's own class-field
+            // initializers run (they execute after `super()` returns, against the
+            // now-proxy-bound `this`) — so the initializer's default-value assignment
+            // lands here as a second write to the same prop. If this returned `false`,
+            // that assignment (`this.id = <default>`) would throw under strict-mode
+            // Proxy invariants and the constructor call would blow up. Silently
+            // discarding the value instead lets construction complete normally while
+            // still preserving the value written the first time.
+            return true
+          }
+          // this is the one allowed write; fall through and let it happen
+          written.add(prop)
         }
         // validate value
 
