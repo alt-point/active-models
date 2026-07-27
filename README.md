@@ -1,9 +1,15 @@
 @alt-point/active-models
 ===
 
+[![npm version](https://img.shields.io/npm/v/@alt-point/active-models.svg)](https://www.npmjs.com/package/@alt-point/active-models)
+[![npm downloads](https://img.shields.io/npm/dm/@alt-point/active-models.svg)](https://www.npmjs.com/package/@alt-point/active-models)
+[![CI](https://github.com/alt-point/active-models/actions/workflows/ci.yml/badge.svg)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/@alt-point/active-models.svg)](https://github.com/alt-point/active-models/blob/master/LICENSE)
+[![TypeScript](https://img.shields.io/badge/types-TypeScript-blue.svg)](https://www.typescriptlang.org/)
+
 Пакет с базовыми классами на `TS` для упрощения работы со структурами данных.
 
-[Документация](https://alt-point.github.io/active-models/)
+**[📖 Документация](https://alt-point.github.io/active-models/)**
 
 Какие проблемы поможет решить?
 

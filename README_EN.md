@@ -1,9 +1,15 @@
 @alt-point/active-models
 ===
 
+[![npm version](https://img.shields.io/npm/v/@alt-point/active-models.svg)](https://www.npmjs.com/package/@alt-point/active-models)
+[![npm downloads](https://img.shields.io/npm/dm/@alt-point/active-models.svg)](https://www.npmjs.com/package/@alt-point/active-models)
+[![CI](https://github.com/alt-point/active-models/actions/workflows/ci.yml/badge.svg)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/@alt-point/active-models.svg)](https://github.com/alt-point/active-models/blob/master/LICENSE)
+[![TypeScript](https://img.shields.io/badge/types-TypeScript-blue.svg)](https://www.typescriptlang.org/)
+
 A set of tools written in `es6/TS` to make working with data-structures easier.
 
-[Documentation](https://alt-point.github.io/active-models/)
+**[📖 Documentation](https://alt-point.github.io/active-models/)**
 
 Problems this package tries to solve:
 
@@ -61,21 +67,11 @@ type ActiveFieldDescriptor = object & {
 >
 > **Notice:**
 >
-> In order or attributes (default values) to work,
-> you must create an instance using
-> `ActiveModel.create(data)` factory method,
-> or explicitly set values in the constructor like so:
->
-> ```ts
-> class MyModel extends ActiveModel {
->     constructor (data?: any) {
->         super(data)
->         if (data) {
->             this.fill(data)
->         }
->     }
-> }
->```
+> For default values (`attribute`/`value`) to work, create instances via the
+> `ActiveModel.create(data)` factory method. Using the plain constructor
+> (`new MyModel(data)`) has a subtlety around subclass field initializers — see
+> [`new Model(data)` vs `Model.create(data)` vs `fill(data)`](docs/en/active-model-advanced.md#new-model-data-vs-model-create-data-vs-fill-data)
+> for the full explanation and the documented workaround.
 
 
 ***
