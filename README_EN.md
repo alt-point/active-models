@@ -59,6 +59,12 @@ npm
 npm install --save @alt-point/active-models
 ```
 
+bun
+
+```bash
+bun add @alt-point/active-models
+```
+
 # `ActiveModel`
 Active model uses [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy) behind the scenes.
 
@@ -143,30 +149,9 @@ this.$notify.silent('Write notice to console!')
 this.$notify('Alert!')
 ```
 
-## `Enum`
-
-> **Deprecated (`@deprecated`).** The `Enum` class is marked deprecated right in the source
-> (`src/Enum.ts`), though it's still exported from the package. For new models, prefer a native
-> TypeScript `enum` together with a `validator` on the field instead — that's the pattern used in the
-> [decorators example](docs/en/active-model-with-decorators.md).
-
-An implementation of `enum` using `Map`
-
-```js
-const OrderStatuses = new Enum(['new', 'complete', 'shipping'], 'new')
-
-OrderStatuses.values() // ['new', 'complete', 'shipping']
-OrderStatuses.validate('foo') // will throw: Value must be one of: new, complete, shipping; Provided value: "foo"
-OrderStatuses.default // 'new'
-
-```
 
 ## TODO:
-- [ ] More usage examples;
-- [x] Tests;
-- [x] TS;
-- [x] Add `node.js` usage examples;
-- [x] Translate to english and others languages;
-
+- [ ] add more examples for more platforms;
+- 
 ### Credits
 [Alex D. Bubenchikov](https://t.me/surrealistik), [surrealistik@alt-point.com](mailto:surrealistik@alt-point.com?subject=ActiveModels)
