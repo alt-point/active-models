@@ -3,6 +3,8 @@
 
 A set of tools written in `es6/TS` to make working with data-structures easier.
 
+[Documentation](https://alt-point.github.io/active-models/)
+
 Problems this package tries to solve:
 
 - [x] Implementing data structures with reactive attributes ([`ActiveModel`](#activemodel));
@@ -29,12 +31,14 @@ Active model uses [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScr
 
 Purpose: Structure integrity and type checks for incoming data from external sources/subsystems ([DTO](https://en.wikipedia.org/wiki/Data_transfer_object))
 
-[Usage Example](docs/active-model.md)
+[Example using decorators](docs/en/active-model-with-decorators.md)
 
-[Example using decorators](docs/active-model-with-decorators.md)
+Also:
+- [`@ActiveField()` options reference](docs/en/active-field-options.md) — every option on its own: what it does, what it affects, with examples
+- [Model lifecycle](docs/en/model-lifecycle.md) — every event from creation to deletion, with a diagram
+- [Advanced features](docs/en/active-model-advanced.md) — validators, `on`/`once` hooks, the difference between `new Model()`/`create()`/`fill()`, serialization, `mapTo()`
+- [Node.js server example](docs/en/node-example.md) — no Vue/Nuxt, plain `node:http`
 
-
-You can use either static API or decorators:
 
 Decorators
 ---
@@ -117,6 +121,12 @@ this.$notify('Alert!')
 ```
 
 ## `Enum`
+
+> **Deprecated (`@deprecated`).** The `Enum` class is marked deprecated right in the source
+> (`src/Enum.ts`), though it's still exported from the package. For new models, prefer a native
+> TypeScript `enum` together with a `validator` on the field instead — that's the pattern used in the
+> [decorators example](docs/en/active-model-with-decorators.md).
+
 An implementation of `enum` using `Map`
 
 ```js
@@ -130,9 +140,9 @@ OrderStatuses.default // 'new'
 
 ## TODO:
 - [ ] More usage examples;
-- [ ] Tests;
+- [x] Tests;
 - [x] TS;
-- [ ] Add `node.js` usage examples;
+- [x] Add `node.js` usage examples;
 - [x] Translate to english and others languages;
 
 ### Credits

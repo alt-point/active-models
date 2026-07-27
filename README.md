@@ -3,6 +3,8 @@
 
 Пакет с базовыми классами на `TS` для упрощения работы со структурами данных.
 
+[Документация](https://alt-point.github.io/active-models/)
+
 Какие проблемы поможет решить?
 
 - [x] Реализовать модели данных с реактивными свойствами ([`ActiveModel`](#activemodel));
@@ -32,6 +34,12 @@ npm install --save @alt-point/active-models
 **Назначение**: контроль целостности структуры и типов данных моделей приходящих из внешних источников/подсистем ([DTO](https://en.wikipedia.org/wiki/Data_transfer_object))
 
 [Пример](docs/active-model-with-decorators.md), иллюстрирующий применение
+
+Дополнительно:
+- [Справочник опций `@ActiveField()`](docs/active-field-options.md) — каждая опция по отдельности: что делает, на что влияет, с примерами
+- [Жизненный цикл модели](docs/model-lifecycle.md) — все события от создания до удаления, с диаграммой
+- [Продвинутые возможности](docs/active-model-advanced.md) — валидаторы, хуки `on`/`once`, разница между `new Model()`/`create()`/`fill()`, сериализация, `mapTo()`
+- [Пример для Node.js-сервера](docs/node-example.md) — без Vue/Nuxt, на чистом `node:http`
 
 
 @Decorators
@@ -106,12 +114,27 @@ this.$notify.silent('Write notice to console!')
 this.$notify('Alert!')
 ```
 
+## `Enum`
+
+> **Устарел (`@deprecated`).** Класс `Enum` помечен как устаревший прямо в исходном коде
+> (`src/Enum.ts`), хотя всё ещё экспортируется из пакета. Для новых моделей вместо него
+> рекомендуется нативный TypeScript `enum` вместе с `validator` на поле — именно так сделано
+> в [примере с decorators](docs/active-model-with-decorators.md).
+
+```js
+const OrderStatuses = new Enum(['new', 'complete', 'shipping'], 'new')
+
+OrderStatuses.values() // ['new', 'complete', 'shipping']
+OrderStatuses.validate('foo') // бросит: Value must be include one of type: new, complete, shipping; Provide value "foo"
+OrderStatuses.default // 'new'
+```
+
 ## TODO:
-- [ ] refactor readonly fields behavior: filling only creating;
+- [x] refactor readonly fields behavior: filling only creating;
 - [ ] add more examples;
-- [ ] tests;
+- [x] tests;
 - [x] TS;
-- [ ] add examples for server (`node.js`);
+- [x] add examples for server (`node.js`);
 - [x] Translate to english and others languages;
 
 ### Credits

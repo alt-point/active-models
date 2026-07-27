@@ -29,6 +29,37 @@ import { useMapper } from './mapper'
 
 const isTouched = Symbol('@touched')
 
+const makeWrittenTracker = () => {
+  const registry = new WeakMap<ActiveModel, Set<string | symbol>>()
+  return (target: ActiveModel): Set<string | symbol> => {
+    let written = registry.get(target)
+    if (!written) {
+      written = new Set()
+      registry.set(target, written)
+    }
+    return written
+  }
+}
+
+/**
+ * Tracks which `readonly` fields have already received their one-time value,
+ * per raw instance. A `readonly` field may be set exactly once — via the
+ * `create()` factory or via `new Model(data)` — after that, any further
+ * write (through `fill()` or direct assignment) is silently ignored.
+ */
+const getReadonlyWritten = makeWrittenTracker()
+
+/**
+ * Tracks which `fillable: false` fields have already received their one
+ * (and only intended) write — the class-field initializer's own default,
+ * which `new Model(data)` routes through this same proxy after `super()`
+ * returns (see the `set` trap below). Any further write is blocked with a
+ * throw, same as before this tracking existed — `create()`/`new Model(data)`
+ * never let data claim this slot: non-fillable keys are stripped from the
+ * incoming data before `fill()` ever sees them (see `stripNonFillable`).
+ */
+const getFillableWritten = makeWrittenTracker()
+
 /**
  * Class ActiveModel
  */
@@ -88,6 +119,48 @@ export class ActiveModel {
     return data
   }
 
+  /**
+   * Remove keys for `fillable: false` fields from incoming data before it
+   * ever reaches `fill()`. Without this, a `fillable: false` field's ONLY
+   * legitimate write - its own class-field initializer's default, which
+   * `new Model(data)` routes through this proxy after `super()` returns -
+   * would lose a race against attacker-supplied `data`, since the data-fill
+   * always runs first (see the `set` trap's fillable-tracking comment).
+   */
+  protected static stripNonFillable (
+    data: AnyClassInstance
+  ): Partial<InstanceType<typeof this>> {
+    for (const prop in data) {
+      if (this.isActiveField(prop) && !this.fieldIsFillable(prop)) {
+        delete data[prop]
+      }
+    }
+    return data
+  }
+
+  /**
+   * `create()` constructs the raw instance *before* wrapping it in a proxy
+   * (see `create()` below), specifically so class-field initializers run
+   * unintercepted. That means a `fillable: false` field's default is
+   * established here, outside the proxy - the `set` trap's write-once
+   * tracking never sees it happen and would otherwise treat a later direct
+   * assignment as the still-open "first" write. Mark every non-fillable
+   * field as already-written right after raw construction so the trap
+   * correctly blocks any write to it from this point on.
+   */
+  protected static sealNonFillable (instance: InstanceType<typeof this>): void {
+    const activeFields = this[SC.__activeFields__]
+    if (!activeFields) {
+      return
+    }
+    const written = getFillableWritten(instance)
+    for (const prop of activeFields) {
+      if (!this.fieldIsFillable(prop)) {
+        written.add(prop)
+      }
+    }
+  }
+
   protected static fieldIsReadOnly (
     prop: string | keyof InstanceType<typeof this> | symbol
   ): boolean {
@@ -121,7 +194,13 @@ export class ActiveModel {
     const resolvedGetter = Ctor?.resolveGetter?.(prop)
     return (
       resolvedGetter?.(target, prop as string, receiver) ??
-      Reflect.get(target, prop, receiver)
+      // Bind the receiver to `target` (not the proxy) so that accessing
+      // built-in getters (e.g. `emitter`) through the proxy resolves `this`
+      // to the same raw instance the internal set/delete traps use to emit
+      // events. Otherwise `model.emitter.on(...)` registers against the proxy
+      // while `target.emitter.emit(...)` inside the traps fires against the
+      // raw target, and the listener never sees the event.
+      Reflect.get(target, prop, target)
     )
   }
 
@@ -465,13 +544,15 @@ export class ActiveModel {
         if ((opts.sanitize ?? true) && !isSanitized(data)) {
           data = this.sanitize(data  as object)
         }
-        const model = this.wrap(new this())
+        const raw = new this()
+        this.sealNonFillable(raw)
+        const model = this.wrap(raw)
 
         setInstance(model)
 
         endCreating()
 
-        this.fill(model, this.setDefaultAttributes(data)) as InstanceType<T>
+        this.fill(model, this.stripNonFillable(this.setDefaultAttributes(data))) as InstanceType<T>
 
         if (opts.tracked) {
           saveRaw(data)
@@ -479,6 +560,21 @@ export class ActiveModel {
         }
 
         unmarkSanitized(data as object)
+
+        // Fires exactly once, synchronously, after this model - and,
+        // transitively, every nested model a `factory` field created along
+        // the way - is fully built. Nested factory fields are constructed
+        // synchronously inside fill() above via their own create() call, so
+        // their `created` has already fired by this point: children finish
+        // (and emit) before their parent does, with no extra propagation
+        // code needed - just the natural order of a synchronous call stack.
+        // This can fire synchronously (unlike the constructor's deferred
+        // version below) because by this point every class-field initializer
+        // already ran: create() builds the raw instance with `new this()`
+        // *before* wrapping it (see sealNonFillable above), so those
+        // initializers ran unintercepted, ahead of fill().
+        model.emitter.emit(EventType.created)
+
         return model as InstanceType<T>
       })
   }
@@ -720,8 +816,37 @@ export class ActiveModel {
 
         const Ctor: typeof ActiveModel = <typeof ActiveModel>target.constructor
 
-        if (!Ctor.fieldIsFillable(prop) || Ctor.fieldIsReadOnly(prop)) {
-          return false
+        if (!Ctor.fieldIsFillable(prop)) {
+          const written = getFillableWritten(target)
+          if (written.has(prop)) {
+            // A real, later write attempt (data can never reach here - see
+            // stripNonFillable) - block it loudly, same as always.
+            return false
+          }
+          // The one legitimate write: the class-field initializer's own default,
+          // routed through this proxy by `new Model(data)` after `super()` returns.
+          // Record it (so nothing can write this field again) and fall through to
+          // the normal set pipeline below.
+          written.add(prop)
+        }
+
+        if (Ctor.fieldIsReadOnly(prop)) {
+          const written = getReadonlyWritten(target)
+          if (written.has(prop)) {
+            // Already set once (at creation, via factory or constructor) — locked.
+            // Returning `true` (not `false`) is deliberate: `new Model(data)` wraps
+            // `this` in the proxy and fills it *before* the subclass's own class-field
+            // initializers run (they execute after `super()` returns, against the
+            // now-proxy-bound `this`) — so the initializer's default-value assignment
+            // lands here as a second write to the same prop. If this returned `false`,
+            // that assignment (`this.id = <default>`) would throw under strict-mode
+            // Proxy invariants and the constructor call would blow up. Silently
+            // discarding the value instead lets construction complete normally while
+            // still preserving the value written the first time.
+            return true
+          }
+          // this is the one allowed write; fall through and let it happen
+          written.add(prop)
         }
         // validate value
 
@@ -817,7 +942,23 @@ export class ActiveModel {
     }
 
     const model = Ctor.wrap(this)
-    return Ctor.fill(model, Ctor.setDefaultAttributes(data))
+    const filled = Ctor.fill(model, Ctor.stripNonFillable(Ctor.setDefaultAttributes(data)))
+
+    // Deferred, unlike create()'s synchronous emit: at this point in the
+    // constructor, the subclass's own class-field initializers (e.g.
+    // `prop: T = value`) have NOT run yet - per JS semantics, since this
+    // constructor returns a different object (the proxy), they run *after*
+    // this constructor body finishes, against the returned `filled`. A
+    // microtask is the only point that's reliably after ALL of that
+    // synchronous construction (constructor + every field initializer up the
+    // prototype chain) has finished, since nothing here ever awaits -
+    // firing synchronously here would be honest about "fill() is done" but
+    // not about "this model is fully built".
+    queueMicrotask(() => {
+      filled.emitter.emit(EventType.created)
+    })
+
+    return filled
   }
 
   /**
@@ -852,7 +993,7 @@ export class ActiveModel {
     )
 
     if (!hasMapping(target) && !lazy) {
-      throw new Error(`Mapping fo target not found`)
+      throw new Error(`Mapping for target not found`)
     }
     return hasMapping(target) ? mapTo(target)?.(this, ...args)! : this.clone()
   }

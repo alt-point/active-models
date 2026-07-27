@@ -181,7 +181,7 @@ export const isTouched = (instance: ActiveModel) => {
 
   const { initialState } = meta
 
-  return deepEqual(instance, initialState)
+  return !deepEqual(instance, initialState)
 }
 
 /**

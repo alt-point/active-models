@@ -48,7 +48,7 @@ export default class Order extends ActiveModel {
   @ActiveField({
     value: () => [],
     setter (model: Order, prop: string, value: Array<Item | object> = [], receiver :any) {
-      return Reflect.set(model, prop, Item.craeteFromCollectionLazy(value), receiver)
+      return Reflect.set(model, prop, Item.createFromCollectionLazy(value), receiver)
     },
     // or factory
     factory: [Item, () => []]
@@ -70,12 +70,12 @@ export default class Order extends ActiveModel {
   
   // We can easily count the amount of `Item`s inside our Order
   get goodsCount () {
-    return this.items.length
+    return this.goods.length
   }
 
   // We can easily calculate the weight of the Order
   get weight () {
-    return this.items.reduce((a, { weight }) => a + weight, 0)
+    return this.goods.reduce((a, { weight }) => a + weight, 0)
   }
 }
 

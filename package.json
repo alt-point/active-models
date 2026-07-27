@@ -1,6 +1,6 @@
 {
   "name": "@alt-point/active-models",
-  "version": "3.3.1",
+  "version": "3.5.0",
   "description": "Reactive DTO models with Proxy and more useful classes, decorators, Black-jack and hookers",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -71,7 +71,12 @@
   },
   "scripts": {
     "build": "tsup",
-    "build-dev": "tsup --watch"
+    "build-dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "homepage": "https://github.com/alt-point/active-models#readme",
   "author": {
@@ -92,9 +97,13 @@
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^26.1.1",
     "consola": "^3.2.3",
+    "mermaid": "^11.16.0",
     "rollup": "^4.16.4",
     "tslib": "^2.6.2",
     "tsup": "^8.5.1",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17",
+    "vitest": "^4.1.10"
   }
 }
