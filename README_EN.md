@@ -32,6 +32,7 @@ Purpose: Structure integrity and type checks for incoming data from external sou
 [Example using decorators](docs/active-model-with-decorators.md)
 
 Also:
+- [`@ActiveField()` options reference](docs/active-field-options_EN.md) — every option on its own: what it does, what it affects, with examples
 - [Advanced features](docs/active-model-advanced_EN.md) — validators, `on`/`once` hooks, the difference between `new Model()`/`create()`/`fill()`, serialization, `mapTo()`
 - [Node.js server example](docs/node-example_EN.md) — no Vue/Nuxt, plain `node:http`
 

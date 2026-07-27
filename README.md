@@ -34,6 +34,7 @@ npm install --save @alt-point/active-models
 [Пример](docs/active-model-with-decorators.md), иллюстрирующий применение
 
 Дополнительно:
+- [Справочник опций `@ActiveField()`](docs/active-field-options.md) — каждая опция по отдельности: что делает, на что влияет, с примерами
 - [Продвинутые возможности](docs/active-model-advanced.md) — валидаторы, хуки `on`/`once`, разница между `new Model()`/`create()`/`fill()`, сериализация, `mapTo()`
 - [Пример для Node.js-сервера](docs/node-example.md) — без Vue/Nuxt, на чистом `node:http`
 
