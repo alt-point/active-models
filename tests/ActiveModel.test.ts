@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ActiveModel, ActiveField } from '../src'
+import { ActiveModel, ActiveField, EventType } from '../src'
 
 describe('ActiveModel.create()', () => {
   it('fills provided data into fillable fields', () => {
@@ -243,5 +243,84 @@ describe('mapTo() / hasMapping()', () => {
   it('throws for an unmapped target when lazy=false', () => {
     const order = Order.create({ id: '1', total: 1 })
     expect(() => order.mapTo(Unmapped, false)).toThrow('Mapping for target not found')
+  })
+})
+
+describe('EventType.created', () => {
+  // created fires at the very end of create(), synchronously, before create()
+  // returns the instance - so a listener attached *after* the call can never
+  // catch it. beforeFill(model, data) runs during construction and receives
+  // the real (already-wrapped) instance, so it's the one hook early enough to
+  // attach a listener before the event fires later in the same create() call.
+
+  it('fires exactly once for a plain create()', () => {
+    let count = 0
+    class User extends ActiveModel {
+      @ActiveField() name: string = ''
+      static beforeFill (model: any) {
+        model.emitter.on(EventType.created, () => { count++ })
+      }
+    }
+    User.create({ name: 'Alice' })
+    expect(count).toBe(1)
+  })
+
+  it('does not fire for new Model(data) - construction is not actually complete when the base constructor returns', () => {
+    let fired = false
+    class User extends ActiveModel {
+      @ActiveField() name: string = ''
+      static beforeFill (model: any) {
+        model.emitter.on(EventType.created, () => { fired = true })
+      }
+    }
+    new User({ name: 'Alice' })
+    expect(fired).toBe(false)
+  })
+
+  it('bubbles up from nested factory models: child created fires before parent created', () => {
+    const order: string[] = []
+    class Child extends ActiveModel {
+      @ActiveField() label: string = ''
+      static beforeFill (model: any) {
+        model.emitter.on(EventType.created, () => { order.push('child') })
+      }
+    }
+    class Parent extends ActiveModel {
+      @ActiveField({ factory: Child }) child?: Child
+      static beforeFill (model: any) {
+        model.emitter.on(EventType.created, () => { order.push('parent') })
+      }
+    }
+
+    const parent = Parent.create({ child: { label: 'a' } })
+    expect(order).toEqual(['child', 'parent'])
+    expect(parent.child).toBeInstanceOf(Child)
+  })
+
+  it('fires once per instance for createFromCollection', () => {
+    let count = 0
+    class Item extends ActiveModel {
+      @ActiveField() v: number = 0
+      static beforeFill (model: any) {
+        model.emitter.on(EventType.created, () => { count++ })
+      }
+    }
+    Item.createFromCollection([{ v: 1 }, { v: 2 }, { v: 3 }])
+    expect(count).toBe(3)
+  })
+
+  it('does not re-fire when createLazy short-circuits on an existing instance', () => {
+    const order: string[] = []
+    class L extends ActiveModel {
+      @ActiveField() v: number = 0
+      static beforeFill (model: any) {
+        model.emitter.on(EventType.created, () => { order.push('created') })
+      }
+    }
+    const l1 = L.create({ v: 1 })
+    order.length = 0
+    const l2 = L.createLazy(l1)
+    expect(l2).toBe(l1)
+    expect(order).toEqual([])
   })
 })

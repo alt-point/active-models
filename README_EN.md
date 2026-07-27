@@ -31,12 +31,13 @@ Active model uses [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScr
 
 Purpose: Structure integrity and type checks for incoming data from external sources/subsystems ([DTO](https://en.wikipedia.org/wiki/Data_transfer_object))
 
-[Example using decorators](docs/active-model-with-decorators.md)
+[Example using decorators](docs/en/active-model-with-decorators.md)
 
 Also:
-- [`@ActiveField()` options reference](docs/active-field-options_EN.md) — every option on its own: what it does, what it affects, with examples
-- [Advanced features](docs/active-model-advanced_EN.md) — validators, `on`/`once` hooks, the difference between `new Model()`/`create()`/`fill()`, serialization, `mapTo()`
-- [Node.js server example](docs/node-example_EN.md) — no Vue/Nuxt, plain `node:http`
+- [`@ActiveField()` options reference](docs/en/active-field-options.md) — every option on its own: what it does, what it affects, with examples
+- [Model lifecycle](docs/en/model-lifecycle.md) — every event from creation to deletion, with a diagram
+- [Advanced features](docs/en/active-model-advanced.md) — validators, `on`/`once` hooks, the difference between `new Model()`/`create()`/`fill()`, serialization, `mapTo()`
+- [Node.js server example](docs/en/node-example.md) — no Vue/Nuxt, plain `node:http`
 
 
 Decorators
@@ -124,7 +125,7 @@ this.$notify('Alert!')
 > **Deprecated (`@deprecated`).** The `Enum` class is marked deprecated right in the source
 > (`src/Enum.ts`), though it's still exported from the package. For new models, prefer a native
 > TypeScript `enum` together with a `validator` on the field instead — that's the pattern used in the
-> [decorators example](docs/active-model-with-decorators_EN.md).
+> [decorators example](docs/en/active-model-with-decorators.md).
 
 An implementation of `enum` using `Map`
 

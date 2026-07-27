@@ -46,7 +46,7 @@ The field's default value. `value` is just an alias for `attribute` - there is n
 (`options.attribute || options.value`, whichever is set, is used).
 
 Applied via `Model.create(data)` (and `new Model(data)` - but see the warning in
-[active-model-advanced_EN.md](active-model-advanced_EN.md#new-model-data-vs-model-create-data-vs-fill-data))
+[active-model-advanced.md](active-model-advanced.md#new-model-data-vs-model-create-data-vs-fill-data))
 when the field is **absent** from the data passed in. If the field is present in the data, the data wins.
 
 ```ts
@@ -149,7 +149,7 @@ the `readonly` check - see ["Call order"](#call-order-when-a-value-is-set)):
 | Can a value come from `data` at creation (`create()`/`new Model()`)? | **Yes**, once | **Never** |
 | What happens on a repeated write attempt? | Silently ignored - no exception | Via `fill()`/`create()` - silently ignored; **direct assignment throws** |
 | The only guaranteed source of a value | `data` (if it arrives first) **or** the class-field initializer | **Only** the class-field initializer - `attribute`/`value` doesn't work either, see [`value`/`attribute`](#value-attribute) |
-| What if the field never got a value from either `data` or the initializer? | Stays open for one write later, via `.fill()` - see the example in [active-model-advanced_EN.md](active-model-advanced_EN.md#readonly) | Stays `undefined` forever - there's no way left to write it |
+| What if the field never got a value from either `data` or the initializer? | Stays open for one write later, via `.fill()` - see the example in [active-model-advanced.md](active-model-advanced.md#readonly) | Stays `undefined` forever - there's no way left to write it |
 | Typical use case | A field configured once at creation (e.g. an ID the caller may supply) that shouldn't change afterwards | A field that must never be determined from the outside at all - e.g. a value the model/server itself is responsible for computing |
 
 If you need **both** guarantees at once - a value that never comes from `data`, and a direct write after
@@ -169,7 +169,7 @@ task.id = 'HACKED' // throws
 ```
 
 For a full breakdown of why `readonly` silently ignores the write instead of throwing, and the complete
-mechanics, see [active-model-advanced_EN.md, the `readonly` section](active-model-advanced_EN.md#readonly).
+mechanics, see [active-model-advanced.md, the `readonly` section](active-model-advanced.md#readonly).
 
 ---
 
@@ -253,7 +253,7 @@ Product.create({ price: -1 })    // called - the value genuinely differs from 0
 
 So a validator can't guarantee "this field is required" - only "if this field changes, the new value must
 be valid." For required-ness, check the key is present in the input before calling `create()` (example:
-[node-example_EN.md](node-example_EN.md)).
+[node-example.md](node-example.md)).
 
 ---
 
@@ -377,7 +377,7 @@ class Order extends ActiveModel {
 A full breakdown of all four events (including `nulling`'s exact semantics - it only fires on a transition
 from non-null to `null`, not to `undefined`), the order relative to `validator`/`setter`, and the
 difference from instance-level `model.emitter.on(...)` subscriptions, is in
-[active-model-advanced_EN.md, the "`on` / `once` hooks" section](active-model-advanced_EN.md#on-once-hooks).
+[active-model-advanced.md, the "`on` / `once` hooks" section](active-model-advanced.md#on-once-hooks).
 
 ---
 

@@ -2,7 +2,7 @@
 ===
 
 This covers API features that aren't shown in the main worked example
-([active-model-with-decorators_EN.md](active-model-with-decorators_EN.md)): validators, lifecycle hooks,
+([active-model-with-decorators.md](active-model-with-decorators.md)): validators, lifecycle hooks,
 the difference between the ways to create a model, serialization, and mapping to other structures.
 
 ## Validators
@@ -41,7 +41,7 @@ only fires when the new value **differs** from the current one (compared with `O
 **not** fire if you explicitly pass a value that happens to equal the field's current value (e.g. its
 initializer default). So a validator can't catch a *missing* required field — only an *invalid* value
 **when the field is actually being changed**. For required-field checks, verify the key is present in
-the input before calling `create()` (see the example in [node-example_EN.md](node-example_EN.md)).
+the input before calling `create()` (see the example in [node-example.md](node-example.md)).
 
 ```ts
 class Task extends ActiveModel {
@@ -238,7 +238,7 @@ the common "readonly field + its own initializer" pattern would break the constr
 while `data` was being filled inside `super()`), and if that threw, construction itself would fail.
 
 **If you need client data to be completely unable to influence a field** — e.g. `id`/`createdAt` that
-must only ever come from the server (see [node-example_EN.md](node-example_EN.md)) — `readonly` alone
+must only ever come from the server (see [node-example.md](node-example.md)) — `readonly` alone
 isn't enough: since it accepts a value from `data` on the first attempt, an attacker can simply include
 that field in `data` and claim the one allowed write for themselves. For a genuinely server-only field,
 combine `readonly` with `fillable: false` — that combination behaves like plain `fillable: false` (always

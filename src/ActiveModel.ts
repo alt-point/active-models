@@ -560,6 +560,21 @@ export class ActiveModel {
         }
 
         unmarkSanitized(data as object)
+
+        // Fires exactly once, after this model - and, transitively, every nested
+        // model a `factory` field created along the way - is fully built. Nested
+        // factory fields are constructed synchronously inside fill() above via
+        // their own create() call, so their `created` has already fired by this
+        // point: children finish (and emit) before their parent does, with no
+        // extra propagation code needed - just the natural order of a
+        // synchronous call stack. Only create() (and createLazy/asyncCreate/
+        // createFromCollection/... - they all funnel through this method)
+        // emits it; new Model(data) cannot, because the subclass's own
+        // class-field initializers still run *after* the constructor returns
+        // (see the new-Model(data)-vs-create(data) note), so "fully created"
+        // isn't true yet at any point the constructor itself controls.
+        model.emitter.emit(EventType.created)
+
         return model as InstanceType<T>
       })
   }

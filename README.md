@@ -37,6 +37,7 @@ npm install --save @alt-point/active-models
 
 Дополнительно:
 - [Справочник опций `@ActiveField()`](docs/active-field-options.md) — каждая опция по отдельности: что делает, на что влияет, с примерами
+- [Жизненный цикл модели](docs/model-lifecycle.md) — все события от создания до удаления, с диаграммой
 - [Продвинутые возможности](docs/active-model-advanced.md) — валидаторы, хуки `on`/`once`, разница между `new Model()`/`create()`/`fill()`, сериализация, `mapTo()`
 - [Пример для Node.js-сервера](docs/node-example.md) — без Vue/Nuxt, на чистом `node:http`
 

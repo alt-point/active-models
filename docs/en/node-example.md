@@ -20,7 +20,7 @@ export class Task extends ActiveModel {
   // "claim" that one allowed write. For a genuinely server-only field we
   // also add fillable: false, so the only possible source of the value is
   // the class-field initializer below and data is fully ignored. Details in
-  // active-model-advanced_EN.md, the `readonly` section.
+  // active-model-advanced.md, the `readonly` section.
   @ActiveField({ readonly: true, fillable: false })
   id: string = randomUUID()
 
@@ -73,7 +73,7 @@ const server = createServer(async (req, res) => {
       const body = await readJsonBody(req)
       // Task's validator catches a WRONG type/value for title, but not a
       // missing key entirely (it isn't called for fields absent from the
-      // input — see active-model-advanced_EN.md for details). So we check
+      // input — see active-model-advanced.md for details). So we check
       // required-ness explicitly, before calling create().
       if (!body || typeof body.title !== 'string' || !body.title.trim()) {
         throw new TypeError('"title" is required and must be a non-empty string')
@@ -127,7 +127,7 @@ curl -X POST http://localhost:3000/tasks \
   guarantee the client can't spoof the identifier or creation date through the request body. `readonly`
   alone isn't enough here: it allows one value to be set from `data` at creation, and without
   `fillable: false` a client could claim that one write for itself. See
-  [active-model-advanced_EN.md](active-model-advanced_EN.md), the `readonly` section, for details.
+  [active-model-advanced.md](active-model-advanced.md), the `readonly` section, for details.
 - **A `validator` that throws on an invalid value** — but not on a missing key: the validator isn't
   called for fields that are simply absent from the input, so the "field is required" check is done
   explicitly, before `Task.create(body)` (details and why, in the same advanced doc). The model's
