@@ -81,6 +81,8 @@ bun add @alt-point/active-models
 - [Жизненный цикл модели](docs/model-lifecycle.md) — все события от создания до удаления, с диаграммой
 - [Продвинутые возможности](docs/active-model-advanced.md) — валидаторы, хуки `on`/`once`, разница между `new Model()`/`create()`/`fill()`, сериализация, `mapTo()`
 - [Пример для Node.js-сервера](docs/node-example.md) — без Vue/Nuxt, на чистом `node:http`
+- [Отслеживание изменений: isTouched()](docs/dirty-tracking.md) — dirty-tracking с примерами на Vue и React, сравнение с react-hook-form/Formik/MobX
+- [Трансформация моделей: mapTo()](docs/mapping.md) — маппинг в DTO/view-модели с примерами на Vue и React, сравнение с class-transformer/AutoMapper
 
 
 @Decorators

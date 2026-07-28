@@ -39,6 +39,13 @@ export default withMermaid(defineConfig({
               { text: 'Пример для Node.js-сервера', link: '/node-example' },
             ],
           },
+          {
+            text: 'Статьи',
+            items: [
+              { text: 'Отслеживание изменений: isTouched()', link: '/dirty-tracking' },
+              { text: 'Трансформация моделей: mapTo()', link: '/mapping' },
+            ],
+          },
         ],
         outline: {
           label: 'На этой странице',
@@ -71,6 +78,13 @@ export default withMermaid(defineConfig({
               { text: 'Model lifecycle', link: '/en/model-lifecycle' },
               { text: 'Advanced features', link: '/en/active-model-advanced' },
               { text: 'Node.js server example', link: '/en/node-example' },
+            ],
+          },
+          {
+            text: 'Articles',
+            items: [
+              { text: 'Change tracking: isTouched()', link: '/en/dirty-tracking' },
+              { text: 'Model mapping: mapTo()', link: '/en/mapping' },
             ],
           },
         ],

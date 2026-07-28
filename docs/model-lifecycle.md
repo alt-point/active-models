@@ -140,7 +140,8 @@ Payload: `{ target, prop }` (без `value`/`oldValue` — значения на
 `model.emitter.on(EventType.touched, cb)`). Используется внутри библиотеки, чтобы выставить приватный
 флаг "инстанс трогали" — но учтите: это **не** тот механизм, который стоит за публичным
 `model.isTouched()` (тот сравнивает текущее состояние со снимком, сохранённым через
-`opts.tracked: true`, — независимый механизм, см. [active-model-advanced.md](active-model-advanced.md#new-model-data-vs-model-create-data-vs-fill-data)).
+`opts.tracked: true`, — независимый механизм, подробно разобран в
+[Отслеживание изменений: isTouched() и startTracking()](/dirty-tracking)).
 
 ### `created`
 

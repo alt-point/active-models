@@ -140,7 +140,8 @@ available in `@ActiveField({ on: {...} })`; you can only subscribe at the instan
 `model.emitter.on(EventType.touched, cb)`). Used internally to flip a private "this instance has been
 touched" flag - but note this is **not** the mechanism behind the public `model.isTouched()` (that one
 compares current state against a snapshot saved via `opts.tracked: true` - a separate, independent
-mechanism, see [active-model-advanced.md](active-model-advanced.md#new-model-data-vs-model-create-data-vs-fill-data)).
+mechanism, covered in depth in
+[Change tracking: isTouched() and startTracking()](/en/dirty-tracking)).
 
 ### `created`
 

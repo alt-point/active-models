@@ -77,6 +77,8 @@ Also:
 - [Model lifecycle](docs/en/model-lifecycle.md) — every event from creation to deletion, with a diagram
 - [Advanced features](docs/en/active-model-advanced.md) — validators, `on`/`once` hooks, the difference between `new Model()`/`create()`/`fill()`, serialization, `mapTo()`
 - [Node.js server example](docs/en/node-example.md) — no Vue/Nuxt, plain `node:http`
+- [Change tracking: isTouched()](docs/en/dirty-tracking.md) — dirty tracking with Vue and React examples, compared to react-hook-form/Formik/MobX
+- [Model mapping: mapTo()](docs/en/mapping.md) — mapping to DTOs/view-models with Vue and React examples, compared to class-transformer/AutoMapper
 
 
 Decorators

@@ -315,3 +315,6 @@ class Unmapped {}
 order.mapTo(Unmapped) // no mapping registered → silently returns order.clone()
 order.mapTo(Unmapped, false) // throws: "Mapping for target not found"
 ```
+
+For multiple targets on the same model, Vue/React examples, and a comparison with
+`class-transformer`/AutoMapper: [Model mapping: mapTo() and hasMapping()](/en/mapping).
