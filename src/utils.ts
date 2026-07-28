@@ -104,15 +104,12 @@ export type StaticContainers =
   | '__activeFields__'
 export type BaseMethods =
   | 'clone'
-  | 'emit'
   | 'fill'
   | 'isTouched'
   | 'makeFreeze'
   | 'on'
   | 'once'
-  | 'startTracking'
   | 'toJSON'
-  | 'emitter'
   | 'hasMapping'
   | 'mapTo'
 export type ProtectedFields = StaticContainers | BaseMethods

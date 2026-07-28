@@ -1,4 +1,4 @@
-# Change tracking: `isTouched()` and `startTracking()`
+# Change tracking: `isTouched()`
 
 ## The problem
 
@@ -9,11 +9,12 @@ question: "does the object's current state differ from the one it was created wi
 
 Answering it by hand-comparing fields (`if (form.name !== initialName || form.email !== initialEmail...)`)
 doesn't scale — every new field is one more place you have to remember to add. `ActiveModel` solves this
-at the model level: `isTouched()` and `startTracking()`.
+at the model level, with a single method: `isTouched()`.
 
 ## Basic usage
 
-A snapshot of the "initial state" is saved at creation time when you pass `tracked: true`:
+A snapshot of the "initial state" is saved at creation time when you pass `tracked: true`. This is the
+only entry point — the snapshot can't be set or reset after the fact, only at creation:
 
 ```ts
 import { ActiveModel, ActiveField } from '@alt-point/active-models'
@@ -31,25 +32,19 @@ form.name = 'Alice Cooper'
 form.isTouched() // true
 ```
 
-If a model was already created without `tracked: true` (e.g. `new UserForm(data)`, where `create()`'s
-options aren't available), you can set the snapshot at any later point via `startTracking()` — the same
-mechanism, just triggered from application code instead of the factory:
+A model built via `new UserForm(data)` (instead of `UserForm.create(...)`) can never be tracked — the
+constructor takes no options argument, and there's no public method on `ActiveModel` to enable tracking
+after the fact: `isTouched()` on such a model always returns `undefined`. If you need dirty tracking,
+create the model through `create(data, { tracked: true })`.
 
-```ts
-const form = new UserForm({ name: 'Alice', email: 'alice@example.com' })
-form.startTracking() // pins the current state as the baseline
-
-form.email = 'alice@work.com'
-form.isTouched() // true
-```
-
-`startTracking()` is also how you reuse a model across saves: call it again after a successful save to
-clear the "dirty" state without recreating the model.
+To clear the "dirty" state after a successful save (e.g. the form was submitted, and further edits should
+be tracked fresh against the just-saved data), recreate the model — a new snapshot is captured
+automatically by every `create(..., { tracked: true })` call:
 
 ```ts
 async function save (form: UserForm) {
-  await api.updateUser(form.toJSON())
-  form.startTracking() // the just-saved state becomes the new baseline
+  const saved = await api.updateUser(form.toJSON())
+  return UserForm.create(saved, { tracked: true }) // a new snapshot, a new baseline
 }
 ```
 
@@ -78,10 +73,9 @@ if (form.isTouched() === undefined) {
 
 ## What's actually compared
 
-The snapshot is a deep copy of the whole model instance taken at `startTracking()`/
-`create(..., { tracked: true })`; the comparison is deep structural equality (`fast-deep-equal`) against
-the current state. Two practical consequences follow — both verified against the library's actual
-behavior:
+The snapshot is a deep copy of the whole model instance taken at `create(..., { tracked: true })`; the
+comparison is deep structural equality (`fast-deep-equal`) against the current state. Two practical
+consequences follow — both verified against the library's actual behavior:
 
 **Changes in nested `factory` models bubble up.** If a field was built via `factory`, the snapshot
 includes it too — there's no need to track the nested model separately:
@@ -123,7 +117,7 @@ genuinely shouldn't be serialized *or* compared (see the
 
 The library has two independently-named mechanisms with similar names, and it's easy to mix them up:
 
-- **The `touched` event** (`model.emitter.on(EventType.touched, cb)`) — fires **immediately**, on any
+- **The `touched` event** (`model.on(EventType.touched, cb)`) — fires **immediately**, on any
   real change to any active field, regardless of whether tracking is enabled. This is push-based: you find
   out about every change the moment it happens.
 - **`isTouched()`** — pull-based: answers "does the *current* state differ from the snapshot" whenever you
@@ -139,22 +133,30 @@ before a form submit, or when a tab closes).
 ## Using it in Vue
 
 Composition API: `isTouched()` is a plain method, not reactive on its own, so you wire up reactivity
-manually with a `ref` and the `touched` event as the recompute trigger:
+manually with a `ref` and the `touched` event as the recompute trigger. Since clearing the dirty state
+means recreating the model (see above), not mutating the existing one, `form` needs to be a reactive
+reference too — the composable resubscribes on every model swap via `watch(..., { immediate: true })`,
+unsubscribing from the previous one through `onCleanup`. Use `shallowRef`, not `ref`: `ref()` recursively
+wraps the object in Vue's own reactive `Proxy`, and `ActiveModel` is already a `Proxy` itself — nesting
+another one breaks the object identity the library's internals rely on (`Object.is` comparisons, `WeakMap`
+keys). `shallowRef` is only reactive to a full `.value` replacement and leaves what's inside untouched:
 
 ```ts
 // useDirty.ts
-import { ref, onUnmounted } from 'vue'
+import { watch, ref, type ShallowRef } from 'vue'
 import type { ActiveModel } from '@alt-point/active-models'
 import { EventType } from '@alt-point/active-models'
 
-export function useDirty (model: ActiveModel) {
-  const dirty = ref(model.isTouched() ?? false)
+export function useDirty (model: ShallowRef<ActiveModel>) {
+  const dirty = ref(model.value.isTouched() ?? false)
 
-  const unsubscribe = model.emitter.on(EventType.touched, () => {
-    dirty.value = model.isTouched() ?? false
-  })
-
-  onUnmounted(unsubscribe)
+  watch(model, (current, _previous, onCleanup) => {
+    dirty.value = current.isTouched() ?? false
+    const unsubscribe = current.on(EventType.touched, () => {
+      dirty.value = current.isTouched() ?? false
+    })
+    onCleanup(unsubscribe) // unsubscribes from the old model on the next swap and on unmount
+  }, { immediate: true })
 
   return dirty
 }
@@ -162,16 +164,17 @@ export function useDirty (model: ActiveModel) {
 
 ```vue
 <script setup lang="ts">
+import { shallowRef } from 'vue'
 import { UserForm } from './models/UserForm'
 import { useDirty } from './useDirty'
 
 const props = defineProps<{ initial: { name: string, email: string } }>()
-const form = UserForm.create(props.initial, { tracked: true })
+const form = shallowRef(UserForm.create(props.initial, { tracked: true }))
 const isDirty = useDirty(form)
 
 async function onSave () {
-  await save(form)
-  form.startTracking() // clear the dirty state after saving
+  const saved = await save(form.value)
+  form.value = UserForm.create(saved, { tracked: true }) // a new model, a new snapshot
 }
 </script>
 
@@ -182,8 +185,8 @@ async function onSave () {
 </template>
 ```
 
-`model.emitter.on(...)` returns an unsubscribe function — passing it straight into `onUnmounted` is safe,
-no listener leaks on unmount.
+`form` works normally in `<template>` despite being a `shallowRef` in `<script setup>` — Vue
+auto-unwraps top-level `ref`/`shallowRef` values in templates the same way either way.
 
 ## Using it in React
 
@@ -199,7 +202,7 @@ import { EventType } from '@alt-point/active-models'
 
 export function useDirty (model: ActiveModel) {
   const subscribe = useCallback(
-    (onStoreChange: () => void) => model.emitter.on(EventType.touched, onStoreChange),
+    (onStoreChange: () => void) => model.on(EventType.touched, onStoreChange),
     [model]
   )
   const getSnapshot = useCallback(() => model.isTouched() ?? false, [model])
@@ -209,12 +212,15 @@ export function useDirty (model: ActiveModel) {
 ```
 
 ```tsx
-function UserFormView ({ form }: { form: UserForm }) {
+import { useState } from 'react'
+
+function UserFormView ({ initial }: { initial: { name: string, email: string } }) {
+  const [form, setForm] = useState(() => UserForm.create(initial, { tracked: true }))
   const isDirty = useDirty(form)
 
   async function onSave () {
-    await save(form)
-    form.startTracking()
+    const saved = await save(form)
+    setForm(UserForm.create(saved, { tracked: true })) // a new model, a new snapshot
   }
 
   return (
@@ -227,13 +233,16 @@ function UserFormView ({ form }: { form: UserForm }) {
 ```
 
 Since `ActiveModel` doesn't keep its state in React state, a direct assignment (`form.name = ...`) doesn't
-trigger a re-render by itself — the `touched` event (via `useDirty`) is what reports it.
+trigger a re-render by itself — the `touched` event (via `useDirty`) is what reports it. `useDirty`
+recreates `subscribe`/`getSnapshot` whenever `form` changes (via `useCallback([model])`), so swapping the
+model with `setForm(...)` after a save automatically resubscribes the hook to the new instance — nothing
+extra to wire up.
 
 ## Comparison with other approaches
 
 | Approach | Where the state lives | Granularity | Setup cost |
 |---|---|---|---|
-| **`ActiveModel.isTouched()`** | on the model itself | whole instance (deep-equal) | built in, `tracked: true` or `startTracking()` |
+| **`ActiveModel.isTouched()`** | on the model itself | whole instance (deep-equal) | built in, `create(data, { tracked: true })` |
 | `react-hook-form` `formState.isDirty` | inside the form, tied to `register()`/`Controller` | per-field and aggregate | requires building the form through the library |
 | Formik `dirty` | `values` vs `initialValues` inside Formik's state | whole form state (deep-equal) | requires wrapping every field with Formik |
 | VeeValidate / Vuelidate | validator state | per-field | requires a separate validation/field schema |

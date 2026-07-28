@@ -169,7 +169,7 @@ describe('toJSON()', () => {
   })
 })
 
-describe('isTouched() / startTracking()', () => {
+describe('isTouched()', () => {
   it('is false immediately after a tracked create() and true after a real change', () => {
     class Counter extends ActiveModel {
       @ActiveField() value: number = 0
@@ -191,17 +191,18 @@ describe('isTouched() / startTracking()', () => {
     expect(counter.isTouched()).toBeUndefined()
   })
 
-  it('startTracking() establishes a new baseline', () => {
+  it('tracking is create()-time-only - there is no public API to reset the baseline in place, recreate instead', () => {
     class Counter extends ActiveModel {
       @ActiveField() value: number = 0
     }
 
-    const counter = Counter.create({ value: 1 })
+    let counter = Counter.create({ value: 1 }, { tracked: true })
     counter.value = 2
-    counter.startTracking()
-    expect(counter.isTouched()).toBe(false)
-    counter.value = 3
     expect(counter.isTouched()).toBe(true)
+    expect((counter as any).startTracking).toBeUndefined()
+
+    counter = Counter.create({ value: counter.value }, { tracked: true })
+    expect(counter.isTouched()).toBe(false)
   })
 })
 
@@ -258,7 +259,7 @@ describe('EventType.created', () => {
     class User extends ActiveModel {
       @ActiveField() name: string = ''
       static beforeFill (model: any) {
-        model.emitter.on(EventType.created, () => { count++ })
+        model.on(EventType.created, () => { count++ })
       }
     }
     User.create({ name: 'Alice' })
@@ -276,7 +277,7 @@ describe('EventType.created', () => {
     class User extends ActiveModel {
       @ActiveField() name: string = ''
       static beforeFill (model: any) {
-        model.emitter.on(EventType.created, () => { fired = true })
+        model.on(EventType.created, () => { fired = true })
       }
     }
     new User({ name: 'Alice' })
@@ -290,7 +291,7 @@ describe('EventType.created', () => {
     class Clobbered extends ActiveModel {
       @ActiveField() name: string = 'DEFAULT'
       static beforeFill (model: any) {
-        model.emitter.on(EventType.created, () => { nameAtCreated = model.name })
+        model.on(EventType.created, () => { nameAtCreated = model.name })
       }
     }
     const clobbered = new Clobbered({ name: 'Alice' })
@@ -307,7 +308,7 @@ describe('EventType.created', () => {
         if (data) this.fill(data)
       }
       static beforeFill (model: any) {
-        model.emitter.on(EventType.created, () => { nameAtCreated2 = model.name })
+        model.on(EventType.created, () => { nameAtCreated2 = model.name })
       }
     }
     const notClobbered = new NotClobbered({ name: 'Alice' })
@@ -321,13 +322,13 @@ describe('EventType.created', () => {
     class Child extends ActiveModel {
       @ActiveField() label: string = ''
       static beforeFill (model: any) {
-        model.emitter.on(EventType.created, () => { order.push('child') })
+        model.on(EventType.created, () => { order.push('child') })
       }
     }
     class Parent extends ActiveModel {
       @ActiveField({ factory: Child }) child?: Child
       static beforeFill (model: any) {
-        model.emitter.on(EventType.created, () => { order.push('parent') })
+        model.on(EventType.created, () => { order.push('parent') })
       }
     }
 
@@ -345,13 +346,13 @@ describe('EventType.created', () => {
     class Child extends ActiveModel {
       @ActiveField() label: string = ''
       static beforeFill (model: any) {
-        model.emitter.on(EventType.created, () => { order.push('child') })
+        model.on(EventType.created, () => { order.push('child') })
       }
     }
     class Parent extends ActiveModel {
       @ActiveField({ factory: Child }) child?: Child
       static beforeFill (model: any) {
-        model.emitter.on(EventType.created, () => { order.push('parent') })
+        model.on(EventType.created, () => { order.push('parent') })
       }
     }
 
@@ -365,7 +366,7 @@ describe('EventType.created', () => {
     class Item extends ActiveModel {
       @ActiveField() v: number = 0
       static beforeFill (model: any) {
-        model.emitter.on(EventType.created, () => { count++ })
+        model.on(EventType.created, () => { count++ })
       }
     }
     Item.createFromCollection([{ v: 1 }, { v: 2 }, { v: 3 }])
@@ -377,7 +378,7 @@ describe('EventType.created', () => {
     class L extends ActiveModel {
       @ActiveField() v: number = 0
       static beforeFill (model: any) {
-        model.emitter.on(EventType.created, () => { order.push('created') })
+        model.on(EventType.created, () => { order.push('created') })
       }
     }
     const l1 = L.create({ v: 1 })

@@ -346,7 +346,7 @@ describe('on / once hooks', () => {
     expect(count).toBe(1)
   })
 
-  it('instance-level emitter.on() fires for any active field, unfiltered by prop', () => {
+  it('instance-level on() fires for any active field, unfiltered by prop', () => {
     class Order extends ActiveModel {
       @ActiveField() a: string = ''
       @ActiveField() b: string = ''
@@ -354,37 +354,78 @@ describe('on / once hooks', () => {
 
     const order = Order.create({})
     const seen: string[] = []
-    order.emitter.on(EventType.afterSetValue, (payload: any) => { seen.push(payload.prop) })
+    order.on(EventType.afterSetValue, (payload: any) => { seen.push(payload.prop) })
 
     order.a = '1'
     order.b = '2'
     expect(seen).toEqual(['a', 'b'])
   })
 
-  it('instance-level emitter.on() unsubscribes via its returned function', () => {
+  it('instance-level on() unsubscribes via its returned function', () => {
     class Order extends ActiveModel {
       @ActiveField() a: string = ''
     }
 
     const order = Order.create({})
     let count = 0
-    const off = order.emitter.on(EventType.afterSetValue, () => { count++ })
+    const off = order.on(EventType.afterSetValue, () => { count++ })
     order.a = '1'
     off()
     order.a = '2'
     expect(count).toBe(1)
   })
 
-  it('instance-level emitter.once() fires exactly once', () => {
+  it('instance-level once() fires exactly once', () => {
     class Order extends ActiveModel {
       @ActiveField() a: string = ''
     }
 
     const order = Order.create({})
     let count = 0
-    order.emitter.once(EventType.afterSetValue, () => { count++ })
+    order.once(EventType.afterSetValue, () => { count++ })
     order.a = '1'
     order.a = '2'
     expect(count).toBe(1)
+  })
+
+  it('class-level static on() fires for every instance of the class, not just one', () => {
+    class Order extends ActiveModel {
+      @ActiveField() a: string = ''
+    }
+
+    const seen: string[] = []
+    Order.on(EventType.afterSetValue, (payload: any) => { seen.push(payload.value) })
+
+    const first = Order.create({})
+    const second = Order.create({})
+    first.a = 'x'
+    second.a = 'y'
+
+    expect(seen).toEqual(['x', 'y'])
+  })
+
+  it('class-level static once() fires exactly once, for whichever instance triggers it first', () => {
+    class Order extends ActiveModel {
+      @ActiveField() a: string = ''
+    }
+
+    let count = 0
+    Order.once(EventType.afterSetValue, () => { count++ })
+
+    const first = Order.create({})
+    const second = Order.create({})
+    first.a = 'x'
+    second.a = 'y'
+
+    expect(count).toBe(1)
+  })
+
+  it('emitter is not part of the public API', () => {
+    class Order extends ActiveModel {
+      @ActiveField() a: string = ''
+    }
+    const order = Order.create({})
+    expect((order as any).emitter).toBeUndefined()
+    expect((Order as any).emitter).toBeUndefined()
   })
 })

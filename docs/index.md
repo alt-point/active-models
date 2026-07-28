@@ -129,7 +129,8 @@ order.status = 'not-a-real-status' // выбросит Error: Invalid status: no
 Как узнать, что конкретное поле модели изменилось, было обнулено или удалено, — не оборачивая каждое
 присваивание в собственный код? События `beforeSetValue`, `afterSetValue`, `nulling`,
 `beforeDeletingAttribute` подписываются прямо в декораторе через `on`/`once`, а `touched`/`created` — на
-уровне всего инстанса через `model.emitter`:
+уровне всего инстанса через `model.on`/`model.once`, или на уровне класса — сразу для всех его инстансов —
+через `Model.on`/`Model.once`:
 
 ```ts
 import { EventType } from '@alt-point/active-models'
@@ -146,8 +147,8 @@ class Invoice extends ActiveModel {
   total: number | null = 0
 
   static beforeFill (model: any) {
-    model.emitter.on(EventType.created, () => console.log('invoice fully built'))
-    model.emitter.on(EventType.touched, () => console.log('invoice changed'))
+    model.on(EventType.created, () => console.log('invoice fully built'))
+    model.on(EventType.touched, () => console.log('invoice changed'))
   }
 }
 

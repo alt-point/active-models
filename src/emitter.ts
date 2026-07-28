@@ -103,10 +103,22 @@ export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
     })()
   }
 
+  /**
+   * Emit an event, synchronously invoking every listener registered for it
+   * @param eventName
+   * @param payload
+   */
+  const emit = (eventName: EventType, payload?: unknown) => {
+    for (const cb of getListeners(eventName)) {
+      cb(payload)
+    }
+  }
+
   return {
     addListener,
     getListeners,
     removeListener,
+    emit,
   }
 }
 

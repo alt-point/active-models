@@ -67,23 +67,49 @@ export class ActiveModel {
   [isTouched]: boolean = false
 
   /**
-   *
+   * Subscribe to a lifecycle/field event on this instance. Implemented as a
+   * getter (not a plain method) so that accessing it through the proxy - via
+   * `Ctor.getter()`'s `Reflect.get(target, prop, target)` below - resolves
+   * `this` to the raw target. That keeps the returned closure's `addListener`
+   * keyed by the same raw object the `set`/`deleteProperty` traps use to
+   * `emit()` (see the internal-only `useEmitter()` calls throughout this
+   * file) - a plain prototype method would instead bind `this` to the proxy
+   * at call time (`model.on(...)` calls with `this === model`), which is a
+   * *different* WeakMap key and would silently never see trap-emitted events.
    */
-  get emitter () {
-    const { getListeners, addListener } = useEmitter(this)
-    return {
-      emit (event: EventType, payload?: unknown) {
-        for (const cb of getListeners(event)) {
-          cb(payload)
-        }
-      },
-      on (event: EventType, cb: ActiveModelHookListener) {
-        return addListener(event, cb)
-      },
-      once (event: EventType, cb: ActiveModelHookListener) {
-        return addListener(event, cb, true)
-      },
-    }
+  get on () {
+    const { addListener } = useEmitter(this)
+    return (event: EventType, cb: ActiveModelHookListener) => addListener(event, cb)
+  }
+
+  /**
+   * Same as `on`, but the listener is removed after firing once.
+   * @see on
+   */
+  get once () {
+    const { addListener } = useEmitter(this)
+    return (event: EventType, cb: ActiveModelHookListener) => addListener(event, cb, true)
+  }
+
+  /**
+   * Subscribe to a lifecycle/field event for *every* instance of this class
+   * (including subclasses' instances), not just one. Registered against the
+   * constructor itself, which `useEmitter()`'s `getListeners()` merges in as
+   * "inherited" listeners for any instance of this class - the same
+   * mechanism `@ActiveField({ on: {...} })` already uses internally.
+   */
+  static on (event: EventType, cb: ActiveModelHookListener) {
+    const { addListener } = useEmitter(this)
+    return addListener(event, cb)
+  }
+
+  /**
+   * Same as `on`, but the listener is removed after firing once.
+   * @see on
+   */
+  static once (event: EventType, cb: ActiveModelHookListener) {
+    const { addListener } = useEmitter(this)
+    return addListener(event, cb, true)
   }
 
   protected static defineStaticProperty (
@@ -195,11 +221,11 @@ export class ActiveModel {
     return (
       resolvedGetter?.(target, prop as string, receiver) ??
       // Bind the receiver to `target` (not the proxy) so that accessing
-      // built-in getters (e.g. `emitter`) through the proxy resolves `this`
+      // built-in getters (e.g. `on`/`once`) through the proxy resolves `this`
       // to the same raw instance the internal set/delete traps use to emit
-      // events. Otherwise `model.emitter.on(...)` registers against the proxy
-      // while `target.emitter.emit(...)` inside the traps fires against the
-      // raw target, and the listener never sees the event.
+      // events (via the internal-only `useEmitter(target)`). Otherwise
+      // `model.on(...)` would register against the proxy while trap code
+      // emits against the raw target, and the listener would never see it.
       Reflect.get(target, prop, target)
     )
   }
@@ -572,8 +598,12 @@ export class ActiveModel {
         // version below) because by this point every class-field initializer
         // already ran: create() builds the raw instance with `new this()`
         // *before* wrapping it (see sealNonFillable above), so those
-        // initializers ran unintercepted, ahead of fill().
-        model.emitter.emit(EventType.created)
+        // initializers ran unintercepted, ahead of fill(). Emitted keyed by
+        // `raw` (not `model`/the proxy) - the same raw-target key every
+        // `on()`/`once()` subscription and every trap-emitted event uses; see
+        // the comment on `Ctor.getter()` above for why that distinction
+        // matters.
+        useEmitter(raw).emit(EventType.created)
 
         return model as InstanceType<T>
       })
@@ -795,7 +825,7 @@ export class ActiveModel {
         const isEqual = Object.is(oldValue, value)
         if (!isEqual && isNotCreating()) {
           target[isTouched] = true
-          target.emitter.emit(EventType.touched)
+          useEmitter(target).emit(EventType.touched)
         }
 
         if (isEqual || !isActiveField) {
@@ -805,7 +835,7 @@ export class ActiveModel {
 
         const defineListenerTouchValue = (value: unknown) => {
           if (value instanceof ActiveModel) {
-            value.emitter.on(EventType.touched, () => {
+            value.on(EventType.touched, () => {
               target[isTouched] = true
             })
           }
@@ -852,7 +882,7 @@ export class ActiveModel {
 
         Ctor.resolveValidator(prop)?.(target, prop as string, value)
 
-        target.emitter.emit(EventType.beforeSetValue, {
+        useEmitter(target).emit(EventType.beforeSetValue, {
           target,
           prop,
           value,
@@ -862,7 +892,7 @@ export class ActiveModel {
         const result =
           Ctor.resolveSetter(prop)?.(target, prop as string, value, receiver) ??
           Reflect.set(target, prop, value, receiver)
-        target.emitter.emit(EventType.afterSetValue, {
+        useEmitter(target).emit(EventType.afterSetValue, {
           target,
           prop,
           value,
@@ -871,7 +901,7 @@ export class ActiveModel {
 
         // nullabling definition
         if (!isNull(oldValue) && isNull(value)) {
-          target.emitter.emit(EventType.nulling, {
+          useEmitter(target).emit(EventType.nulling, {
             target,
             prop,
             value,
@@ -892,7 +922,7 @@ export class ActiveModel {
           throw new TypeError(`Property "${prop as string}" is protected!`)
         }
 
-        target.emitter.emit(EventType.beforeDeletingAttribute, { target, prop })
+        useEmitter(target).emit(EventType.beforeDeletingAttribute, { target, prop })
 
         return Reflect.deleteProperty(target, prop)
       },
@@ -915,14 +945,6 @@ export class ActiveModel {
   isTouched () {
     const { isTouched } = useMeta(this)
     return isTouched()
-  }
-
-  /**
-   * Starting tracking changes data in current instance
-   */
-  startTracking () {
-    const { saveInitialState } = useMeta(this)
-    saveInitialState(this)
   }
 
   constructor (data: ActiveModelSource = {}) {
@@ -955,7 +977,11 @@ export class ActiveModel {
     // firing synchronously here would be honest about "fill() is done" but
     // not about "this model is fully built".
     queueMicrotask(() => {
-      filled.emitter.emit(EventType.created)
+      // Keyed by the constructor's own raw `this`, not `filled`/the proxy -
+      // see the comment on `Ctor.getter()` for why the two are different
+      // WeakMap keys and only the raw one matches what `on()`/`once()` and
+      // the traps use.
+      useEmitter(this).emit(EventType.created)
     })
 
     return filled

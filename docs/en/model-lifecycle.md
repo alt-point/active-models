@@ -136,12 +136,13 @@ to fire - so this hook can't meaningfully be used on a protected field. Payload:
 
 Fires on **any** real change to **any** active field on the instance (not something you subscribe to
 per-field via the decorator - `touched` is deliberately excluded from `PropEvent`, the set of events
-available in `@ActiveField({ on: {...} })`; you can only subscribe at the instance level:
-`model.emitter.on(EventType.touched, cb)`). Used internally to flip a private "this instance has been
+available in `@ActiveField({ on: {...} })`; you can subscribe at the instance level
+(`model.on(EventType.touched, cb)`) or at the class level, for every instance of it at once
+(`Model.on(EventType.touched, cb)`)). Used internally to flip a private "this instance has been
 touched" flag - but note this is **not** the mechanism behind the public `model.isTouched()` (that one
 compares current state against a snapshot saved via `opts.tracked: true` - a separate, independent
 mechanism, covered in depth in
-[Change tracking: isTouched() and startTracking()](/en/dirty-tracking)).
+[Change tracking: isTouched()](/en/dirty-tracking)).
 
 ### `created`
 
@@ -149,9 +150,10 @@ Fires **once**, at the very end of `Model.create(data)` (and its variants - `cre
 `asyncCreateLazy`, `createFromCollection`, `createFromCollectionLazy`, `asyncCreateFromCollection*` - they
 all eventually call `create()` internally) - after `fill()`, after the `isTouched()` snapshot (if
 `opts.tracked`), right before the instance is returned to the caller. No payload - subscribe at the
-instance level only: `model.emitter.on(EventType.created, cb)` (like `touched`, `created` is deliberately
-excluded from `PropEvent`, the set of events available in `@ActiveField({ on: {...} })` - it's an
-instance-level event, not a per-field one).
+instance level (`model.on(EventType.created, cb)`) or at the class level, for every instance of it at once
+(`Model.on(EventType.created, cb)`, see [`on` / `once` hooks](active-model-advanced.md#on-once-hooks)); like
+`touched`, `created` is deliberately excluded from `PropEvent`, the set of events available in
+`@ActiveField({ on: {...} })` - it's an instance-level event, not a per-field one.
 
 **Bubbles up from nested models.** If a field is declared with `factory`, the nested model is built via
 its own `Model.createLazy(value)` call **inside** the parent's `fill()` - i.e. synchronously, before the
@@ -163,13 +165,13 @@ is guaranteed to fire before the outer one, purely from execution order:
 class Child extends ActiveModel {
   @ActiveField() label: string = ''
   static beforeFill (model: any) {
-    model.emitter.on(EventType.created, () => console.log('child created'))
+    model.on(EventType.created, () => console.log('child created'))
   }
 }
 class Parent extends ActiveModel {
   @ActiveField({ factory: Child }) child?: Child
   static beforeFill (model: any) {
-    model.emitter.on(EventType.created, () => console.log('parent created'))
+    model.on(EventType.created, () => console.log('parent created'))
   }
 }
 
@@ -194,7 +196,7 @@ microtask tick, so that's exactly where the emission is deferred to for this pat
 class User extends ActiveModel {
   @ActiveField() name: string = 'DEFAULT'
   static beforeFill (model: any) {
-    model.emitter.on(EventType.created, () => console.log('created, name =', model.name))
+    model.on(EventType.created, () => console.log('created, name =', model.name))
   }
 }
 

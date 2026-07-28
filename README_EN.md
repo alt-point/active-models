@@ -41,7 +41,7 @@ any depth.
 How do you find out that a specific field changed, was nulled out, or was deleted — without wrapping every
 assignment in your own code? The `beforeSetValue`, `afterSetValue`, `nulling`, and `beforeDeletingAttribute`
 events (via `on`/`once` in the decorator), plus the instance-level `touched`/`created` events
-(`model.emitter.on(...)`), give you a single place for side effects: logging, syncing to the UI, cache
+(`model.on(...)`), give you a single place for side effects: logging, syncing to the UI, cache
 invalidation, and so on.
 
 Installation

@@ -62,14 +62,19 @@ Task.create({ title: 123 as any }) // throws — the value genuinely differs fro
 
 ## `on` / `once` hooks
 
-There are two independent levels of subscribing to field events (`beforeSetValue`, `afterSetValue`,
-`beforeDeletingAttribute`, `nulling`):
+`emitter` is not part of the public API — there is no `model.emitter` property. Subscribing goes directly
+through `on`/`once`, available in three independent variants:
 
 1. **Via the decorator** `@ActiveField({ on: {...} })` (or `once`) — registered once when the class is
    defined, shared across **all** instances of that class. Fires only for the property the decorator
    was applied to.
-2. **Via `model.emitter.on(...)` / `.once(...)`** — registered on a specific instance. Fires for
+2. **Via `model.on(...)` / `.once(...)`** (instance method) — registered on a specific instance. Fires for
    **any** active field on that instance — filter by property name yourself via `payload.prop` if needed.
+3. **Via `Model.on(...)` / `.once(...)`** (static method on the class) — registered once on the class and
+   applied to **every** instance, including ones created later. This is the only way to subscribe to
+   `touched`/`created` for every instance of a class at once rather than one specific instance — those two
+   instance-level events can't be declared via `@ActiveField({ on: {...} })`
+   (see [Model lifecycle](/en/model-lifecycle)).
 
 ```ts
 import { ActiveModel, ActiveField, EventType } from '@alt-point/active-models'
@@ -109,7 +114,7 @@ try {
 Instance-level subscription, for comparison:
 
 ```ts
-const off = order.emitter.on(EventType.afterSetValue, ({ prop, value }: any) => {
+const off = order.on(EventType.afterSetValue, ({ prop, value }: any) => {
   console.log(`instance listener: [${prop}] → ${value}`)
 })
 
@@ -117,11 +122,49 @@ order.status = 'shipped' // both the decorator hook and the listener above fire
 
 off() // unsubscribe
 
-const unsubscribeOnce = order.emitter.once(EventType.afterSetValue, () => {
+const unsubscribeOnce = order.once(EventType.afterSetValue, () => {
   console.log('fires only once')
 })
 order.status = 'delivered' // fires
 order.status = 'cancelled' // no longer fires
+```
+
+Class-level subscription — e.g. to centrally log `status` changes across **every** order, regardless of
+where or when a given `Order` was created. `beforeSetValue`/`afterSetValue` carry a payload with `target`,
+so the handler can identify exactly which instance changed:
+
+```ts
+class Order extends ActiveModel {
+  @ActiveField() id: string = ''
+  @ActiveField() status: string = 'new'
+}
+
+// Registered once - e.g. at application init time, before any Order exists yet
+Order.on(EventType.afterSetValue, ({ target, prop, value }: any) => {
+  if (prop === 'status') {
+    console.log(`order ${target.id}: status → ${value}`)
+  }
+})
+
+const first = Order.create({ id: '1' })
+const second = Order.create({ id: '2' })
+
+first.status = 'paid'     // "order 1: status → paid"
+second.status = 'shipped' // "order 2: status → shipped" — one subscription, whole class
+```
+
+The same technique works for `created`/`touched`, which have no decorator-based option 1 — this is the
+only way to find out about every instance's creation/change without overriding `beforeFill` at every call
+site that might need it. Note: unlike `afterSetValue`, `created`/`touched` carry **no payload**
+(see [Model lifecycle](/en/model-lifecycle)) — the handler learns that *some* instance was
+created/changed, not which one:
+
+```ts
+let createdCount = 0
+Order.on(EventType.created, () => { createdCount++ })
+
+Order.create({ id: '3' }) // createdCount → 1, regardless of create()/new
+new Order({ id: '4' })    // createdCount → 2 (asynchronously, see the lifecycle page)
 ```
 
 ## `new Model(data)` vs `Model.create(data)` vs `.fill(data)`

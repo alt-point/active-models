@@ -128,7 +128,8 @@ More: [Advanced features](/en/active-model-advanced) — validators and `factory
 How do you find out that a specific field changed, was nulled out, or was deleted — without wrapping every
 assignment in your own code? The `beforeSetValue`, `afterSetValue`, `nulling`, and `beforeDeletingAttribute`
 events are subscribed to right in the decorator via `on`/`once`, while `touched`/`created` are
-instance-level events available through `model.emitter`:
+instance-level events available through `model.on`/`model.once` — or class-level, for every instance at
+once, through `Model.on`/`Model.once`:
 
 ```ts
 import { EventType } from '@alt-point/active-models'
@@ -145,8 +146,8 @@ class Invoice extends ActiveModel {
   total: number | null = 0
 
   static beforeFill (model: any) {
-    model.emitter.on(EventType.created, () => console.log('invoice fully built'))
-    model.emitter.on(EventType.touched, () => console.log('invoice changed'))
+    model.on(EventType.created, () => console.log('invoice fully built'))
+    model.on(EventType.touched, () => console.log('invoice changed'))
   }
 }
 

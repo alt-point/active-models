@@ -376,7 +376,8 @@ class Order extends ActiveModel {
 
 A full breakdown of all four events (including `nulling`'s exact semantics - it only fires on a transition
 from non-null to `null`, not to `undefined`), the order relative to `validator`/`setter`, and the
-difference from instance-level `model.emitter.on(...)` subscriptions, is in
+difference from instance-level (`model.on(...)`) and class-level (`Model.on(...)`, for every instance at
+once) subscriptions, is in
 [active-model-advanced.md, the "`on` / `once` hooks" section](active-model-advanced.md#on-once-hooks).
 
 ---

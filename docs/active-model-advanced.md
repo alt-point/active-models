@@ -63,15 +63,20 @@ Task.create({ title: 123 as any }) // бросает — значение реа
 
 ## Хуки `on` / `once`
 
-Есть два независимых уровня подписки на события полей (`beforeSetValue`, `afterSetValue`,
-`beforeDeletingAttribute`, `nulling`):
+`emitter` не является публичным API — у модели нет свойства `model.emitter`. Подписка идёт напрямую через
+`on`/`once`, доступные в трёх независимых вариантах:
 
 1. **Через декоратор** `@ActiveField({ on: {...} })` (или `once`) — регистрируется один раз при определении
    класса и общий для **всех** инстансов этого класса. Срабатывает только для того свойства, к которому
    применён декоратор.
-2. **Через `model.emitter.on(...)` / `.once(...)`** — регистрируется на конкретном инстансе. Срабатывает
-   для **любого** активного поля этого инстанса — фильтрацию по имени свойства нужно делать в колбэке
-   самостоятельно через `payload.prop`.
+2. **Через `model.on(...)` / `.once(...)`** (инстансный метод) — регистрируется на конкретном инстансе.
+   Срабатывает для **любого** активного поля этого инстанса — фильтрацию по имени свойства нужно делать
+   в колбэке самостоятельно через `payload.prop`.
+3. **Через `Model.on(...)` / `.once(...)`** (статический метод класса) — регистрируется один раз на
+   классе и применяется сразу ко **всем** его инстансам, включая те, что будут созданы позже. Это
+   единственный способ подписаться на `touched`/`created` сразу для всех инстансов класса, а не для
+   одного конкретно — эти два события уровня инстанса нельзя объявить через `@ActiveField({ on: {...} })`
+   (см. [Жизненный цикл модели](/model-lifecycle)).
 
 ```ts
 import { ActiveModel, ActiveField, EventType } from '@alt-point/active-models'
@@ -111,7 +116,7 @@ try {
 Подписка на уровне инстанса, для сравнения:
 
 ```ts
-const off = order.emitter.on(EventType.afterSetValue, ({ prop, value }: any) => {
+const off = order.on(EventType.afterSetValue, ({ prop, value }: any) => {
   console.log(`инстанс-обработчик: [${prop}] → ${value}`)
 })
 
@@ -119,11 +124,51 @@ order.status = 'shipped' // сработают и декораторный ху�
 
 off() // отписались
 
-const unsubscribeOnce = order.emitter.once(EventType.afterSetValue, () => {
+const unsubscribeOnce = order.once(EventType.afterSetValue, () => {
   console.log('сработает только один раз')
 })
 order.status = 'delivered' // сработает
 order.status = 'cancelled' // уже не сработает
+```
+
+Подписка на уровне класса — например, чтобы централизованно логировать изменения `status` во **всех**
+заказах, независимо от того, где и когда конкретный `Order` был создан. У `beforeSetValue`/`afterSetValue`
+есть payload с `target` — значит внутри обработчика доступен именно тот инстанс, на котором произошло
+изменение:
+
+```ts
+class Order extends ActiveModel {
+  @ActiveField() id: string = ''
+  @ActiveField() status: string = 'new'
+}
+
+// Регистрируется один раз — например, в точке инициализации приложения,
+// до создания хотя бы одного Order
+Order.on(EventType.afterSetValue, ({ target, prop, value }: any) => {
+  if (prop === 'status') {
+    console.log(`order ${target.id}: status → ${value}`)
+  }
+})
+
+const first = Order.create({ id: '1' })
+const second = Order.create({ id: '2' })
+
+first.status = 'paid'     // "order 1: status → paid"
+second.status = 'shipped' // "order 2: status → shipped" — подписка одна на весь класс
+```
+
+Тот же приём работает для `created`/`touched`, для которых нет варианта 1 (декоратора) — это единственный
+способ узнавать о создании/изменении **каждого** инстанса класса, не переопределяя `beforeFill` в каждом
+месте, где может понадобиться такая подписка. Учтите: в отличие от `afterSetValue`, у `created`/`touched`
+**нет payload** (см. [Жизненный цикл модели](/model-lifecycle)) — обработчик узнаёт, что *какой-то*
+инстанс создан/изменён, но не какой именно:
+
+```ts
+let createdCount = 0
+Order.on(EventType.created, () => { createdCount++ })
+
+Order.create({ id: '3' }) // createdCount → 1, независимо от create()/new
+new Order({ id: '4' })    // createdCount → 2 (асинхронно, см. страницу жизненного цикла)
 ```
 
 ## `new Model(data)` vs `Model.create(data)` vs `.fill(data)`

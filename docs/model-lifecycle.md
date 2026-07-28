@@ -136,22 +136,24 @@ Payload: `{ target, prop }` (без `value`/`oldValue` — значения на
 
 Эмитится при **любом** реальном изменении **любого** активного поля инстанса (не поштучно
 подписываемое через декоратор — `touched` намеренно исключён из `PropEvent`, набора событий, доступных
-в `@ActiveField({ on: {...} })`; подписаться можно только на уровне инстанса:
-`model.emitter.on(EventType.touched, cb)`). Используется внутри библиотеки, чтобы выставить приватный
+в `@ActiveField({ on: {...} })`; подписаться можно на уровне инстанса (`model.on(EventType.touched, cb)`)
+или на уровне класса, сразу для всех его инстансов (`Model.on(EventType.touched, cb)`)). Используется
+внутри библиотеки, чтобы выставить приватный
 флаг "инстанс трогали" — но учтите: это **не** тот механизм, который стоит за публичным
 `model.isTouched()` (тот сравнивает текущее состояние со снимком, сохранённым через
 `opts.tracked: true`, — независимый механизм, подробно разобран в
-[Отслеживание изменений: isTouched() и startTracking()](/dirty-tracking)).
+[Отслеживание изменений: isTouched()](/dirty-tracking)).
 
 ### `created`
 
 Эмитится **один раз**, в самом конце `Model.create(data)` (и его вариантов — `createLazy`, `asyncCreate`,
 `asyncCreateLazy`, `createFromCollection`, `createFromCollectionLazy`, `asyncCreateFromCollection*` —
 все они в итоге вызывают `create()` внутри) — после `fill()`, после снимка для `isTouched()` (если
-`opts.tracked`), непосредственно перед возвратом инстанса вызывающему коду. Без payload — подписка
-только на уровне инстанса: `model.emitter.on(EventType.created, cb)` (как и `touched`, `created`
-намеренно исключён из `PropEvent`, набора событий, доступных в `@ActiveField({ on: {...} })` — это
-событие уровня всего инстанса, а не конкретного поля).
+`opts.tracked`), непосредственно перед возвратом инстанса вызывающему коду. Без payload — подписка на
+уровне инстанса (`model.on(EventType.created, cb)`) или на уровне класса, сразу для всех его инстансов
+(`Model.on(EventType.created, cb)`, см. [Хуки `on` / `once`](active-model-advanced.md#хуки-on-once)); как и
+`touched`, `created` намеренно исключён из `PropEvent`, набора событий, доступных в
+`@ActiveField({ on: {...} })` — это событие уровня всего инстанса, а не конкретного поля.
 
 **"Всплывает" из вложенных моделей.** Если поле объявлено с `factory`, вложенная модель создаётся
 через собственный `Model.createLazy(value)` **внутри** `fill()` родителя — то есть синхронно, до того,
@@ -164,13 +166,13 @@ Payload: `{ target, prop }` (без `value`/`oldValue` — значения на
 class Child extends ActiveModel {
   @ActiveField() label: string = ''
   static beforeFill (model: any) {
-    model.emitter.on(EventType.created, () => console.log('child created'))
+    model.on(EventType.created, () => console.log('child created'))
   }
 }
 class Parent extends ActiveModel {
   @ActiveField({ factory: Child }) child?: Child
   static beforeFill (model: any) {
-    model.emitter.on(EventType.created, () => console.log('parent created'))
+    model.on(EventType.created, () => console.log('parent created'))
   }
 }
 
@@ -195,7 +197,7 @@ Parent.create({ child: { label: 'a' } })
 class User extends ActiveModel {
   @ActiveField() name: string = 'DEFAULT'
   static beforeFill (model: any) {
-    model.emitter.on(EventType.created, () => console.log('created, name =', model.name))
+    model.on(EventType.created, () => console.log('created, name =', model.name))
   }
 }
 

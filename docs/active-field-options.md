@@ -380,8 +380,8 @@ class Order extends ActiveModel {
 
 Полный разбор всех четырёх событий (включая точную семантику `nulling` — срабатывает только на переходе
 из НЕ-null в null, но не в `undefined`), порядок относительно `validator`/`setter`, и разница с
-инстанс-уровневой подпиской `model.emitter.on(...)` — в
-[active-model-advanced.md, раздел "Хуки `on` / `once`"](active-model-advanced.md#хуки-on-once).
+инстанс-уровневой (`model.on(...)`) и класс-уровневой (`Model.on(...)`, сразу для всех инстансов) подпиской
+— в [active-model-advanced.md, раздел "Хуки `on` / `once`"](active-model-advanced.md#хуки-on-once).
 
 ---
 

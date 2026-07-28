@@ -1,4 +1,4 @@
-# Отслеживание изменений: `isTouched()` и `startTracking()`
+# Отслеживание изменений: `isTouched()`
 
 ## Проблема
 
@@ -10,11 +10,12 @@
 
 Решать его сравнением полей вручную (`if (form.name !== initialName || form.email !== initialEmail...)`)
 не масштабируется — при каждом новом поле нужно не забыть добавить его в сравнение. `ActiveModel` решает
-эту задачу на уровне модели: `isTouched()` и `startTracking()`.
+эту задачу на уровне модели: методом `isTouched()`.
 
 ## Базовое использование
 
-Снэпшот "исходного состояния" сохраняется в момент создания модели, если передать `tracked: true`:
+Снэпшот "исходного состояния" сохраняется в момент создания модели, если передать `tracked: true`.
+Это единственная точка входа — снэпшот нельзя установить или сбросить постфактум, только при создании:
 
 ```ts
 import { ActiveModel, ActiveField } from '@alt-point/active-models'
@@ -32,25 +33,19 @@ form.name = 'Alice Cooper'
 form.isTouched() // true
 ```
 
-Если модель уже создана без `tracked: true` (например, `new UserForm(data)`, где опции `create()`
-недоступны), снэпшот можно установить в любой момент вручную через `startTracking()` — это тот же самый
-механизм, просто вызванный не из фабрики, а из кода приложения:
+Модель, созданная через `new UserForm(data)` (а не `UserForm.create(...)`), никогда не будет отслеживаемой
+— у конструктора нет параметра для опций, а публичного метода, чтобы включить отслеживание постфактум, у
+`ActiveModel` нет: `isTouched()` для такой модели всегда вернёт `undefined`. Если нужен dirty-tracking,
+создавайте модель через `create(data, { tracked: true })`.
 
-```ts
-const form = new UserForm({ name: 'Alice', email: 'alice@example.com' })
-form.startTracking() // фиксирует текущее состояние как точку отсчёта
-
-form.email = 'alice@work.com'
-form.isTouched() // true
-```
-
-`startTracking()` полезен и для повторного использования модели: после успешного сохранения формы
-вызовите его снова, чтобы обнулить "грязное" состояние без пересоздания модели.
+Чтобы сбросить "грязное" состояние после успешного сохранения (например, форма отправлена, и дальше
+изменения должны отслеживаться заново от только что сохранённых данных), пересоздайте модель — новый
+снэпшот фиксируется автоматически при каждом `create(..., { tracked: true })`:
 
 ```ts
 async function save (form: UserForm) {
-  await api.updateUser(form.toJSON())
-  form.startTracking() // текущее (только что сохранённое) состояние становится новой точкой отсчёта
+  const saved = await api.updateUser(form.toJSON())
+  return UserForm.create(saved, { tracked: true }) // новый снэпшот — новая точка отсчёта
 }
 ```
 
@@ -79,9 +74,9 @@ if (form.isTouched() === undefined) {
 
 ## Что именно сравнивается
 
-Снэпшот — глубокая копия всего инстанса модели на момент `startTracking()`/`create(..., { tracked: true })`,
-сравнение — глубокое структурное равенство (`fast-deep-equal`) с текущим состоянием. Из этого следуют два
-практических вывода, оба проверены на реальном поведении библиотеки:
+Снэпшот — глубокая копия всего инстанса модели на момент `create(..., { tracked: true })`, сравнение —
+глубокое структурное равенство (`fast-deep-equal`) с текущим состоянием. Из этого следуют два практических
+вывода, оба проверены на реальном поведении библиотеки:
 
 **Изменения во вложенных `factory`-моделях распространяются наверх.** Если поле создано через
 `factory`, снэпшот включает и его — трекать вложенную модель отдельно не нужно:
@@ -123,7 +118,7 @@ session.isTouched() // false — csrfToken скрыт от снэпшота
 
 В библиотеке есть два независимых механизма с похожими именами, и путать их легко:
 
-- **Событие `touched`** (`model.emitter.on(EventType.touched, cb)`) — срабатывает **сразу**, при любом
+- **Событие `touched`** (`model.on(EventType.touched, cb)`) — срабатывает **сразу**, при любом
   реальном изменении любого активного поля, независимо от того, включено ли отслеживание. Это push-модель:
   вы узнаёте о каждом изменении в момент, когда оно произошло.
 - **`isTouched()`** — pull-модель: отвечает на вопрос "отличается ли *текущее* состояние от снэпшота" в
@@ -139,22 +134,31 @@ session.isTouched() // false — csrfToken скрыт от снэпшота
 ## Использование во Vue
 
 Composition API: `isTouched()` — обычный метод, не реактивный сам по себе, поэтому реактивность нужно
-собрать вручную через `ref` и событие `touched` как триггер пересчёта:
+собрать вручную через `ref` и событие `touched` как триггер пересчёта. Раз сброс "грязного" состояния
+означает пересоздание модели (см. выше), а не мутацию существующей, `form` тоже должен быть реактивной
+ссылкой — composable подписывается заново при каждой подмене модели через `watch(..., { immediate: true })`,
+отписываясь от предыдущей через `onCleanup`. Важно использовать именно `shallowRef`, а не `ref`: `ref()`
+рекурсивно оборачивает объект в собственный реактивный `Proxy` от Vue, а `ActiveModel` уже сам является
+`Proxy` — вложенная обёртка ломает идентичность объекта, на которой держится вся внутренняя логика
+библиотеки (сравнения `Object.is`, ключи `WeakMap`). `shallowRef` реактивен только к замене `.value`
+целиком и не трогает то, что внутри:
 
 ```ts
 // useDirty.ts
-import { ref, onUnmounted } from 'vue'
+import { watch, ref, type ShallowRef } from 'vue'
 import type { ActiveModel } from '@alt-point/active-models'
 import { EventType } from '@alt-point/active-models'
 
-export function useDirty (model: ActiveModel) {
-  const dirty = ref(model.isTouched() ?? false)
+export function useDirty (model: ShallowRef<ActiveModel>) {
+  const dirty = ref(model.value.isTouched() ?? false)
 
-  const unsubscribe = model.emitter.on(EventType.touched, () => {
-    dirty.value = model.isTouched() ?? false
-  })
-
-  onUnmounted(unsubscribe)
+  watch(model, (current, _previous, onCleanup) => {
+    dirty.value = current.isTouched() ?? false
+    const unsubscribe = current.on(EventType.touched, () => {
+      dirty.value = current.isTouched() ?? false
+    })
+    onCleanup(unsubscribe) // отписка от старой модели при следующей подмене и при размонтировании
+  }, { immediate: true })
 
   return dirty
 }
@@ -162,16 +166,17 @@ export function useDirty (model: ActiveModel) {
 
 ```vue
 <script setup lang="ts">
+import { shallowRef } from 'vue'
 import { UserForm } from './models/UserForm'
 import { useDirty } from './useDirty'
 
 const props = defineProps<{ initial: { name: string, email: string } }>()
-const form = UserForm.create(props.initial, { tracked: true })
+const form = shallowRef(UserForm.create(props.initial, { tracked: true }))
 const isDirty = useDirty(form)
 
 async function onSave () {
-  await save(form)
-  form.startTracking() // сброс "грязного" состояния после сохранения
+  const saved = await save(form.value)
+  form.value = UserForm.create(saved, { tracked: true }) // новая модель — новый снэпшот
 }
 </script>
 
@@ -182,8 +187,8 @@ async function onSave () {
 </template>
 ```
 
-`model.emitter.on(...)` возвращает функцию отписки — передавать её напрямую в `onUnmounted` безопасно,
-утечек подписчиков при размонтировании компонента не будет.
+`form` в `<template>` работает как обычно, несмотря на то, что в `<script setup>` это `shallowRef` — Vue
+точно так же автоматически разворачивает верхнеуровневые `ref`/`shallowRef` в шаблоне.
 
 ## Использование в React
 
@@ -199,7 +204,7 @@ import { EventType } from '@alt-point/active-models'
 
 export function useDirty (model: ActiveModel) {
   const subscribe = useCallback(
-    (onStoreChange: () => void) => model.emitter.on(EventType.touched, onStoreChange),
+    (onStoreChange: () => void) => model.on(EventType.touched, onStoreChange),
     [model]
   )
   const getSnapshot = useCallback(() => model.isTouched() ?? false, [model])
@@ -209,12 +214,15 @@ export function useDirty (model: ActiveModel) {
 ```
 
 ```tsx
-function UserFormView ({ form }: { form: UserForm }) {
+import { useState } from 'react'
+
+function UserFormView ({ initial }: { initial: { name: string, email: string } }) {
+  const [form, setForm] = useState(() => UserForm.create(initial, { tracked: true }))
   const isDirty = useDirty(form)
 
   async function onSave () {
-    await save(form)
-    form.startTracking()
+    const saved = await save(form)
+    setForm(UserForm.create(saved, { tracked: true })) // новая модель — новый снэпшот
   }
 
   return (
@@ -228,13 +236,15 @@ function UserFormView ({ form }: { form: UserForm }) {
 
 Поскольку `ActiveModel` не хранит своё состояние в React state, прямое присваивание (`form.name = ...`)
 не запускает ре-рендер само по себе — событие `touched` (через `useDirty`) и есть тот триггер, который об
-этом сообщает.
+этом сообщает. `useDirty` пересоздаёт `subscribe`/`getSnapshot` при каждой смене `form` (за счёт
+`useCallback([model])`), так что подмена модели через `setForm(...)` после сохранения автоматически
+переподписывает хук на новый инстанс — без этого специально заботиться не нужно.
 
 ## Сравнение с другими подходами
 
 | Подход | Где живёт состояние | Гранулярность | Стоимость подключения |
 |---|---|---|---|
-| **`ActiveModel.isTouched()`** | в самой модели | весь инстанс целиком (deep-equal) | встроено, `tracked: true` или `startTracking()` |
+| **`ActiveModel.isTouched()`** | в самой модели | весь инстанс целиком (deep-equal) | встроено, `create(data, { tracked: true })` |
 | `react-hook-form` `formState.isDirty` | внутри формы, привязано к `register()`/`Controller` | по полю и агрегированно | требует построить форму через саму библиотеку |
 | Formik `dirty` | `values` vs `initialValues` внутри Formik-стейта | весь стейт формы (deep-equal) | требует Formik-обёртку над всеми полями |
 | VeeValidate / Vuelidate | стейт валидатора | по полю | требует описать схему валидации/полей отдельно |
