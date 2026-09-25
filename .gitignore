@@ -10,3 +10,5 @@ graphify-out
 # VitePress build output/cache
 docs/.vitepress/cache
 docs/.vitepress/dist
+coverage
+docs/en/api

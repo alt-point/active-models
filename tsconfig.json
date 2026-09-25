@@ -5,7 +5,6 @@
     "module": "ESNext",
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
     "sourceMap": true,
     "strict": true,
     "noEmit": true,

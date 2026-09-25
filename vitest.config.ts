@@ -29,7 +29,7 @@ function esbuildDecorators (): Plugin {
           },
         },
       })
-      return { code: result.code, map: result.map }
+      return { code: result.code, map: JSON.parse(result.map) }
     },
   }
 }
@@ -39,5 +39,11 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
     environment: 'node',
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      reporter: ['text', 'html'],
+      thresholds: { statements: 90, branches: 85, functions: 85, lines: 90 },
+    },
   },
 })
