@@ -17,13 +17,32 @@ hero:
       link: https://github.com/alt-point/active-models
 
 features:
-  - title: "ActiveModel"
-    details: Proxy-based модель с контролем целостности данных (fillable, hidden, protected, readonly) и типов в рантайме — для DTO из внешних источников.
-  - title: "@ActiveField() decorators"
-    details: setter, getter, validator, factory, хуки on/once — декларативное описание поведения каждого поля. Полный справочник опций с примерами.
-  - title: "CallableModel"
-    details: Базовый класс, с которым инстанс можно вызывать как функцию — удобно для Nuxt.js/Vue.js плагинов.
+  - icon: 🛡️
+    title: Целостность данных
+    details: readonly, fillable, protected, hidden — точечный контроль над каждым полем. Внешние данные не перезапишут защищённое и не добавят лишнего.
+  - icon: ✅
+    title: Валидация на записи
+    details: validator, setter/getter, значения по умолчанию и вложенные factory-модели — ошибка ловится в момент присваивания, а не там, где «выстрелит».
+  - icon: 🔔
+    title: События
+    details: Хуки полей, model.on() и Model.on() для всех инстансов класса. touched всплывает из вложенных моделей, ошибка слушателя не мешает остальным.
+  - icon: 📝
+    title: Отслеживание изменений
+    details: isTouched() и getRaw() — «есть ли несохранённые изменения» и исходные данные. Примеры на Vue и React.
+  - icon: 🔀
+    title: Маппинг
+    details: mapTo() — несколько проекций одной модели (DTO, view-модель, payload) в одном месте, без рефлексии.
+  - icon: 🧪
+    title: Проверено тестами
+    details: 172 теста, 99% покрытия, 94% mutation score, бюджеты производительности и проверки утечек памяти.
 ---
+
+::: tip Что нового в 4.0
+`model.emitter` и `startTracking()` удалены — подписка через `model.on()` / `Model.on()`, отслеживание через
+`create(data, { tracked: true })`. Добавлены `getRaw()`, наследование подписок, всплытие `touched`, копия
+дефолтов на инстанс, исправлен `clone()`. Подробно: [миграция на 4.0](/migration) и
+[CHANGELOG](https://github.com/alt-point/active-models/blob/master/CHANGELOG.md).
+:::
 
 ## Какие проблемы решает библиотека
 

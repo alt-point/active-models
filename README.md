@@ -1,167 +1,192 @@
-@alt-point/active-models
-===
+<div align="center">
 
-[![npm version](https://img.shields.io/npm/v/@alt-point/active-models.svg)](https://www.npmjs.com/package/@alt-point/active-models)
-[![npm downloads](https://img.shields.io/npm/dm/@alt-point/active-models.svg)](https://www.npmjs.com/package/@alt-point/active-models)
-[![CI](https://github.com/alt-point/active-models/actions/workflows/ci.yml/badge.svg)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/@alt-point/active-models.svg)](https://github.com/alt-point/active-models/blob/master/LICENSE.txt)
-[![TypeScript](https://img.shields.io/badge/types-TypeScript-blue.svg)](https://www.typescriptlang.org/)
+# @alt-point/active-models
 
-Пакет с базовыми классами на `TS` для упрощения работы со структурами данных.
+**Реактивные, самопроверяющиеся DTO-модели на `Proxy` и декораторах TypeScript**
 
-**[📖 Документация](https://alt-point.github.io/active-models/)**
+Опишите структуру один раз — получите валидацию на записи, контроль целостности, события, отслеживание
+изменений и маппинг в другие структуры.
 
-Какие проблемы поможет решить?
+[![npm version](https://img.shields.io/npm/v/@alt-point/active-models?logo=npm&color=cb3837)](https://www.npmjs.com/package/@alt-point/active-models)
+[![npm downloads](https://img.shields.io/npm/dm/@alt-point/active-models?logo=npm&color=cb3837)](https://www.npmjs.com/package/@alt-point/active-models)
+[![minzipped size](https://img.shields.io/bundlephobia/minzip/@alt-point/active-models?label=minzipped)](https://bundlephobia.com/package/@alt-point/active-models)
+[![types](https://img.shields.io/npm/types/@alt-point/active-models?logo=typescript&logoColor=white&color=3178c6)](https://www.typescriptlang.org/)
+[![license](https://img.shields.io/npm/l/@alt-point/active-models?color=blue)](LICENSE.txt)
 
-#### Реактивные модели данных с контролируемыми свойствами
+[![CI](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
+[![docs](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/deploy-docs.yml?branch=master&label=docs&logo=vitepress&logoColor=white)](https://alt-point.github.io/active-models/)
+[![tests](https://img.shields.io/badge/tests-172%20passing-brightgreen)](docs/testing.md)
+[![coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](docs/testing.md)
+[![mutation score](https://img.shields.io/badge/mutation%20score-94%25-brightgreen?logo=stryker&logoColor=white)](docs/testing.md#мутационное-тестирование)
+[![semver](https://img.shields.io/badge/semver-2.0.0-blue)](CHANGELOG.md)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff69b4)](AGENTS.md)
 
-Как реализовать модель данных, в которой каждое свойство можно перехватывать при чтении, записи и
-удалении — без ручного написания геттеров/сеттеров для каждого поля? [`ActiveModel`](#activemodel)
-оборачивает инстанс в `Proxy` и предоставляет декоратор `@ActiveField()`, который на уровне одного поля
-позволяет задать `setter`/`getter`, значение по умолчанию, а также подписаться на события изменения через
-`on`/`once`.
+**[📖 Документация](https://alt-point.github.io/active-models/)** ·
+**[🚀 Быстрый старт](#быстрый-старт)** ·
+**[🧩 Справочник опций](docs/active-field-options.md)** ·
+**[🔄 Миграция на 4.0](docs/migration.md)** ·
+**[🇬🇧 English](README_EN.md)**
 
-#### Целостность структуры данных
+</div>
 
-Как защититься от того, что внешние данные (например, ответ API) случайно перезапишут защищённое поле,
-удалят обязательный атрибут или добавят в модель лишние ключи, которых там быть не должно? Опции
-`fillable`, `readonly`, `protected` и `hidden` в `@ActiveField()` дают точечный контроль: `fillable: false`
-и `readonly: true` запрещают изменение значения после создания, `protected` не даёт удалить свойство через
-`delete`, а `hidden` исключает поле из перечисления (`Object.keys`, `JSON.stringify`), оставляя его при
-этом доступным напрямую.
-
-#### Контроль типов и целостности данных в рантайме
-
-TypeScript проверяет типы только на этапе компиляции, а данные из внешних источников (API, localStorage,
-WebSocket) приходят в рантайме и типами не гарантированы. `validator` в `@ActiveField()` выполняется при
-каждой попытке установить значение и бросает исключение, если данные не подходят под ожидаемый
-тип/формат; `factory` дополнительно позволяет автоматически оборачивать вложенные структуры в собственные
-`ActiveModel`, сохраняя типизацию и валидацию на любом уровне вложенности.
-
-#### Подписка на изменения данных в свойствах модели
-
-Как узнать, что конкретное поле модели изменилось, было обнулено или удалено — не оборачивая каждое
-присваивание в собственный код? События `beforeSetValue`, `afterSetValue`, `nulling`,
-`beforeDeletingAttribute` (через `on`/`once` в декораторе), а также `touched`/`created` на уровне всего
-инстанса (`model.on(...)`) дают единую точку для side-эффектов: логирования, синхронизации с UI,
-инвалидации кэша и т. п.
-
-Installation
 ---
 
-yarn
+## Зачем это нужно
+
+Данные из API, форм, `localStorage` и WebSocket приходят в рантайме — и никакие типы TypeScript их не
+гарантируют. `ActiveModel` ловит ошибки в момент присваивания, а не там, где они «выстрелят»:
+
+|  | Проблема | Решение |
+|---|---|---|
+| 🛡️ | Внешние данные перезаписывают защищённые поля | `readonly`, `fillable`, `protected`, `hidden` |
+| ✅ | Невалидные значения попадают в модель | `validator`, `setter`/`getter`, вложенные `factory` |
+| 🔔 | Нужно знать, что и когда изменилось | события `beforeSetValue`, `afterSetValue`, `nulling`, `touched`, `created` |
+| 📝 | «Есть ли несохранённые изменения?» | `isTouched()`, `getRaw()` |
+| 🔀 | Одна модель — много представлений | `mapTo()` в DTO / view-модель / payload |
+| 🧬 | Безопасные копии и снимки | `clone()`, `makeFreeze()`, `toJSON()` |
+
+## Быстрый старт
 
 ```bash
-yarn add @alt-point/active-models
+bun add @alt-point/active-models      # или: npm i / yarn add / pnpm add
 ```
 
-npm
+> Нужен `"experimentalDecorators": true` в `tsconfig.json` (декораторы TypeScript «legacy»).
+> Поддержка нативных TC39-декораторов запланирована.
 
-```bash
-npm install --save @alt-point/active-models
-```
-
-
-bun
-
-```bash
-bun add @alt-point/active-models
-```
-
-## `ActiveModel`
-
-Класс реализован с использованием [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy).
-
-**Назначение**: контроль целостности структуры и типов данных моделей приходящих из внешних источников/подсистем ([DTO](https://en.wikipedia.org/wiki/Data_transfer_object))
-
-[Пример](docs/active-model-with-decorators.md), иллюстрирующий применение
-
-Дополнительно:
-- [Справочник опций `@ActiveField()`](docs/active-field-options.md) — каждая опция по отдельности: что делает, на что влияет, с примерами
-- [Жизненный цикл модели](docs/model-lifecycle.md) — все события от создания до удаления, с диаграммой
-- [Продвинутые возможности](docs/active-model-advanced.md) — валидаторы, хуки `on`/`once`, разница между `new Model()`/`create()`/`fill()`, сериализация, `mapTo()`
-- [Пример для Node.js-сервера](docs/node-example.md) — без Vue/Nuxt, на чистом `node:http`
-- [Отслеживание изменений: isTouched()](docs/dirty-tracking.md) — dirty-tracking с примерами на Vue и React, сравнение с react-hook-form/Formik/MobX
-- [Трансформация моделей: mapTo()](docs/mapping.md) — маппинг в DTO/view-модели с примерами на Vue и React, сравнение с class-transformer/AutoMapper
-- [Известные ограничения](docs/limitations.md) · [Миграция на 4.0](docs/migration.md) · [CHANGELOG](CHANGELOG.md)
-- [Для AI-агентов](AGENTS.md) — шпаргалка по API и правилам (`AGENTS.md` входит в npm-пакет, есть [`llms.txt`](https://alt-point.github.io/active-models/llms.txt))
-
-
-@Decorators
----
-
-
-`@ActiveField(opts: ActiveFieldDescriptor)`
-####
 ```ts
-type ActiveFieldDescriptor = object & {
-    setter?: Setter<any> // ассессор на установку значения
-    getter?: Getter<any> // ацессор на получение значения
-    validator?: Validator<any> // валидатор на установку значения
-    readonly?: boolean // поле модели будет доступно только на чтение
-    hidden?: boolean // поле скрыто из перечисляемых свойств
-    fillable?: boolean // поле доступно для установки и изменения
-    protected?: boolean // запрещено удалять поле из модели
-    attribute?: any // Значение по умолчанию для поля модели в момент создания объекта
-    value?: any // алиас для `attribute`
-    factory?: typeof ActiveModel | [typeof ActiveModel, () => ActiveModel] // Фабрика (extends ActiveModel) для обработки значения. Массивы так же обрабатывает.
-    on?: // листенеры на события модельки, цепляются на конкретное свойство
-      beforeSetValue?: ({ target, prop, value, oldValue }) => void // вызовется перед установкой значение 
-      afterSetValue?: ({ target, prop, value, oldValue }) => void // сразу после установки значения
-      beforeDeletingAttribute?: ({ target, prop }) => void // перед удалением свойства из модели
-      nulling?: ({ target, prop, value, oldValue }) => void  // если у свойства было значение и вместо него установили null
-    once?: // всё тоже самое, что и в on
+import { ActiveModel, ActiveField, EventType } from '@alt-point/active-models'
+
+class Address extends ActiveModel {
+  @ActiveField() city: string = ''
 }
+
+class User extends ActiveModel {
+  @ActiveField({ readonly: true })                       id: string = ''
+  @ActiveField({ validator: (_m, prop, v) => { if (!v) throw new TypeError(`${prop} is required`) } })
+  name: string = 'Guest'
+  @ActiveField({ hidden: true })                         passwordHash: string = ''
+  @ActiveField({ factory: Address })                     address?: Address   // вложенная модель
+}
+
+// Всегда создавайте модели через фабрику, а не `new User(data)`
+const user = User.create({ id: '1', name: 'Ann', address: { city: 'Berlin' } }, { tracked: true })
+
+user.on(EventType.afterSetValue, ({ prop, value }) => console.log(prop, '→', value))
+
+user.name = 'Bob'                 // "name → Bob"
+user.name = ''                    // TypeError: name is required
+user.id = '2'                     // молча проигнорировано: readonly
+user.address!.city = 'Munich'     // всплывает touched родителя
+
+user.isTouched()                  // true — состояние отличается от исходного
+JSON.stringify(user)              // {"id":"1","name":"Bob","address":{"city":"Munich"}} — без passwordHash
 ```
 
-***
+Класс-уровневые подписки применяются сразу ко **всем** инстансам (и подклассам):
 
+```ts
+User.on(EventType.created, ({ target }) => audit('user created', (target as User).id))
+```
 
-## `CallableModel`
+## Возможности
 
-Базовый класс, реализованный также через `Proxy`, чтобы можно было обращаться с объектом как с функцией.
+<details open>
+<summary><b>Целостность и валидация</b></summary>
 
-Пример использования:
+- `@ActiveField({ readonly, fillable, protected, hidden })` — точечный контроль над каждым полем;
+- `validator`, `setter`, `getter`, значения по умолчанию (`value`/`attribute`, копия на каждый инстанс);
+- `factory: Model` / `[Model, () => default]` — вложенные модели и списки с валидацией на любой глубине.
+</details>
 
-```js
+<details>
+<summary><b>События</b></summary>
 
+- хуки поля: `@ActiveField({ on: {...}, once: {...} })`;
+- инстанс: `model.on()` / `model.once()`; класс: `Model.on()` / `Model.once()` (наследуются подклассами);
+- `touched` всплывает из вложенных моделей; ошибка в слушателе не мешает остальным;
+- типизированные payload: `EventPayloads`, `EventListener`.
+</details>
+
+<details>
+<summary><b>Данные и копии</b></summary>
+
+- `create` / `createLazy` / `asyncCreate` / `createFromCollection` (+ `Lazy`/`async` варианты);
+- `fill()`, `clone()`, `makeFreeze()`, `toJSON()` (`Date`, `Set`, `Map` — корректно);
+- `isTouched()` + `getRaw()` — отслеживание изменений и исходные данные (`create(data, { tracked: true })`).
+</details>
+
+<details>
+<summary><b>Маппинг и утилиты</b></summary>
+
+- `Model.mapTo(Target, handler)` / `model.mapTo(Target)` — несколько проекций одной модели;
+- `CallableModel` — объекты, которые можно вызывать как функции (без `unsafe-eval`, CSP-безопасно).
+</details>
+
+## CallableModel и Enum
+
+`CallableModel` — базовый класс, экземпляры которого можно вызывать как функции (удобно для плагинов
+Nuxt.js/Vue.js; реализован без `extends Function`, поэтому работает под строгим CSP):
+
+```ts
 import { CallableModel } from '@alt-point/active-models'
 
 class Notify extends CallableModel {
-  // Define
-  __call (...args) {
-      return this.success(...args)
-  }
-
-  success (successMessage) {
-     alert(successMessage)
-  }
-
-  silent (message) {
-    console.log('Silent message:' + message)
-  }
-
-}
-```
-
-Дальше можем создать объект класса `Notify` как плагин в `Nuxt.js/Vue.js` и использовать:
-
-```js
-// плагин
-export default (ctx, inject) => {
-  ctx.$notify = new Notify()
-  inject('notify', new Notify())
+  __call (message: string) { return this.success(message) }
+  success (message: string) { alert(message) }
+  silent (message: string) { console.log('Silent message:', message) }
 }
 
-
-// в компоненте теперь можно юзать:
-this.$notify.silent('Write notice to console!')
-this.$notify('Alert!')
+// plugin: inject('notify', new Notify())  →  this.$notify('Alert!'); this.$notify.silent('...')
 ```
 
-## TODO:
-- [ ] add more examples for more platforms;
+> `Enum` помечен `@deprecated` — для новых моделей используйте нативный `enum` TypeScript вместе с
+> `validator` на поле (см. [пример](docs/active-model-with-decorators.md)).
 
+## Документация
 
-### Credits
-[Alex D. Bubenchikov](https://t.me/surrealistik), [surrealistik@alt-point.ru](mailto:surrealistik@alt-point.com?subject=ActiveModels)
+| Раздел | О чём |
+|---|---|
+| [Пример с decorators](docs/active-model-with-decorators.md) | базовый воркфлоу на модели заказа |
+| [Справочник `@ActiveField()`](docs/active-field-options.md) | каждая опция: что делает и на что влияет |
+| [Жизненный цикл модели](docs/model-lifecycle.md) | диаграммы создания/записи/удаления и все события |
+| [Продвинутые возможности](docs/active-model-advanced.md) | валидаторы, хуки, `new` vs `create` vs `fill`, `clone`, `makeFreeze` |
+| [Отслеживание изменений](docs/dirty-tracking.md) | `isTouched()` и `getRaw()` с примерами на Vue и React |
+| [Трансформация моделей](docs/mapping.md) | `mapTo()`: сравнение с class-transformer и AutoMapper |
+| [Пример для Node.js](docs/node-example.md) | сервер на чистом `node:http` |
+| [Известные ограничения](docs/limitations.md) | что работает не так, как ожидаешь — и что делать |
+| [Миграция на 4.0](docs/migration.md) · [CHANGELOG](CHANGELOG.md) | что изменилось и как перейти |
+| [Тестирование и качество](docs/testing.md) | покрытие, performance-бюджеты, мутационное тестирование |
+| [Справочник API](https://alt-point.github.io/active-models/en/api/) | сгенерировано из TSDoc |
+
+## Для AI-агентов
+
+В пакет входит [`AGENTS.md`](AGENTS.md) — компактная шпаргалка по API и правилам, которые предотвращают
+большинство ошибок (например, «создавайте модели через `create()`, а не `new`»). Есть и индекс
+[`llms.txt`](https://alt-point.github.io/active-models/llms.txt). Подключите из своего `CLAUDE.md`:
+
+```md
+Перед работой с моделями прочитай node_modules/@alt-point/active-models/AGENTS.md.
+```
+
+## Качество
+
+**172** unit-тест · покрытие **99 %** · **94 %** mutation score (Stryker, порог 90 %) · performance-бюджеты и
+проверки утечек памяти · ESLint · строгий [SemVer](CHANGELOG.md#versioning-policy).
+
+```bash
+bun run test           # unit
+bun run test:coverage  # + покрытие с порогами
+bun run test:perf      # бюджеты производительности
+bun run test:mutation  # мутационное тестирование
+```
+
+## Участие в разработке
+
+Issues и PR приветствуются. Перед PR: `bun run lint && bun run typecheck && bun run test`. Правила для
+контрибьюторов и агентов — в [`AGENTS.md`](AGENTS.md#contributing-to-this-repo).
+
+## Лицензия
+
+[MIT](LICENSE.txt) © [alt-point](https://alt-point.com/) ·
+автор — [Alex D. Bubenchikov](https://t.me/surrealistik), [surrealistik@alt-point.com](mailto:surrealistik@alt-point.com?subject=ActiveModels)

@@ -16,7 +16,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 
 ## [Unreleased]
 
-## [4.0.0] - pending release
+## [4.0.0] - 2026-09-25
 
 Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migration.md)).
 

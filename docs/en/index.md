@@ -17,13 +17,32 @@ hero:
       link: https://github.com/alt-point/active-models
 
 features:
-  - title: "ActiveModel"
-    details: A Proxy-based model with runtime data integrity control (fillable, hidden, protected, readonly) and type checks — for DTOs from external sources.
-  - title: "@ActiveField() decorators"
-    details: setter, getter, validator, factory, on/once hooks — declaratively describe each field's behavior. A complete options reference with examples.
-  - title: "CallableModel"
-    details: A base class whose instances can be called like a function — handy for Nuxt.js/Vue.js plugins.
+  - icon: 🛡️
+    title: Data integrity
+    details: readonly, fillable, protected, hidden - fine-grained control per field. External data can't overwrite what's protected or add what shouldn't be there.
+  - icon: ✅
+    title: Validation on write
+    details: validator, setter/getter, defaults and nested factory models - a problem is caught at assignment time, not where it finally blows up.
+  - icon: 🔔
+    title: Events
+    details: Field hooks, model.on() and Model.on() for every instance of a class. touched bubbles up from nested models; a throwing listener doesn't stop the others.
+  - icon: 📝
+    title: Change tracking
+    details: isTouched() and getRaw() - "are there unsaved changes" and the source data. Vue and React examples.
+  - icon: 🔀
+    title: Mapping
+    details: mapTo() - several projections of one model (DTO, view-model, payload) in one place, no reflection.
+  - icon: 🧪
+    title: Battle-tested
+    details: 172 tests, 99% coverage, 94% mutation score, performance budgets and memory-leak checks.
 ---
+
+::: tip What's new in 4.0
+`model.emitter` and `startTracking()` are removed - subscribe through `model.on()` / `Model.on()`, track via
+`create(data, { tracked: true })`. Added `getRaw()`, inherited subscriptions, `touched` bubbling, per-instance
+default copies, and a fixed `clone()`. Details: [migrating to 4.0](/en/migration) and the
+[CHANGELOG](https://github.com/alt-point/active-models/blob/master/CHANGELOG.md).
+:::
 
 ## What problems does this library solve
 

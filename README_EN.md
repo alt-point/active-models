@@ -1,161 +1,193 @@
-@alt-point/active-models
-===
+<div align="center">
 
-[![npm version](https://img.shields.io/npm/v/@alt-point/active-models.svg)](https://www.npmjs.com/package/@alt-point/active-models)
-[![npm downloads](https://img.shields.io/npm/dm/@alt-point/active-models.svg)](https://www.npmjs.com/package/@alt-point/active-models)
-[![CI](https://github.com/alt-point/active-models/actions/workflows/ci.yml/badge.svg)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/@alt-point/active-models.svg)](https://github.com/alt-point/active-models/blob/master/LICENSE.txt)
-[![TypeScript](https://img.shields.io/badge/types-TypeScript-blue.svg)](https://www.typescriptlang.org/)
+# @alt-point/active-models
 
-A set of tools written in `es6/TS` to make working with data-structures easier.
+**Reactive, self-validating DTO models built on `Proxy` and TypeScript decorators**
 
-**[📖 Documentation](https://alt-point.github.io/active-models/)**
+Describe a structure once — get validation on write, integrity control, events, change tracking and mapping
+into other shapes.
 
-Problems this package tries to solve:
+[![npm version](https://img.shields.io/npm/v/@alt-point/active-models?logo=npm&color=cb3837)](https://www.npmjs.com/package/@alt-point/active-models)
+[![npm downloads](https://img.shields.io/npm/dm/@alt-point/active-models?logo=npm&color=cb3837)](https://www.npmjs.com/package/@alt-point/active-models)
+[![minzipped size](https://img.shields.io/bundlephobia/minzip/@alt-point/active-models?label=minzipped)](https://bundlephobia.com/package/@alt-point/active-models)
+[![types](https://img.shields.io/npm/types/@alt-point/active-models?logo=typescript&logoColor=white&color=3178c6)](https://www.typescriptlang.org/)
+[![license](https://img.shields.io/npm/l/@alt-point/active-models?color=blue)](LICENSE.txt)
 
-#### Reactive data models with controllable properties
+[![CI](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
+[![docs](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/deploy-docs.yml?branch=master&label=docs&logo=vitepress&logoColor=white)](https://alt-point.github.io/active-models/en/)
+[![tests](https://img.shields.io/badge/tests-172%20passing-brightgreen)](docs/en/testing.md)
+[![coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](docs/en/testing.md)
+[![mutation score](https://img.shields.io/badge/mutation%20score-94%25-brightgreen?logo=stryker&logoColor=white)](docs/en/testing.md#mutation-testing)
+[![semver](https://img.shields.io/badge/semver-2.0.0-blue)](CHANGELOG.md)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff69b4)](AGENTS.md)
 
-How do you build a data model where every property can be intercepted on read, write, and delete —
-without hand-writing getters/setters for each field? [`ActiveModel`](#activemodel) wraps the instance in a
-`Proxy` and exposes the `@ActiveField()` decorator, which lets you define a `setter`/`getter`, a default
-value, and subscribe to change events via `on`/`once` — all at the level of a single field.
+**[📖 Documentation](https://alt-point.github.io/active-models/en/)** ·
+**[🚀 Quick start](#quick-start)** ·
+**[🧩 Options reference](docs/en/active-field-options.md)** ·
+**[🔄 Migrating to 4.0](docs/en/migration.md)** ·
+**[🇷🇺 Русский](README.md)**
 
-#### Data structure integrity
+</div>
 
-How do you keep external data (an API response, for example) from silently overwriting a protected field,
-deleting a required attribute, or adding stray keys that shouldn't be there? The `fillable`, `readonly`,
-`protected`, and `hidden` options on `@ActiveField()` give fine-grained control: `fillable: false` and
-`readonly: true` block changes after creation, `protected` blocks `delete`, and `hidden` excludes a field
-from enumeration (`Object.keys`, `JSON.stringify`) while keeping it directly accessible.
-
-#### Runtime type and data integrity checks
-
-TypeScript only checks types at compile time — data coming from external sources (an API, localStorage, a
-WebSocket) arrives at runtime with no such guarantee. `validator` on `@ActiveField()` runs on every
-attempted write and throws if the value doesn't match the expected type/shape; `factory` additionally
-wraps nested structures in their own `ActiveModel` automatically, keeping typing and validation intact at
-any depth.
-
-#### Subscribing to changes in model properties
-
-How do you find out that a specific field changed, was nulled out, or was deleted — without wrapping every
-assignment in your own code? The `beforeSetValue`, `afterSetValue`, `nulling`, and `beforeDeletingAttribute`
-events (via `on`/`once` in the decorator), plus the instance-level `touched`/`created` events
-(`model.on(...)`), give you a single place for side effects: logging, syncing to the UI, cache
-invalidation, and so on.
-
-Installation
 ---
 
-yarn
+## Why
+
+Data from APIs, forms, `localStorage` and WebSockets arrives at runtime — and no TypeScript type guarantees
+it. `ActiveModel` catches problems at assignment time, not where they finally blow up:
+
+|  | Problem | Solution |
+|---|---|---|
+| 🛡️ | External data overwrites protected fields | `readonly`, `fillable`, `protected`, `hidden` |
+| ✅ | Invalid values end up in the model | `validator`, `setter`/`getter`, nested `factory` |
+| 🔔 | You need to know what changed, and when | events `beforeSetValue`, `afterSetValue`, `nulling`, `touched`, `created` |
+| 📝 | "Are there unsaved changes?" | `isTouched()`, `getRaw()` |
+| 🔀 | One model, many representations | `mapTo()` into a DTO / view-model / payload |
+| 🧬 | Safe copies and snapshots | `clone()`, `makeFreeze()`, `toJSON()` |
+
+## Quick start
 
 ```bash
-yarn add @alt-point/active-models
+bun add @alt-point/active-models      # or: npm i / yarn add / pnpm add
 ```
 
-npm
-
-```bash
-npm install --save @alt-point/active-models
-```
-
-bun
-
-```bash
-bun add @alt-point/active-models
-```
-
-# `ActiveModel`
-Active model uses [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy) behind the scenes.
-
-Purpose: Structure integrity and type checks for incoming data from external sources/subsystems ([DTO](https://en.wikipedia.org/wiki/Data_transfer_object))
-
-[Example using decorators](docs/en/active-model-with-decorators.md)
-
-Also:
-- [`@ActiveField()` options reference](docs/en/active-field-options.md) — every option on its own: what it does, what it affects, with examples
-- [Model lifecycle](docs/en/model-lifecycle.md) — every event from creation to deletion, with a diagram
-- [Advanced features](docs/en/active-model-advanced.md) — validators, `on`/`once` hooks, the difference between `new Model()`/`create()`/`fill()`, serialization, `mapTo()`
-- [Node.js server example](docs/en/node-example.md) — no Vue/Nuxt, plain `node:http`
-- [Change tracking: isTouched()](docs/en/dirty-tracking.md) — dirty tracking with Vue and React examples, compared to react-hook-form/Formik/MobX
-- [Model mapping: mapTo()](docs/en/mapping.md) — mapping to DTOs/view-models with Vue and React examples, compared to class-transformer/AutoMapper
-- [Known limitations](docs/en/limitations.md) · [Migrating to 4.0](docs/en/migration.md) · [CHANGELOG](CHANGELOG.md)
-- [For AI agents](AGENTS.md) — API cheat sheet and rules (`AGENTS.md` ships in the npm package; there is also [`llms.txt`](https://alt-point.github.io/active-models/llms.txt))
-
-
-Decorators
----
-`@ActiveField(opts: ActiveFieldDescriptor)`
+> Requires `"experimentalDecorators": true` in `tsconfig.json` (legacy TypeScript decorators).
+> Native TC39 decorators support is planned.
 
 ```ts
-type ActiveFieldDescriptor = object & {
-    setter?: Setter<any> // setter
-    getter?: Getter<any> // getter
-    validator?: Validator<any> // validation on setter
-    readonly?: boolean // whether the attribute is read only
-    hidden?: boolean // whether the attribute is hidden from listings
-    fillable?: boolean // whether the attribute can be set and updated
-    protected?: boolean // true if deleting the attribute from the model is prohibited
-    attribute?: any // default attribute value during instantiation
-    value?: any // alias for `attribute`
+import { ActiveModel, ActiveField, EventType } from '@alt-point/active-models'
+
+class Address extends ActiveModel {
+  @ActiveField() city: string = ''
 }
+
+class User extends ActiveModel {
+  @ActiveField({ readonly: true })                       id: string = ''
+  @ActiveField({ validator: (_m, prop, v) => { if (!v) throw new TypeError(`${prop} is required`) } })
+  name: string = 'Guest'
+  @ActiveField({ hidden: true })                         passwordHash: string = ''
+  @ActiveField({ factory: Address })                     address?: Address   // a nested model
+}
+
+// Always build models through the factory, not `new User(data)`
+const user = User.create({ id: '1', name: 'Ann', address: { city: 'Berlin' } }, { tracked: true })
+
+user.on(EventType.afterSetValue, ({ prop, value }) => console.log(prop, '→', value))
+
+user.name = 'Bob'                 // "name → Bob"
+user.name = ''                    // TypeError: name is required
+user.id = '2'                     // silently ignored: readonly
+user.address!.city = 'Munich'     // bubbles up as the parent's touched
+
+user.isTouched()                  // true — the state differs from the initial one
+JSON.stringify(user)              // {"id":"1","name":"Bob","address":{"city":"Munich"}} — no passwordHash
 ```
 
->
-> **Notice:**
->
-> For default values (`attribute`/`value`) to work, create instances via the
-> `ActiveModel.create(data)` factory method. Using the plain constructor
-> (`new MyModel(data)`) has a subtlety around subclass field initializers — see
-> [`new Model(data)` vs `Model.create(data)` vs `fill(data)`](docs/en/active-model-advanced.md#new-model-data-vs-model-create-data-vs-fill-data)
-> for the full explanation and the documented workaround.
+Class-level subscriptions apply to **every** instance (and subclasses) at once:
 
+```ts
+User.on(EventType.created, ({ target }) => audit('user created', (target as User).id))
+```
 
-***
+## Features
 
-CallableModel
----
-A base class that uses [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy)
-under the hood to be able to operate objects like functions.
+<details open>
+<summary><b>Integrity and validation</b></summary>
 
-Usage example:
+- `@ActiveField({ readonly, fillable, protected, hidden })` — fine-grained control per field;
+- `validator`, `setter`, `getter`, defaults (`value`/`attribute`, copied per instance);
+- `factory: Model` / `[Model, () => default]` — nested models and lists validated at any depth.
+</details>
 
-```js
+<details>
+<summary><b>Events</b></summary>
+
+- field hooks: `@ActiveField({ on: {...}, once: {...} })`;
+- instance: `model.on()` / `model.once()`; class: `Model.on()` / `Model.once()` (inherited by subclasses);
+- `touched` bubbles up from nested models; a throwing listener doesn't stop the others;
+- typed payloads: `EventPayloads`, `EventListener`.
+</details>
+
+<details>
+<summary><b>Data and copies</b></summary>
+
+- `create` / `createLazy` / `asyncCreate` / `createFromCollection` (+ `Lazy`/`async` variants);
+- `fill()`, `clone()`, `makeFreeze()`, `toJSON()` (`Date`, `Set`, `Map` handled correctly);
+- `isTouched()` + `getRaw()` — change tracking and the source data (`create(data, { tracked: true })`).
+</details>
+
+<details>
+<summary><b>Mapping and utilities</b></summary>
+
+- `Model.mapTo(Target, handler)` / `model.mapTo(Target)` — several projections of one model;
+- `CallableModel` — objects you can call like functions (no `unsafe-eval`, CSP-safe).
+</details>
+
+## CallableModel and Enum
+
+`CallableModel` is a base class whose instances can be called like functions (handy for Nuxt.js/Vue.js
+plugins; built without `extends Function`, so it works under a strict CSP):
+
+```ts
 import { CallableModel } from '@alt-point/active-models'
 
 class Notify extends CallableModel {
-  // Define
-  __call (...args) {
-      return this.success(...args)
-  }
-
-  success (successMessage) {
-     alert(successMessage)
-  }
-
-  silent (message) {
-    console.log('Silent message:' + message)
-  }
-}
-```
-You can then create an instance of `Notify` as a `Nuxt.js/Vue.js` plugin and do:
-
-```js
-// plugin
-export default (ctx, inject) => {
-  ctx.$notify = new Notify()
-  inject('notify', new Notify())
+  __call (message: string) { return this.success(message) }
+  success (message: string) { alert(message) }
+  silent (message: string) { console.log('Silent message:', message) }
 }
 
-
-// inside the component you can now do:
-this.$notify.silent('Write notice to console!')
-this.$notify('Alert!')
+// plugin: inject('notify', new Notify())  →  this.$notify('Alert!'); this.$notify.silent('...')
 ```
 
+> `Enum` is marked `@deprecated` — for new models prefer a native TypeScript `enum` together with a
+> `validator` on the field (see the [example](docs/en/active-model-with-decorators.md)).
 
-## TODO:
-- [ ] add more examples for more platforms;
-- 
-### Credits
-[Alex D. Bubenchikov](https://t.me/surrealistik), [surrealistik@alt-point.com](mailto:surrealistik@alt-point.com?subject=ActiveModels)
+## Documentation
+
+| Section | About |
+|---|---|
+| [Decorators example](docs/en/active-model-with-decorators.md) | the basic workflow on an order model |
+| [`@ActiveField()` reference](docs/en/active-field-options.md) | every option: what it does and what it affects |
+| [Model lifecycle](docs/en/model-lifecycle.md) | creation/write/delete diagrams and every event |
+| [Advanced features](docs/en/active-model-advanced.md) | validators, hooks, `new` vs `create` vs `fill`, `clone`, `makeFreeze` |
+| [Change tracking](docs/en/dirty-tracking.md) | `isTouched()` and `getRaw()` with Vue and React examples |
+| [Model mapping](docs/en/mapping.md) | `mapTo()`: compared to class-transformer and AutoMapper |
+| [Node.js example](docs/en/node-example.md) | a server on plain `node:http` |
+| [Known limitations](docs/en/limitations.md) | what doesn't work as you'd expect — and what to do |
+| [Migrating to 4.0](docs/en/migration.md) · [CHANGELOG](CHANGELOG.md) | what changed and how to upgrade |
+| [Testing and quality](docs/en/testing.md) | coverage, performance budgets, mutation testing |
+| [API reference](https://alt-point.github.io/active-models/en/api/) | generated from TSDoc |
+
+## For AI agents
+
+The package ships [`AGENTS.md`](AGENTS.md) — a compact API cheat sheet and the rules that prevent most
+mistakes (e.g. "build models with `create()`, never `new`"). There is also an
+[`llms.txt`](https://alt-point.github.io/active-models/llms.txt) index. Point your agent at it from your own
+`CLAUDE.md`:
+
+```md
+Before working with models, read node_modules/@alt-point/active-models/AGENTS.md.
+```
+
+## Quality
+
+**172** unit tests · **99 %** coverage · **94 %** mutation score (Stryker, gate at 90 %) · performance budgets
+and memory-leak checks · ESLint · strict [SemVer](CHANGELOG.md#versioning-policy).
+
+```bash
+bun run test           # unit
+bun run test:coverage  # + coverage thresholds
+bun run test:perf      # performance budgets
+bun run test:mutation  # mutation testing
+```
+
+## Contributing
+
+Issues and PRs are welcome. Before a PR: `bun run lint && bun run typecheck && bun run test`. Rules for
+contributors and agents live in [`AGENTS.md`](AGENTS.md#contributing-to-this-repo).
+
+## License
+
+[MIT](LICENSE.txt) © [alt-point](https://alt-point.com/) ·
+author — [Alex D. Bubenchikov](https://t.me/surrealistik), [surrealistik@alt-point.com](mailto:surrealistik@alt-point.com?subject=ActiveModels)
