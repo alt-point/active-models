@@ -159,16 +159,55 @@ second.status = 'shipped' // "order 2: status → shipped" — подписка 
 
 Тот же приём работает для `created`/`touched`, для которых нет варианта 1 (декоратора) — это единственный
 способ узнавать о создании/изменении **каждого** инстанса класса, не переопределяя `beforeFill` в каждом
-месте, где может понадобиться такая подписка. Учтите: в отличие от `afterSetValue`, у `created`/`touched`
-**нет payload** (см. [Жизненный цикл модели](/model-lifecycle)) — обработчик узнаёт, что *какой-то*
-инстанс создан/изменён, но не какой именно:
+месте, где может понадобиться такая подписка. Payload у них — `{ target }`, где `target` — сам инстанс
+модели (см. [Жизненный цикл модели](/model-lifecycle)):
 
 ```ts
-let createdCount = 0
-Order.on(EventType.created, () => { createdCount++ })
+Order.on(EventType.created, ({ target }) => {
+  console.log('создан заказ', target.id)
+})
 
-Order.create({ id: '3' }) // createdCount → 1, независимо от create()/new
-new Order({ id: '4' })    // createdCount → 2 (асинхронно, см. страницу жизненного цикла)
+Order.create({ id: '3' }) // "создан заказ 3"
+new Order({ id: '4' })    // "создан заказ ..." — асинхронно, см. страницу жизненного цикла
+```
+
+Подписки **наследуются**: то, что зарегистрировано на родительском классе (`Parent.on(...)` или хук
+`@ActiveField({ on })` в родителе), срабатывает и для инстансов всех подклассов. Порядок вызова: сначала
+слушатели самых дальних предков, затем ближайшего класса, затем самого инстанса.
+
+### Ошибки в слушателях
+
+Исключение в слушателе не мешает остальным: событие всегда доходит до **всех** слушателей, и только после
+этого первая ошибка пробрасывается наружу (в присваивание, `create()` и т. д.). Если упали несколько
+слушателей, бросается `Error` с массивом всех ошибок в свойстве `errors`. Значение к этому моменту уже
+записано — для отклонения значения используйте `validator`, а не слушатель.
+
+```ts
+counter.on(EventType.afterSetValue, () => { throw new Error('a') })
+counter.on(EventType.afterSetValue, () => { throw new Error('b') })
+
+try {
+  counter.value = 1
+} catch (e) {
+  (e as any).errors // [Error('a'), Error('b')]
+}
+```
+
+## `clone()` и `makeFreeze()`
+
+`clone()` возвращает полноценную модель: она обёрнута в тот же `Proxy` (валидаторы, `readonly` и
+`fillable: false` продолжают действовать), значения `hidden`-полей сохраняются, вложенные модели клонируются
+независимо, а baseline для `isTouched()` переносится на копию. Слушатели уровня инстанса **не** копируются, и
+событие `created` для клона не эмитится.
+
+`makeFreeze()` делает модель неизменяемой: любая последующая запись, `delete` или `defineProperty` бросает
+`TypeError`. Заморозка поверхностная (вложенные модели и массивы не затрагиваются) и реализована через
+ловушки, а не через `Object.freeze()` — настоящий `Object.freeze()` заставил бы `ownKeys` раскрыть `hidden`-поля,
+поэтому `Object.isFrozen(model)` вернёт `false`.
+
+```ts
+const frozen = order.makeFreeze()
+frozen.status = 'x' // TypeError: Cannot assign to "status": the model is frozen (makeFreeze)
 ```
 
 ## `new Model(data)` vs `Model.create(data)` vs `.fill(data)`

@@ -83,6 +83,8 @@ bun add @alt-point/active-models
 - [Пример для Node.js-сервера](docs/node-example.md) — без Vue/Nuxt, на чистом `node:http`
 - [Отслеживание изменений: isTouched()](docs/dirty-tracking.md) — dirty-tracking с примерами на Vue и React, сравнение с react-hook-form/Formik/MobX
 - [Трансформация моделей: mapTo()](docs/mapping.md) — маппинг в DTO/view-модели с примерами на Vue и React, сравнение с class-transformer/AutoMapper
+- [Известные ограничения](docs/limitations.md) · [Миграция на 4.0](docs/migration.md) · [CHANGELOG](CHANGELOG.md)
+- [Для AI-агентов](AGENTS.md) — шпаргалка по API и правилам (`AGENTS.md` входит в npm-пакет, есть [`llms.txt`](https://alt-point.github.io/active-models/llms.txt))
 
 
 @Decorators

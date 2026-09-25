@@ -113,6 +113,9 @@ If a field must participate in change tracking, don't make it `hidden` — reser
 genuinely shouldn't be serialized *or* compared (see the
 [`@ActiveField()` options reference](/en/active-field-options#hidden)).
 
+`clone()` carries the baseline over to the copy: the clone's `isTouched()` starts as `false` and is then
+tracked independently of the original.
+
 ## `isTouched()` is not the `touched` event
 
 The library has two independently-named mechanisms with similar names, and it's easy to mix them up:

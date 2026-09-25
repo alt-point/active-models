@@ -132,24 +132,28 @@ Fires before `delete model.prop` - but **only if** the field isn't `protected`. 
 to fire - so this hook can't meaningfully be used on a protected field. Payload: `{ target, prop }` (no
 `value`/`oldValue` - there's no value left to report at deletion time).
 
-### `touched` (internal, no payload)
+### `touched` (payload `{ target }`)
 
-Fires on **any** real change to **any** active field on the instance (not something you subscribe to
-per-field via the decorator - `touched` is deliberately excluded from `PropEvent`, the set of events
-available in `@ActiveField({ on: {...} })`; you can subscribe at the instance level
-(`model.on(EventType.touched, cb)`) or at the class level, for every instance of it at once
-(`Model.on(EventType.touched, cb)`)). Used internally to flip a private "this instance has been
-touched" flag - but note this is **not** the mechanism behind the public `model.isTouched()` (that one
-compares current state against a snapshot saved via `opts.tracked: true` - a separate, independent
-mechanism, covered in depth in
-[Change tracking: isTouched()](/en/dirty-tracking)).
+Fires on **any** real change to **any** active field on the instance - but not during `create()` and not
+for the initial fill of `new Model(data)`. The payload is `{ target }`, where `target` is the model
+instance itself.
+
+You can't subscribe to it via the decorator: `touched` is deliberately excluded from `PropEvent`, the set
+of events available in `@ActiveField({ on: {...} })`. Subscribe at the instance level
+(`model.on(EventType.touched, cb)`) or at the class level, for every instance at once
+(`Model.on(EventType.touched, cb)`).
+
+Note this is **not** the mechanism behind the public `model.isTouched()` - that one compares the current
+state against a snapshot saved via `opts.tracked: true`. It's a separate, independent mechanism, covered in
+depth in [Change tracking: isTouched()](/en/dirty-tracking).
 
 ### `created`
 
 Fires **once**, at the very end of `Model.create(data)` (and its variants - `createLazy`, `asyncCreate`,
 `asyncCreateLazy`, `createFromCollection`, `createFromCollectionLazy`, `asyncCreateFromCollection*` - they
 all eventually call `create()` internally) - after `fill()`, after the `isTouched()` snapshot (if
-`opts.tracked`), right before the instance is returned to the caller. No payload - subscribe at the
+`opts.tracked`), right before the instance is returned to the caller. The payload is `{ target }`
+(the model instance itself); subscribe at the
 instance level (`model.on(EventType.created, cb)`) or at the class level, for every instance of it at once
 (`Model.on(EventType.created, cb)`, see [`on` / `once` hooks](active-model-advanced.md#on-once-hooks)); like
 `touched`, `created` is deliberately excluded from `PropEvent`, the set of events available in

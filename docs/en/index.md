@@ -191,5 +191,6 @@ bun add @alt-point/active-models
 - [Node.js server example](/en/node-example) — no Vue/Nuxt, plain `node:http`
 - [Change tracking: isTouched()](/en/dirty-tracking) — dirty tracking with Vue and React examples, compared to react-hook-form/Formik/MobX
 - [Model mapping: mapTo()](/en/mapping) — mapping to DTOs/view-models with Vue and React examples, compared to class-transformer/AutoMapper
+- [Known limitations](/en/limitations), [Migrating to 4.0](/en/migration), [For AI agents](/en/agents), [API reference](/en/api/)
 
 Русская версия: [/](/)

@@ -79,6 +79,8 @@ Also:
 - [Node.js server example](docs/en/node-example.md) — no Vue/Nuxt, plain `node:http`
 - [Change tracking: isTouched()](docs/en/dirty-tracking.md) — dirty tracking with Vue and React examples, compared to react-hook-form/Formik/MobX
 - [Model mapping: mapTo()](docs/en/mapping.md) — mapping to DTOs/view-models with Vue and React examples, compared to class-transformer/AutoMapper
+- [Known limitations](docs/en/limitations.md) · [Migrating to 4.0](docs/en/migration.md) · [CHANGELOG](CHANGELOG.md)
+- [For AI agents](AGENTS.md) — API cheat sheet and rules (`AGENTS.md` ships in the npm package; there is also [`llms.txt`](https://alt-point.github.io/active-models/llms.txt))
 
 
 Decorators

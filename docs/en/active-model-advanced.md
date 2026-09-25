@@ -155,16 +155,55 @@ second.status = 'shipped' // "order 2: status → shipped" — one subscription,
 
 The same technique works for `created`/`touched`, which have no decorator-based option 1 — this is the
 only way to find out about every instance's creation/change without overriding `beforeFill` at every call
-site that might need it. Note: unlike `afterSetValue`, `created`/`touched` carry **no payload**
-(see [Model lifecycle](/en/model-lifecycle)) — the handler learns that *some* instance was
-created/changed, not which one:
+site that might need it. Their payload is `{ target }`, where `target` is the model instance itself
+(see [Model lifecycle](/en/model-lifecycle)):
 
 ```ts
-let createdCount = 0
-Order.on(EventType.created, () => { createdCount++ })
+Order.on(EventType.created, ({ target }) => {
+  console.log('order created', target.id)
+})
 
-Order.create({ id: '3' }) // createdCount → 1, regardless of create()/new
-new Order({ id: '4' })    // createdCount → 2 (asynchronously, see the lifecycle page)
+Order.create({ id: '3' }) // "order created 3"
+new Order({ id: '4' })    // "order created ..." — asynchronously, see the lifecycle page
+```
+
+Subscriptions are **inherited**: anything registered on a parent class (`Parent.on(...)` or an
+`@ActiveField({ on })` hook in the parent) also fires for instances of every subclass. Call order: the
+listeners of the most distant ancestors first, then of the nearest class, then of the instance itself.
+
+### Errors in listeners
+
+A throwing listener doesn't stop the others: the event always reaches **all** listeners, and only then
+is the first error rethrown (into the assignment, `create()`, etc.). If several listeners failed, an
+`Error` carrying all of them in its `errors` property is thrown. The value has already been written by
+then — use a `validator`, not a listener, to reject a value.
+
+```ts
+counter.on(EventType.afterSetValue, () => { throw new Error('a') })
+counter.on(EventType.afterSetValue, () => { throw new Error('b') })
+
+try {
+  counter.value = 1
+} catch (e) {
+  (e as any).errors // [Error('a'), Error('b')]
+}
+```
+
+## `clone()` and `makeFreeze()`
+
+`clone()` returns a fully working model: it is wrapped in the same `Proxy` (validators, `readonly` and
+`fillable: false` keep being enforced), `hidden` field values are preserved, nested models are cloned
+independently, and the `isTouched()` baseline is carried over to the copy. Instance-level listeners are
+**not** copied, and no `created` event is emitted for a clone.
+
+`makeFreeze()` makes the model immutable: any later write, `delete` or `defineProperty` throws a
+`TypeError`. The freeze is shallow (nested models and arrays are untouched) and implemented through the
+traps rather than `Object.freeze()` — a truly frozen target would force `ownKeys` to expose `hidden`
+fields — so `Object.isFrozen(model)` reports `false`.
+
+```ts
+const frozen = order.makeFreeze()
+frozen.status = 'x' // TypeError: Cannot assign to "status": the model is frozen (makeFreeze)
 ```
 
 ## `new Model(data)` vs `Model.create(data)` vs `.fill(data)`

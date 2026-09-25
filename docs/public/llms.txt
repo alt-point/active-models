@@ -1,0 +1,16 @@
+# @alt-point/active-models
+
+> Reactive, self-validating DTO models built on Proxy and legacy TypeScript decorators (ActiveModel + @ActiveField). Fields support validators, setters/getters, readonly/hidden/protected/fillable, nested factories, events, dirty tracking and mapping.
+
+Start with the agent guide: it lists the rules that prevent the most bugs (always `Model.create()`, never `new Model()`).
+
+- [Agent guide (AGENTS.md)](https://raw.githubusercontent.com/alt-point/active-models/master/AGENTS.md): API cheat sheet, rules, events, migration
+- [Decorators example](https://alt-point.github.io/active-models/en/active-model-with-decorators): basic workflow
+- [@ActiveField() options](https://alt-point.github.io/active-models/en/active-field-options): every option
+- [Model lifecycle](https://alt-point.github.io/active-models/en/model-lifecycle): creation/set/delete flows and events
+- [Advanced features](https://alt-point.github.io/active-models/en/active-model-advanced): validators, hooks, create vs new vs fill, clone, makeFreeze
+- [Change tracking](https://alt-point.github.io/active-models/en/dirty-tracking): isTouched() with Vue/React
+- [Model mapping](https://alt-point.github.io/active-models/en/mapping): mapTo()/hasMapping()
+- [Known limitations](https://alt-point.github.io/active-models/en/limitations)
+- [Migrating to 4.0](https://alt-point.github.io/active-models/en/migration)
+- [Changelog](https://raw.githubusercontent.com/alt-point/active-models/master/CHANGELOG.md)
