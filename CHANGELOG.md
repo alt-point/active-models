@@ -53,6 +53,7 @@ Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migrati
   unsubscription on replacement and a cycle guard.
 - A plain object/array `value: ...` default was one object shared by every instance; now copied per instance.
 - Decorator `once` hooks fired only if the first event of that type happened to be for their own field.
+- Tracked snapshots deep-froze user-supplied functions (a side effect on caller code); functions are now left alone.
 - `toJSON()` passed the proxy (not the raw instance) to getters, unlike a regular read.
 - `mapTo()` typing required the handler to return the key's own type for `Symbol`/string targets.
 - `AttributeValue` now allows arrays/objects (the runtime always did).

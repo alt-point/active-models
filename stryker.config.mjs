@@ -12,7 +12,7 @@ export default {
   htmlReporter: { fileName: 'reports/mutation/index.html' },
   incremental: true,
   incrementalFile: 'reports/stryker-incremental.json',
-  thresholds: { high: 90, low: 80, break: 80 },
+  thresholds: { high: 95, low: 90, break: 90 },
   ignoreStatic: true,
   timeoutMS: 10000,
   concurrency: 4,

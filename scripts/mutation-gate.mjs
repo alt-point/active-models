@@ -3,13 +3,13 @@
 import { readFileSync } from 'node:fs'
 
 const MIN = {
-  'src/ActiveModel.ts': 75,
-  'src/decorators.ts': 85,
-  'src/emitter.ts': 85,
-  'src/meta.ts': 75,
-  'src/utils.ts': 75,
-  'src/mapper.ts': 90,
-  'src/CallableModel.ts': 90,
+  'src/ActiveModel.ts': 88,
+  'src/decorators.ts': 93,
+  'src/emitter.ts': 95,
+  'src/meta.ts': 95,
+  'src/utils.ts': 92,
+  'src/mapper.ts': 95,
+  'src/CallableModel.ts': 95,
 }
 
 const report = JSON.parse(readFileSync('reports/stryker-incremental.json', 'utf8'))

@@ -48,6 +48,6 @@
 bun run test:mutation        # HTML-отчёт: reports/mutation/index.html
 ```
 
-Порог счёта (`break: 65`) задан в `stryker.config.mjs`; прогоны инкрементальные
+Порог счёта (`break: 90`) задан в `stryker.config.mjs`, а `scripts/mutation-gate.mjs` дополнительно проверяет минимум для каждого файла (сейчас общий счёт ≈ 94%); прогоны инкрементальные
 (`reports/stryker-incremental.json`) — заново мутируется только изменённый код. В CI запускается раз в
 неделю и по требованию (`quality.yml`), а не на каждый PR — занимает минуты.

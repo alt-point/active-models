@@ -47,6 +47,6 @@ mutant means a behavior nobody pins down.
 bun run test:mutation        # HTML report: reports/mutation/index.html
 ```
 
-The score is gated (`break: 65`), configured in `stryker.config.mjs`; runs are incremental
+The score is gated (`break: 90`) in `stryker.config.mjs`, and `scripts/mutation-gate.mjs` also enforces a per-file minimum (overall score is currently ≈ 94%); runs are incremental
 (`reports/stryker-incremental.json`), so only changed code is re-mutated. In CI it runs weekly and on demand
 (`quality.yml`), not on every PR - it takes minutes.
