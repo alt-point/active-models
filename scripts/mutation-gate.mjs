@@ -3,6 +3,8 @@
 import { readFileSync } from 'node:fs'
 
 const MIN = {
+  'src/ActiveCollection.ts': 90,
+  'src/collectionRegistry.ts': 95,
   'src/ActiveModel.ts': 88,
   'src/decorators.ts': 93,
   'src/emitter.ts': 95,

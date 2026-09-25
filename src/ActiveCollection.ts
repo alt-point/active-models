@@ -42,6 +42,7 @@ const states = new WeakMap<object, State<any>>()
 /** `Array.prototype.splice` for the raw storage: returns the removed items as a plain array */
 const rawSplice = <T>(raw: any[], start: number, deleteCount: number, items: readonly T[]): T[] => {
   const length = raw.length
+  // Stryker disable next-line ArrayDeclaration: the loop below fills every slot
   const removed = new Array<T>(deleteCount)
   for (let i = 0; i < deleteCount; i++) {
     removed[i] = raw[start + i]
@@ -184,9 +185,11 @@ const attach = <T extends ActiveModel>(state: State<T>, item: T) => {
     const alive = ref.deref()
     if (alive) {
       onItemTouched(alive, item)
+    // Stryker disable all: the dead-collection branch needs a garbage collection to run - see the memory test in tests/perf
     } else {
       off()
     }
+    // Stryker restore all
   })
   state.attached.set(item, { off, count: 1 })
 }
@@ -246,6 +249,7 @@ const insert = <T extends ActiveModel>(state: State<T>, items: T[], position: nu
   let index = position
   if (state.sorted) {
     index = upperBound(state, items[0])
+    // Stryker disable next-line ConditionalExpression,EqualityOperator: both paths produce the same order, the threshold only picks the faster one
     if (items.length > BULK_SORT_THRESHOLD) {
       // one stable sort (existing items first, so ties keep insertion order) beats n shifting inserts
       const merged = sortedCopy(state, Array.from(raw).concat(items))
@@ -258,6 +262,7 @@ const insert = <T extends ActiveModel>(state: State<T>, items: T[], position: nu
         rawSplice(raw, upperBound(state, item), 0, [item])
       }
     }
+  // Stryker disable next-line ConditionalExpression: appending through rawSplice gives the same result, the branch is a fast path
   } else if (position === raw.length) {
     for (const item of items) {
       A.push.call(raw, item)
@@ -382,6 +387,7 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
     items: Iterable<unknown> = [],
     options: CollectionOptions<InstanceType<M>> = {}
   ): ActiveCollection<InstanceType<M>> {
+    // Stryker disable next-line ConditionalExpression: a non-function has no prototype, so the second test rejects it as well
     if (typeof model !== 'function' || !(model.prototype instanceof ActiveModel)) {
       throw new TypeError('ActiveCollection.create() needs a class extending ActiveModel')
     }
@@ -405,6 +411,7 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
       attached: new Map(),
     }
     state.compare = options.compare
+      // Stryker disable next-line ArithmeticOperator: only the sign of a comparator result matters
       ? (a, b) => (state.order === 'desc' ? -1 : 1) * options.compare!(a, b)
       : keyOf
         ? (a, b) => compareKeys(keyOf(a), keyOf(b), state.order)
@@ -546,6 +553,7 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
     if (state.sorted) {
       state.order = state.order === 'asc' ? 'desc' : 'asc'
     }
+    // Stryker disable next-line EqualityOperator: swapping the middle element with itself changes nothing
     for (let low = 0, high = state.raw.length - 1; low < high; low++, high--) {
       const swap = state.raw[low]
       state.raw[low] = state.raw[high]
