@@ -55,28 +55,81 @@ export type PropEvent = Exclude<
 >
 export type ActiveModelHookListener = (model: any) => void
 
+/** Payload of `beforeSetValue`, `afterSetValue` and `nulling` */
+export type SetEventPayload = {
+  /** raw (unproxied) instance - read only, do not write through it */
+  target: ActiveModel
+  prop: string | symbol
+  value: unknown
+  oldValue: unknown
+}
+
+/** Payload of `beforeDeletingAttribute` */
+export type DeleteEventPayload = {
+  target: ActiveModel
+  prop: string | symbol
+}
+
+/** Payload of `created` and `touched`: `target` is the model instance itself */
+export type InstanceEventPayload = { target: ActiveModel }
+
+export type EventPayloads = {
+  [EventType.touched]: InstanceEventPayload
+  [EventType.created]: InstanceEventPayload
+  [EventType.beforeSetValue]: SetEventPayload
+  [EventType.afterSetValue]: SetEventPayload
+  [EventType.nulling]: SetEventPayload
+  [EventType.beforeDeletingAttribute]: DeleteEventPayload
+}
+
+/** Listener typed by the event it is subscribed to */
+export type EventListener<E extends EventType = EventType> = (
+  payload: EventPayloads[E]
+) => void
+
 type PrimitiveValue = string | number | null | undefined | boolean
 
 export type AttributeValue = (() => any) | PrimitiveValue
 
-export type ActiveFieldDescriptor<T = unknown> = {
+/**
+ * Options of the `@ActiveField()` decorator.
+ */
+export type ActiveFieldDescriptor<_T = unknown> = {
+  /** Transform/intercept a write. Return `true` when the value was stored. */
   setter?: Setter<any>
+  /** Compute the value returned on read. */
   getter?: Getter<any>
+  /** Reject a value by throwing. Runs only when the value actually changes; the return value is ignored. */
   validator?: Validator<any>
+  /** Can be set once at creation (factory or constructor); later writes are silently ignored. */
   readonly?: boolean
+  /** Excluded from `Object.keys`, spread, `in`, `JSON.stringify` and `isTouched()`; still readable directly. */
   hidden?: boolean
+  /** `false`: data can never set the field and direct assignment throws. Default `true`. */
   fillable?: boolean
+  /** `true` (default): `delete model.field` throws. */
   protected?: boolean
+  /** Default for a key absent from `create()` data (a value or a `() => value` factory). */
   attribute?: AttributeValue
+  /** Alias for `attribute`. */
   value?: AttributeValue
+  /** Wrap a nested object (or every array item) in this `ActiveModel`; `[Model, () => default]` adds a default. */
   factory?: FactoryConfig
+  /** Field-level hooks, shared by every instance of the class (and subclasses). */
   on?: Partial<Record<PropEvent, ActiveModelHookListener>>
+  /** Like `on`, but each hook fires only once. */
   once?: Partial<Record<PropEvent, ActiveModelHookListener>>
 }
 
+/**
+ * Options of `Model.create()`.
+ */
 export type FactoryOptions = {
+  /** Return an existing instance of the model as-is instead of rebuilding it. */
   lazy?: boolean
+  /** Deep-clone the input first so the model never shares references with it. Default `true`. */
   sanitize?: boolean
+  /** Take the baseline snapshot used by `isTouched()`. */
   tracked?: boolean
 }
 

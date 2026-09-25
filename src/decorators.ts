@@ -74,7 +74,7 @@ const factoryDecorator = (
   target: ActiveModel,
   prop: string,
   factory?: FactoryConfig,
-  isOptional?: boolean
+  _isOptional?: boolean
 ) => {
   if (!factory) {
     return
@@ -126,11 +126,10 @@ export function ActiveFactory (
 }
 
 /**
- * Decorate class property
- * @constructor
- * @param opts<ActiveFieldDescriptor>
+ * Declare a class property as a model field.
+ * @param opts - field options (see {@link ActiveFieldDescriptor}); a bare non-object value is shorthand for `{ value }`
  */
-export function ActiveField<T extends ActiveModel> (
+export function ActiveField<_T extends ActiveModel> (
   opts?: ActiveFieldDescriptor | AttributeValue
 ) {
   if (typeof opts !== 'object' || opts === null || opts === undefined) {

@@ -11,3 +11,4 @@ export {
 } from './decorators'
 export { Enum } from './Enum'
 export * from './types'
+export type { ModelProperties, RecursivePartialActiveModel } from './utils'

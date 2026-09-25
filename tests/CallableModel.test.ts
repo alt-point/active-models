@@ -40,3 +40,30 @@ describe('CallableModel', () => {
     expect(notify.log).toEqual(['Alert!'])
   })
 })
+
+describe('CallableModel (no dynamic code)', () => {
+  it('produces real functions that are still instances of the subclass', () => {
+    class Notify extends CallableModel {
+      __call (...args: any[]) { return args.length }
+    }
+    // @ts-expect-error protected ctor is a compile-time-only guard
+    const notify: any = new Notify()
+
+    expect(typeof notify).toBe('function')
+    expect(notify).toBeInstanceOf(Notify)
+    expect(notify).toBeInstanceOf(CallableModel)
+    expect(notify.constructor).toBe(Notify)
+  })
+
+  it('keeps Function.prototype members working', () => {
+    class Echo extends CallableModel {
+      __call (value: string) { return value }
+    }
+    // @ts-expect-error protected ctor is a compile-time-only guard
+    const echo: any = new Echo()
+
+    expect(echo.call(null, 'a')).toBe('a')
+    expect(echo.apply(null, ['b'])).toBe('b')
+    expect(echo.bind(null, 'c')()).toBe('c')
+  })
+})

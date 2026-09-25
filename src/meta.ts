@@ -8,90 +8,65 @@ type State = {
   raw?: any
 }
 
-type CreatingStore = { depth: number }
-
-type AsyncStorage = {
-  run<T>(store: CreatingStore, fn: () => T): T
-  getStore(): CreatingStore | undefined
-}
-
-const loadAsyncStorage = (): AsyncStorage | null => {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { AsyncLocalStorage } = require('node:async_hooks') as typeof import('node:async_hooks')
-    return new AsyncLocalStorage<CreatingStore>()
-  } catch {
-    // Браузер, или Node.js без поддержки async_hooks — используем fallback
-    return null
-  }
-}
-
-const asyncStorage = loadAsyncStorage()
-let browserDepth = 0
-const getStore = (): CreatingStore | undefined =>
-  asyncStorage?.getStore()
-
+/**
+ * Depth of the currently running `create()` calls. `create()` is fully
+ * synchronous, so a plain module-level counter is race-free - no
+ * `AsyncLocalStorage` (which never worked in the ESM build anyway) needed.
+ */
+let creatingDepth = 0
 
 /**
- * A hook notifying that the creation process has begun
+ * One-shot marker: set by `create()` right before `new this()`, consumed by the
+ * base constructor, which then returns the raw (not yet proxied) instance.
  */
-export const startCreating = () => {
-  const store = getStore()
-  if (store) {
-    store.depth++
-    return
-  }
-
-  browserDepth++
-
-}
-
-/**
- * a hook notifying that the creation process has completed
- */
-export const endCreating = () => {
-  const store = getStore()
-  if (store) {
-    if (store.depth > 0) {
-      store.depth--
-    }
-    return
-  }
-
-  if (browserDepth > 0) {
-    browserDepth--
-  }
-
-}
+let rawConstruction = false
 
 /**
  * Helper for check creating state
  */
-export const isCreating = (): boolean => {
-  const store = getStore()
-  return store ? store.depth > 0 : browserDepth > 0
-}
+export const isCreating = (): boolean => creatingDepth > 0
 
 /**
  * Helper for check not creating
  */
-export const isNotCreating =  (): boolean => !isCreating()
+export const isNotCreating = (): boolean => !isCreating()
 
+/**
+ * Run `fn` as part of model creation: `touched` is not emitted for the writes it performs.
+ * The counter is restored even if `fn` throws.
+ */
 export const runInCreatingContext = <T>(fn: () => T): T => {
-  if (!asyncStorage) {
-    // Браузер: просто вызываем — счётчик глобальный, но гонок нет
+  creatingDepth++
+  try {
     return fn()
+  } finally {
+    creatingDepth--
   }
-
-  // Если уже внутри активного контекста (вложенный create) — переиспользуем
-  if (asyncStorage.getStore()) {
-    return fn()
-  }
-
-  // Новый верхнеуровневый create — создаём изолированный store
-  return asyncStorage.run({ depth: 0 }, fn)
 }
 
+/**
+ * Run `fn` (the `new this()` call of `create()`) so that the base constructor
+ * knows to return the raw instance instead of wrapping it.
+ */
+export const runRawConstruction = <T>(fn: () => T): T => {
+  rawConstruction = true
+  try {
+    return fn()
+  } finally {
+    rawConstruction = false
+  }
+}
+
+/**
+ * Base-constructor side of `runRawConstruction`: returns `true` once, then
+ * resets, so a model instantiated from a field initializer of the instance
+ * being built is not mistaken for the raw one.
+ */
+export const consumeRawConstruction = (): boolean => {
+  const value = rawConstruction
+  rawConstruction = false
+  return value
+}
 
 /**
  * Shared state of model, for use in life cycle
@@ -157,6 +132,17 @@ export const saveInitialState = (
 ) => {
   initialState = deepFreeze(cloneDeep(initialState))
   upsertState(instance, { initialState })
+}
+
+/**
+ * Carry the tracking baseline of `from` over to `to` (used by `clone()`).
+ * The snapshot is already deep-frozen, so it is safe to share.
+ */
+export const copyTrackingState = (from: ActiveModel, to: ActiveModel) => {
+  const meta = sharedState.get(from)
+  if (meta?.initialState) {
+    upsertState(to, { initialState: meta.initialState, raw: meta.raw })
+  }
 }
 
 /**
@@ -226,11 +212,11 @@ export const useMeta = (instance?: ActiveModel) => {
     setInstance: (instance: ActiveModel) => {
       inst = instance
     },
-    startCreating,
-    endCreating,
     isCreating,
     isNotCreating,
     runInCreatingContext,
+    runRawConstruction,
+    consumeRawConstruction,
     saveInitialState: (initialState: ActiveModel) =>
       saveInitialState(requiredInstance(inst), initialState),
     saveRaw: (raw: any) => saveRaw(requiredInstance(inst), raw),

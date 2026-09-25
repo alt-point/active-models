@@ -8,12 +8,13 @@ import {
   type Validator,
   EventType,
   type ActiveModelHookListener,
+  type EventListener,
   type ConstructorType,
   type HandlerMapTo,
   type MapTarget,
 } from './types'
 import cloneDeepWith from 'lodash-es/cloneDeepWith'
-import { isSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
+import { copyTrackingState, isSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
 import {
   type ModelProperties,
   type RecursivePartialActiveModel,
@@ -29,6 +30,17 @@ import { useMapper } from './mapper'
 
 const isTouched = Symbol('@touched')
 
+/**
+ * proxy -> raw instance. Instance methods run with `this === proxy`, but state
+ * that must include `hidden` fields (clone) has to be read from the raw object.
+ */
+const rawOf = new WeakMap<object, ActiveModel>()
+
+/**
+ * Instances frozen by `makeFreeze()`; checked by the traps for a clear error.
+ */
+const frozenModels = new WeakSet<object>()
+
 const makeWrittenTracker = () => {
   const registry = new WeakMap<ActiveModel, Set<string | symbol>>()
   return (target: ActiveModel): Set<string | symbol> => {
@@ -40,6 +52,7 @@ const makeWrittenTracker = () => {
     return written
   }
 }
+
 
 /**
  * Tracks which `readonly` fields have already received their one-time value,
@@ -79,7 +92,7 @@ export class ActiveModel {
    */
   get on () {
     const { addListener } = useEmitter(this)
-    return (event: EventType, cb: ActiveModelHookListener) => addListener(event, cb)
+    return <E extends EventType>(event: E, cb: EventListener<E>) => addListener(event, cb as ActiveModelHookListener)
   }
 
   /**
@@ -88,28 +101,28 @@ export class ActiveModel {
    */
   get once () {
     const { addListener } = useEmitter(this)
-    return (event: EventType, cb: ActiveModelHookListener) => addListener(event, cb, true)
+    return <E extends EventType>(event: E, cb: EventListener<E>) => addListener(event, cb as ActiveModelHookListener, true)
   }
 
   /**
    * Subscribe to a lifecycle/field event for *every* instance of this class
-   * (NOT subclasses' instances - known limitation), not just one. Registered against the
+   * (subclasses' instances included), not just one. Registered against the
    * constructor itself, which `useEmitter()`'s `getListeners()` merges in as
    * "inherited" listeners for any instance of this class - the same
    * mechanism `@ActiveField({ on: {...} })` already uses internally.
    */
-  static on (event: EventType, cb: ActiveModelHookListener) {
+  static on<E extends EventType> (event: E, cb: EventListener<E>) {
     const { addListener } = useEmitter(this)
-    return addListener(event, cb)
+    return addListener(event, cb as ActiveModelHookListener)
   }
 
   /**
    * Same as `on`, but the listener is removed after firing once.
    * @see on
    */
-  static once (event: EventType, cb: ActiveModelHookListener) {
+  static once<E extends EventType> (event: E, cb: EventListener<E>) {
     const { addListener } = useEmitter(this)
-    return addListener(event, cb, true)
+    return addListener(event, cb as ActiveModelHookListener, true)
   }
 
   protected static defineStaticProperty (
@@ -117,7 +130,7 @@ export class ActiveModel {
     fallback: () => unknown
   ) {
     // @ts-ignore
-    this[propertyName] = this.hasOwnProperty(propertyName)
+    this[propertyName] = Object.prototype.hasOwnProperty.call(this, propertyName)
       ? this[propertyName]!
       : fallback()
     return this
@@ -457,6 +470,19 @@ export class ActiveModel {
       return instance
     }
 
+    if (!(instance instanceof ActiveModel)) {
+      // values that know how to serialize themselves (Date, URL, Buffer, ...)
+      if (typeof (instance as { toJSON?: unknown }).toJSON === 'function') {
+        return (instance as { toJSON: () => object }).toJSON()
+      }
+      if (instance instanceof Set) {
+        return this.toJSON([...instance])
+      }
+      if (instance instanceof Map) {
+        return this.toJSON(Object.fromEntries(instance))
+      }
+    }
+
     return Array.isArray(instance)
       ? instance.map((i) => this.toJSON(i))
       : Object.keys(instance).reduce(
@@ -491,11 +517,16 @@ export class ActiveModel {
   }
 
   /**
-   * Make model readonly
+   * Shallow-freeze the model: any later write, delete or defineProperty throws a TypeError.
+   * Implemented by guarding the proxy traps rather than `Object.freeze()` - a
+   * truly frozen target forces `ownKeys` to list every key, which would expose
+   * `hidden` fields - so `Object.isFrozen(model)` still reports `false`.
+   * Nested models/arrays are not frozen.
    * @return {Readonly<this>}
    */
   makeFreeze (): Readonly<this> {
-    return Object.freeze(this)
+    frozenModels.add(rawOf.get(this) ?? this)
+    return this
   }
 
   /**
@@ -557,56 +588,53 @@ export class ActiveModel {
       data = {}
     }
 
+    if (Array.isArray(data)) {
+      throw new TypeError(
+        `${this.name}.create() expects an object, got an array - use ${this.name}.createFromCollection()`
+      )
+    }
+
     const {
       saveInitialState,
       setInstance,
-      startCreating,
-      endCreating,
       saveRaw,
-      runInCreatingContext
+      runInCreatingContext,
+      runRawConstruction
     } = useMeta()
-      return runInCreatingContext(() => {
-        startCreating()
-        if ((opts.sanitize ?? true) && !isSanitized(data)) {
-          data = this.sanitize(data  as object)
-        }
-        const raw = new this()
-        this.sealNonFillable(raw)
-        const model = this.wrap(raw)
 
-        setInstance(model)
+    return runInCreatingContext(() => {
+      if ((opts.sanitize ?? true) && !isSanitized(data)) {
+        data = this.sanitize(data as object)
+      }
+      // The raw instance is built *before* it is wrapped in the proxy, so
+      // class-field initializers run unintercepted, ahead of fill().
+      const raw = runRawConstruction(() => new this())
+      this.sealNonFillable(raw)
+      const model = this.wrap(raw)
 
-        endCreating()
+      setInstance(model)
 
-        this.fill(model, this.stripNonFillable(this.setDefaultAttributes(data))) as InstanceType<T>
+      this.fill(model, this.stripNonFillable(this.setDefaultAttributes(data)))
 
-        if (opts.tracked) {
-          saveRaw(data)
-          saveInitialState(model)
-        }
+      if (opts.tracked) {
+        saveRaw(data)
+        saveInitialState(model)
+      }
 
-        unmarkSanitized(data as object)
+      unmarkSanitized(data as object)
 
-        // Fires exactly once, synchronously, after this model - and,
-        // transitively, every nested model a `factory` field created along
-        // the way - is fully built. Nested factory fields are constructed
-        // synchronously inside fill() above via their own create() call, so
-        // their `created` has already fired by this point: children finish
-        // (and emit) before their parent does, with no extra propagation
-        // code needed - just the natural order of a synchronous call stack.
-        // This can fire synchronously (unlike the constructor's deferred
-        // version below) because by this point every class-field initializer
-        // already ran: create() builds the raw instance with `new this()`
-        // *before* wrapping it (see sealNonFillable above), so those
-        // initializers ran unintercepted, ahead of fill(). Emitted keyed by
-        // `raw` (not `model`/the proxy) - the same raw-target key every
-        // `on()`/`once()` subscription and every trap-emitted event uses; see
-        // the comment on `Ctor.getter()` above for why that distinction
-        // matters.
-        useEmitter(raw).emit(EventType.created)
+      // Fires exactly once, synchronously, after this model - and,
+      // transitively, every nested model a `factory` field created along the
+      // way - is fully built. Nested factory fields are constructed
+      // synchronously inside fill() above via their own create() call, so
+      // their `created` has already fired: children emit before their parent,
+      // purely from the order of a synchronous call stack. Emitted keyed by
+      // `raw` - the same key every `on()`/`once()` subscription and every
+      // trap-emitted event uses (see `Ctor.getter()`).
+      useEmitter(raw).emit(EventType.created, { target: model })
 
-        return model as InstanceType<T>
-      })
+      return model as InstanceType<T>
+    })
   }
 
   /**
@@ -674,10 +702,13 @@ export class ActiveModel {
    */
   static createFromCollection<T extends typeof ActiveModel> (
     this: T,
-    data: Array<T | ActiveModelSource>,
+    data: Array<InstanceType<T> | RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource>,
     opts: FactoryOptions = { lazy: false, tracked: false, sanitize: true }
-  ) {
-    return data.filter((s: unknown) => s).map((item) => this.create(item, opts))
+  ): Array<InstanceType<T>> {
+    // only null/undefined items are skipped; every other item goes through create()
+    return data
+      .filter((item) => item !== null && item !== undefined)
+      .map((item) => this.create(item as any, opts))
   }
 
   /**
@@ -687,9 +718,9 @@ export class ActiveModel {
    */
   static createFromCollectionLazy<T extends typeof ActiveModel> (
     this: T,
-    data: Array<T | ActiveModelSource>,
+    data: Array<InstanceType<T> | RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource>,
     opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }
-  ) {
+  ): Array<InstanceType<T>> {
     return this.createFromCollection(data, {
       lazy: true,
       tracked: opts.tracked,
@@ -704,9 +735,9 @@ export class ActiveModel {
    */
   static async asyncCreateFromCollection<T extends typeof ActiveModel> (
     this: T,
-    data: Promise<Array<T | ActiveModelSource>>,
+    data: Promise<Array<InstanceType<T> | RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource>>,
     opts: FactoryOptions = { lazy: false, tracked: false }
-  ) {
+  ): Promise<Array<InstanceType<T>>> {
     return this.createFromCollection<T>(await data, opts)
   }
 
@@ -717,9 +748,9 @@ export class ActiveModel {
    */
   static async asyncCreateFromCollectionLazy<T extends typeof ActiveModel> (
     this: T,
-    data: Promise<Array<T | ActiveModelSource>>,
+    data: Promise<Array<InstanceType<T> | RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource>>,
     opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }
-  ) {
+  ): Promise<Array<InstanceType<T>>> {
     return this.createFromCollectionLazy<T>(await data, opts)
   }
 
@@ -773,11 +804,20 @@ export class ActiveModel {
   }
 
   /**
-   * Clone current instance with unlinked references
+   * Clone current instance with unlinked references. The clone is a fully
+   * working model (proxied, `hidden` fields included, `readonly`/`fillable: false`
+   * locks and the `isTouched()` baseline carried over); instance-level
+   * listeners are not copied and no `created` event is emitted for it.
    */
   clone (): this {
     const Ctor = <typeof ActiveModel>this.constructor
-    return cloneDeepWith(this, Ctor.cloneCustomizer.bind(Ctor))
+    const source = rawOf.get(this) ?? this
+    const copy = cloneDeepWith(source, Ctor.cloneCustomizer.bind(Ctor))
+    for (const p of getReadonlyWritten(source)) getReadonlyWritten(copy).add(p)
+    for (const p of getFillableWritten(source)) getFillableWritten(copy).add(p)
+    const model = Ctor.wrap(copy)
+    copyTrackingState(this, model)
+    return model
   }
 
   protected static cloneCustomizer (
@@ -786,7 +826,7 @@ export class ActiveModel {
     parent: unknown
   ): unknown {
     if (value instanceof ActiveModel && Boolean(parent)) {
-      return this.wrap(cloneDeepWith(value, this.cloneCustomizer.bind(this)))
+      return value.clone()
     }
   }
 
@@ -803,11 +843,24 @@ export class ActiveModel {
    * Wrap an instance in a proxy for traps to work
    * @param { ActiveModel } instance Instance for wrapping
    */
-  protected static wrap<
-    RType extends ActiveModel,
-    P = keyof InstanceType<typeof this> | string | symbol
-  > (instance: RType): RType {
-    return new Proxy(instance, {
+  protected static wrap<RType extends ActiveModel> (instance: RType): RType {
+    /**
+     * `hidden` fields are concealed from `in` and descriptor lookups too - unless
+     * the Proxy invariants forbid lying (non-configurable property / non-extensible
+     * target, e.g. after makeFreeze()).
+     */
+    const isHiddenAndConcealable = (target: ActiveModel, prop: string | symbol): boolean => {
+      if (!(<typeof ActiveModel>target.constructor).fieldIsHidden(prop as string)) {
+        return false
+      }
+      if (!Object.isExtensible(target)) {
+        return false
+      }
+      const descriptor = Reflect.getOwnPropertyDescriptor(target, prop)
+      return descriptor === undefined || descriptor.configurable === true
+    }
+
+    const proxy = new Proxy(instance, {
       get (target, prop, receiver) {
         return (<typeof ActiveModel>target.constructor).getter(
           target,
@@ -816,6 +869,9 @@ export class ActiveModel {
         )
       },
       set (target, prop, value, receiver) {
+        if (frozenModels.has(target)) {
+          throw new TypeError(`Cannot assign to "${String(prop)}": the model is frozen (makeFreeze)`)
+        }
         const { isNotCreating } = useMeta()
         const isActiveField = (<typeof ActiveModel>(
           target.constructor
@@ -825,7 +881,7 @@ export class ActiveModel {
         const isEqual = Object.is(oldValue, value)
         if (!isEqual && isNotCreating()) {
           target[isTouched] = true
-          useEmitter(target).emit(EventType.touched)
+          useEmitter(target).emit(EventType.touched, { target: receiver })
         }
 
         if (isEqual || !isActiveField) {
@@ -840,9 +896,11 @@ export class ActiveModel {
             })
           }
         }
-        Array.isArray(value)
-          ? value.forEach((v) => defineListenerTouchValue(v))
-          : defineListenerTouchValue(value)
+        if (Array.isArray(value)) {
+          value.forEach((v) => defineListenerTouchValue(v))
+        } else {
+          defineListenerTouchValue(value)
+        }
 
         const Ctor: typeof ActiveModel = <typeof ActiveModel>target.constructor
 
@@ -918,6 +976,9 @@ export class ActiveModel {
         )
       },
       deleteProperty (target, prop: string | symbol) {
+        if (frozenModels.has(target)) {
+          throw new TypeError(`Cannot delete "${String(prop)}": the model is frozen (makeFreeze)`)
+        }
         if ((<typeof ActiveModel>target.constructor).fieldIsProtected(prop)) {
           throw new TypeError(`Property "${prop as string}" is protected!`)
         }
@@ -926,8 +987,19 @@ export class ActiveModel {
 
         return Reflect.deleteProperty(target, prop)
       },
+      defineProperty (target, prop, descriptor) {
+        if (frozenModels.has(target)) {
+          throw new TypeError(`Cannot define "${String(prop)}": the model is frozen (makeFreeze)`)
+        }
+        return Reflect.defineProperty(target, prop, descriptor)
+      },
       has (target, prop: string | symbol) {
-        return Reflect.has(target, prop)
+        return !isHiddenAndConcealable(target, prop) && Reflect.has(target, prop)
+      },
+      getOwnPropertyDescriptor (target, prop) {
+        return isHiddenAndConcealable(target, prop)
+          ? undefined
+          : Reflect.getOwnPropertyDescriptor(target, prop)
       },
       ownKeys (target) {
         const Ctor = <typeof ActiveModel>target.constructor
@@ -937,6 +1009,8 @@ export class ActiveModel {
         ).filter((property) => !Ctor.fieldIsHidden(property as string))
       },
     }) as RType
+    rawOf.set(proxy, instance)
+    return proxy
   }
 
   /**
@@ -948,10 +1022,9 @@ export class ActiveModel {
   }
 
   constructor (data: ActiveModelSource = {}) {
-    const { isCreating, endCreating } = useMeta()
+    const { consumeRawConstruction, runInCreatingContext } = useMeta()
     const Ctor = <typeof ActiveModel>this.constructor
-    if (isCreating()) {
-      endCreating()
+    if (consumeRawConstruction()) {
       return this
     }
 
@@ -964,7 +1037,9 @@ export class ActiveModel {
     }
 
     const model = Ctor.wrap(this)
-    const filled = Ctor.fill(model, Ctor.stripNonFillable(Ctor.setDefaultAttributes(data)))
+    const filled = runInCreatingContext(() =>
+      Ctor.fill(model, Ctor.stripNonFillable(Ctor.setDefaultAttributes(data)))
+    )
 
     // Deferred, unlike create()'s synchronous emit: at this point in the
     // constructor, the subclass's own class-field initializers (e.g.
@@ -981,7 +1056,7 @@ export class ActiveModel {
       // see the comment on `Ctor.getter()` for why the two are different
       // WeakMap keys and only the raw one matches what `on()`/`once()` and
       // the traps use.
-      useEmitter(this).emit(EventType.created)
+      useEmitter(this).emit(EventType.created, { target: filled })
     })
 
     return filled
@@ -1021,7 +1096,8 @@ export class ActiveModel {
     if (!hasMapping(target) && !lazy) {
       throw new Error(`Mapping for target not found`)
     }
-    return hasMapping(target) ? mapTo(target)?.(this, ...args)! : this.clone()
+    const handler = mapTo(target)
+    return handler ? handler(this, ...args) as MapTarget : this.clone()
   }
 
   /**

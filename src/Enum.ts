@@ -11,7 +11,7 @@ export class Enum {
    * @param entries
    * @param defaultValue
    */
-  constructor(
+  constructor (
     entries: EnumItemType[] = [],
     defaultValue: EnumItemType | undefined = undefined
   ) {

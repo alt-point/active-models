@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ActiveModel, ActiveField, EventType } from '../src'
+import { ActiveModel, ActiveField, ActiveFactory, EventType, GetterMethod, SetterMethod, isFillable, isHidden, isProtected } from '../src'
 
 describe('@ActiveField() defaults', () => {
   it('is fillable and protected (not deletable) by default', () => {
@@ -427,5 +427,56 @@ describe('on / once hooks', () => {
     const order = Order.create({})
     expect((order as any).emitter).toBeUndefined()
     expect((Order as any).emitter).toBeUndefined()
+  })
+})
+
+describe('standalone decorators', () => {
+  it('@isHidden / @isFillable / @isProtected register the field on the class', () => {
+    class Card extends ActiveModel {
+      @isHidden() @isFillable() pin: string = '0000'
+      @isProtected() holder: string = ''
+    }
+    const card = Card.create({ pin: '1234', holder: 'A' })
+    expect(Object.keys(card)).toEqual(['holder'])
+    expect(card.pin).toBe('1234')
+    expect(() => { delete (card as any).holder }).toThrow(/protected/)
+  })
+
+  it('@ActiveFactory wraps a nested value in the given model, and a list of them', () => {
+    class Tag extends ActiveModel {
+      @ActiveField() label: string = ''
+    }
+    class Post extends ActiveModel {
+      @ActiveFactory(Tag) main?: Tag
+      @ActiveFactory([Tag, () => []]) tags: Tag[] = []
+    }
+    const post = Post.create({ main: { label: 'a' }, tags: [{ label: 'b' }] })
+    expect(post.main).toBeInstanceOf(Tag)
+    expect(post.tags[0]).toBeInstanceOf(Tag)
+  })
+
+  it('@GetterMethod / @SetterMethod bind static handlers to a field', () => {
+    class Price extends ActiveModel {
+      @ActiveField() cents: number = 0
+
+      @GetterMethod('cents')
+      static readCents (_m: any, _p: string, _r?: any) { return 42 }
+
+      @SetterMethod('cents')
+      static writeCents (m: any, p: string, v: number) { return Reflect.set(m, p, v * 2) }
+    }
+    const price = Price.create({})
+    price.cents = 5
+    expect(price.cents).toBe(42)
+  })
+
+  it('factory rejects a value that is not an ActiveModel subclass', () => {
+    class NotAModel {}
+    expect(() => {
+      class Bad extends ActiveModel {
+        @ActiveField({ factory: NotAModel as any }) x?: unknown
+      }
+      return Bad
+    }).toThrow(/must be instanceof ActiveModel/)
   })
 })

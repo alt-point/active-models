@@ -120,6 +120,6 @@ export type ModelProperties<T extends typeof ActiveModel> = Omit<
 
 export type RecursivePartialActiveModel<T> = {
   [P in keyof T]?: T[P] extends ActiveModel
-  ? RecursivePartialActiveModel<Omit<T[P], ProtectedFields>>
-  : T[P]
+    ? RecursivePartialActiveModel<Omit<T[P], ProtectedFields>>
+    : T[P]
 }

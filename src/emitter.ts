@@ -81,6 +81,9 @@ export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
 
   /**
    * Get all event listeners by event name.
+   * Order: listeners registered on the ancestor classes (root first), then on
+   * the instance's own class, then on the instance itself - so a hook declared
+   * on a parent class also fires for instances of every subclass.
    * @param eventName
    */
   const getListeners = (eventName: EventType): Iterable<ActiveModelHookListener> => {
@@ -90,27 +93,55 @@ export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
       return own
     }
 
-    const ctorEvents = Registry.get(Ctor)
-    const inherited = ctorEvents?.get(eventName)
+    const chain: Array<ListenersContainer> = []
+    for (
+      let current: unknown = Ctor;
+      typeof current === 'function' && current !== Function.prototype;
+      current = Object.getPrototypeOf(current)
+    ) {
+      const listeners = Registry.get(current as typeof ActiveModel)?.get(eventName)
+      if (listeners && listeners.size > 0) {
+        chain.unshift(listeners)
+      }
+    }
 
-    if (!inherited || inherited.size === 0) {
+    if (chain.length === 0) {
       return own
     }
 
     return (function* () {
-      yield* inherited
+      for (const listeners of chain) {
+        yield* [...listeners]
+      }
       yield* own
     })()
   }
 
   /**
-   * Emit an event, synchronously invoking every listener registered for it
+   * Emit an event, synchronously invoking every listener registered for it.
+   * A throwing listener does not stop the others: all of them run, then the
+   * first error is rethrown (or, for several failures, an Error carrying them
+   * all in `errors`).
    * @param eventName
    * @param payload
    */
   const emit = (eventName: EventType, payload?: unknown) => {
+    const errors: unknown[] = []
     for (const cb of getListeners(eventName)) {
-      cb(payload)
+      try {
+        cb(payload)
+      } catch (error) {
+        errors.push(error)
+      }
+    }
+    if (errors.length === 1) {
+      throw errors[0]
+    }
+    if (errors.length > 1) {
+      throw Object.assign(
+        new Error(`${errors.length} listeners of "${eventName}" failed`),
+        { errors }
+      )
     }
   }
 
