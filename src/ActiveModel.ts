@@ -16,7 +16,19 @@ import {
 } from './types'
 import cloneDeep from 'lodash-es/cloneDeep'
 import cloneDeepWith from 'lodash-es/cloneDeepWith'
-import { copyTrackingState, isSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
+import deepEqual from 'fast-deep-equal/es6'
+import { copyTrackingState, isSanitized, markSanitized, runRestoring, unmarkSanitized, useMeta } from './meta'
+import {
+  abortGroup,
+  beginGroup,
+  canRedo as canRedoHistory,
+  canUndo as canUndoHistory,
+  clearHistory as clearHistoryStack,
+  commitGroup,
+  enableHistory,
+  recordChange,
+  step as stepHistory,
+} from './history'
 import {
   type ModelProperties,
   type RecursivePartialActiveModel,
@@ -48,6 +60,15 @@ import {
  * that must include `hidden` fields (clone) has to be read from the raw object.
  */
 const rawOf = new WeakMap<object, ActiveModel>()
+
+/** raw instance -> its proxy (for code that holds the raw target but must write through the traps) */
+const proxyOf = new WeakMap<object, ActiveModel>()
+
+/** A model-level check: return `false` (or a message) when violated; throwing also counts */
+export type InvariantCheck = (model: any) => boolean | string | void
+
+const isThenable = (value: unknown): value is PromiseLike<unknown> =>
+  typeof value === 'object' && value !== null && typeof (value as { then?: unknown }).then === 'function'
 
 /**
  * Instances frozen by `makeFreeze()`; checked by the traps for a clear error.
@@ -96,6 +117,15 @@ const getReadonlyWritten = makeWrittenTracker()
  */
 const getFillableWritten = makeWrittenTracker()
 
+/** The pristine copy a tracked model keeps for `changes()` / `revert()` (as its raw object) */
+const baselineOf = (model: ActiveModel): ActiveModel => {
+  const baseline = useMeta(model).getBaseline()
+  if (!baseline) {
+    throw new TypeError('changes() and revert() need a model created with create(data, { tracked: true })')
+  }
+  return rawOf.get(baseline) ?? baseline
+}
+
 /**
  * Every rule/validator problem of `model`, recursing into nested models and collections.
  * `seen` guards against reference cycles.
@@ -123,13 +153,25 @@ const collectIssues = (model: ActiveModel, prefix: string, issues: ValidationIss
       }
     }
 
-    const items = isCollection(value) || Array.isArray(value) ? Array.from(value as Iterable<unknown>) : [value]
+    const isList = isCollection(value) || Array.isArray(value)
+    const items = isList ? Array.from(value as Iterable<unknown>) : [value]
     items.forEach((item, index) => {
       if (item instanceof ActiveModel) {
-        const nested = rawOf.get(item) ?? item
-        collectIssues(nested, items.length === 1 && !(isCollection(value) || Array.isArray(value)) ? path : `${path}[${index}]`, issues, seen)
+        collectIssues(rawOf.get(item) ?? item, isList ? `${path}[${index}]` : path, issues, seen)
       }
     })
+  }
+
+  const proxy = proxyOf.get(model) ?? model
+  for (const { name, check } of Ctor.getInvariants()) {
+    try {
+      const outcome = check(proxy)
+      if (outcome === false || typeof outcome === 'string') {
+        issues.push({ path: prefix, code: 'invariant', message: typeof outcome === 'string' ? outcome : `Invariant "${name}" is violated` })
+      }
+    } catch (error) {
+      issues.push({ path: prefix, code: 'invariant', message: (error as Error).message })
+    }
   }
 }
 
@@ -343,6 +385,7 @@ export class ActiveModel {
     string | keyof InstanceType<typeof this> | symbol
   >
   protected static [SC.__pipeline__]?: Map<string | symbol, PipelineConfig>
+  protected static [SC.__invariants__]?: Array<{ name: string, check: InvariantCheck }>
 
   /**
    * A strict model refuses writes to properties that are neither declared with `@ActiveField()`
@@ -556,6 +599,24 @@ export class ActiveModel {
   }
 
   /**
+   * Declare a model-level rule that involves several fields (`end >= start`). It can't hold between two
+   * writes, so it is checked by `validate()`, `assertValid()`, `create(data, { validate: true })`,
+   * `transaction()` and atomic `fill()` - not on every write. Return `false` (or a message) when violated.
+   * @param name - the name, and the default message
+   * @param check - receives the model
+   */
+  static defineInvariant (name: string, check: InvariantCheck): void {
+    // Stryker disable next-line LogicalOperator,ArrayDeclaration: class-definition-time code
+    this.defineStaticProperty(SC.__invariants__, () => [...(this[SC.__invariants__] || [])])
+    this[SC.__invariants__]!.push({ name, check })
+  }
+
+  /** The invariants declared on this model (and inherited ones) */
+  static getInvariants (): ReadonlyArray<{ name: string, check: InvariantCheck }> {
+    return this[SC.__invariants__] ?? []
+  }
+
+  /**
    * Resolve the write pipeline of a field
    * @param prop
    */
@@ -751,6 +812,7 @@ export class ActiveModel {
       saveInitialState,
       setInstance,
       saveRaw,
+      saveBaseline,
       runInCreatingContext,
       runRawConstruction
     } = useMeta()
@@ -776,6 +838,10 @@ export class ActiveModel {
 
       if (opts.tracked) {
         saveInitialState(model)
+        saveBaseline(model.clone())
+      }
+      if (opts.history) {
+        enableHistory(raw, typeof opts.history === 'object' ? opts.history.limit : undefined)
       }
 
       // Stryker disable next-line all: only releases a WeakSet entry
@@ -950,9 +1016,16 @@ export class ActiveModel {
    * @param data
    * @param force
    */
-  fill (data: ActiveModelSource, force = false): this {
+  fill (data: ActiveModelSource, options: boolean | { force?: boolean, atomic?: boolean } = false): this {
+    const { force = false, atomic = false } = typeof options === 'boolean' ? { force: options } : options
     const Ctor = <typeof ActiveModel>this.constructor
-    Ctor.fill(this, Ctor.sanitize(data || {}), force)
+    const run = () => { Ctor.fill(this, Ctor.sanitize(data || {}), force) }
+    if (atomic) {
+      // all-or-nothing: any refused value (or violated invariant) rolls back everything already written
+      this.transaction(run)
+    } else {
+      run()
+    }
     return this
   }
 
@@ -1012,6 +1085,31 @@ export class ActiveModel {
     copyTrackingState(this, model)
     Ctor.bindNestedModels(copy, model)
     return model
+  }
+
+  /** A copy of a field value that shares nothing with the original (nested models and collections are cloned) */
+  protected static cloneValue<V> (value: V): V {
+    return cloneDeepWith({ value }, this.cloneCustomizer.bind(this)).value
+  }
+
+  /** Every declared field of `raw` with a private copy of its value - what `transaction()` rolls back to */
+  protected static snapshot (raw: ActiveModel): Map<string | symbol, unknown> {
+    const taken = new Map<string | symbol, unknown>()
+    for (const prop of this.fieldNames()) {
+      taken.set(prop, this.cloneValue(Reflect.get(raw, prop)))
+    }
+    return taken
+  }
+
+  /** Write a `snapshot()` back through the proxy, only where the value differs, skipping rules and transitions */
+  protected static restore (raw: ActiveModel, model: ActiveModel, snapshot: Map<string | symbol, unknown>): void {
+    runRestoring(() => {
+      for (const [prop, value] of snapshot) {
+        if (!deepEqual(Reflect.get(raw, prop), value)) {
+          Reflect.set(model, prop, value)
+        }
+      }
+    })
   }
 
   /**
@@ -1221,6 +1319,10 @@ export class ActiveModel {
           })
         }
 
+        if (!restoring && isNotCreating()) {
+          recordChange(target, { prop, from: oldValue, to: Reflect.get(target, prop) })
+        }
+
         // only a write that actually went through counts as a change
         Ctor.bindChildren(target, prop, receiver)
         if (isNotCreating()) {
@@ -1270,6 +1372,7 @@ export class ActiveModel {
       },
     }) as RType
     rawOf.set(proxy, instance)
+    proxyOf.set(instance, proxy)
     return proxy
   }
 
@@ -1314,6 +1417,152 @@ export class ActiveModel {
     const raw = rawOf.get(this) ?? this
     const transitions = (<typeof ActiveModel>raw.constructor).resolvePipeline(prop)?.transitions
     return transitions ? nextStates(transitions, Reflect.get(raw, prop)) : []
+  }
+
+  /**
+   * Run `fn` all-or-nothing: if it throws, or the model ends up invalid (a rule, a validator or an
+   * invariant is violated), every field goes back to what it was and the error is rethrown - so no
+   * caller ever sees a half-changed model. Returns what `fn` returns; an async `fn` is awaited.
+   *
+   * Events fire as the writes happen, and are not un-fired - the rollback emits its own for the
+   * fields it puts back. Nested models are restored as fresh copies, so a reference you kept to
+   * the old nested instance goes stale. With `history` enabled the whole transaction is ONE undo step.
+   * @example
+   * order.transaction((o) => {
+   *   o.start = new Date('2026-05-10')
+   *   o.end = new Date('2026-05-01')   // violates the invariant: everything is rolled back
+   * })
+   */
+  transaction<T> (fn: (model: this) => T): T {
+    const raw = rawOf.get(this) ?? this
+    const Ctor = <typeof ActiveModel>raw.constructor
+    const snapshot = Ctor.snapshot(raw)
+    const rollback = () => {
+      abortGroup(raw)
+      Ctor.restore(raw, this, snapshot)
+    }
+
+    beginGroup(raw)
+    let result: T
+    try {
+      result = fn(this)
+    } catch (error) {
+      rollback()
+      throw error
+    }
+
+    const settle = (value: T): T => {
+      const { valid, issues } = this.validate()
+      if (!valid) {
+        rollback()
+        throw new ValidationError(issues)
+      }
+      commitGroup(raw)
+      return value
+    }
+
+    if (isThenable(result)) {
+      return result.then(
+        (value) => settle(value as T),
+        (error) => {
+          rollback()
+          throw error
+        }
+      ) as T
+    }
+    return settle(result)
+  }
+
+  /**
+   * What changed since the model was created: `{ field: { from, to } }` for every field whose value
+   * now differs from the one it had (nested models and lists are compared by content). `from` is a
+   * copy. Needs a model created with `create(data, { tracked: true })`; `hidden` fields are included.
+   */
+  changes (): Record<string, { from: unknown, to: unknown }> {
+    const raw = rawOf.get(this) ?? this
+    const Ctor = <typeof ActiveModel>raw.constructor
+    const baseline = baselineOf(this)
+    const changed: Record<string, { from: unknown, to: unknown }> = {}
+    for (const prop of Ctor.fieldNames()) {
+      const before = Reflect.get(baseline, prop)
+      const now = Reflect.get(raw, prop)
+      if (!deepEqual(before, now)) {
+        changed[String(prop)] = { from: Ctor.cloneValue(before), to: now }
+      }
+    }
+    return changed
+  }
+
+  /** Names of the fields that differ from their initial value (see `changes()`) */
+  dirtyFields (): string[] {
+    return Object.keys(this.changes())
+  }
+
+  /** Whether one field differs from its initial value (see `changes()`) */
+  isDirty (prop: string): boolean {
+    return prop in this.changes()
+  }
+
+  /**
+   * Put one field - or, with no argument, every changed field - back to its initial value.
+   * Bypasses rules and transitions (the initial value was valid) and emits the usual events.
+   * Needs a model created with `create(data, { tracked: true })`.
+   */
+  revert (prop?: string): this {
+    const raw = rawOf.get(this) ?? this
+    const Ctor = <typeof ActiveModel>raw.constructor
+    const baseline = baselineOf(this)
+    if (prop !== undefined && !Ctor.isActiveField(prop)) {
+      throw new TypeError(`"${prop}" is not a field of ${Ctor.name}`)
+    }
+    const props = prop === undefined ? this.dirtyFields() : [prop]
+    runRestoring(() => {
+      for (const name of props) {
+        const before = Reflect.get(baseline, name)
+        if (!deepEqual(before, Reflect.get(raw, name))) {
+          Reflect.set(this, name, Ctor.cloneValue(before))
+        }
+      }
+    })
+    return this
+  }
+
+  /** Put every changed field back to its initial value - shorthand for `revert()` */
+  reset (): this {
+    return this.revert()
+  }
+
+  /**
+   * Undo the last change (a whole `transaction()` counts as one). Needs `create(data, { history: true })`.
+   * @returns whether there was something to undo
+   */
+  undo (): boolean {
+    return this.moveInHistory('undo')
+  }
+
+  /** Redo what `undo()` took back; any new write clears the redo steps. */
+  redo (): boolean {
+    return this.moveInHistory('redo')
+  }
+
+  canUndo (): boolean {
+    return canUndoHistory(rawOf.get(this) ?? this)
+  }
+
+  canRedo (): boolean {
+    return canRedoHistory(rawOf.get(this) ?? this)
+  }
+
+  /** Forget every undo and redo step */
+  clearHistory (): void {
+    clearHistoryStack(rawOf.get(this) ?? this)
+  }
+
+  private moveInHistory (direction: 'undo' | 'redo'): boolean {
+    const raw = rawOf.get(this) ?? this
+    return stepHistory(raw, direction, (prop, value) => {
+      runRestoring(() => Reflect.set(this, prop, value))
+    })
   }
 
   /**

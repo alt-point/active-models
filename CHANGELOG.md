@@ -31,6 +31,9 @@ Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migrati
 - Normalizers (`trim`, `lowercase`, `uppercase`, `transform`) and type coercion (`coerce: 'number' | 'integer' | 'boolean' | 'date' | 'string'`).
 - State machines: `transitions` on a field, `model.canTransition()`, `model.allowedTransitions()`.
 - `static strict = true` - a model that refuses writes to undeclared properties.
+- Model-level invariants (`@InvariantMethod`, `Model.defineInvariant`), checked by `validate()`; `model.transaction(fn)` (all-or-nothing, async supported) and `fill(data, { atomic: true })`.
+- `model.changes()`, `dirtyFields()`, `isDirty()`, `revert(prop?)`, `reset()` - per-field diff and restore for models created with `tracked: true`.
+- `create(data, { history: true })` with `undo()`, `redo()`, `canUndo()`, `canRedo()`, `clearHistory()`.
 - `ActiveCollection` - an array that accepts only instances of one model, optionally kept sorted (`sortBy` / `compare` / `order`), with binary search (`bisectLeft`, `bisectRight`, `findByKey`, `range`), `itemsAdded` / `itemsRemoved` / `touched` events that bubble into a parent model. Created via `Model.collection()`, `Model.createCollection()`, `ActiveCollection.create()` or the `collection` field option.
 - `model.getRaw()` - the deep-frozen source data of a model created with `tracked: true` (`undefined` otherwise).
 - `Model.on()` / `Model.once()` - class-level subscriptions for every instance, subclasses included.

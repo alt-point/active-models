@@ -4,6 +4,8 @@ import cloneDeep from 'lodash-es/cloneDeep'
 type State = {
   initialState?: ActiveModel | undefined
   raw?: any
+  /** A pristine copy of the model taken right after creation: what `changes()` compares to and `revert()` restores from */
+  baseline?: ActiveModel
 }
 
 /**
@@ -155,7 +157,7 @@ export const saveInitialState = (
 export const copyTrackingState = (from: ActiveModel, to: ActiveModel) => {
   const meta = sharedState.get(from)
   if (meta?.initialState) {
-    upsertState(to, { initialState: meta.initialState, raw: meta.raw })
+    upsertState(to, { initialState: meta.initialState, raw: meta.raw, baseline: meta.baseline })
   }
 }
 
@@ -174,6 +176,13 @@ export const saveRaw = (instance: ActiveModel, raw: any) => {
  * @param instance
  */
 export const getRaw = (instance: ActiveModel) => sharedState.get(instance)?.raw
+
+/** Keep the pristine copy of a tracked model (see `State.baseline`) */
+export const saveBaseline = (instance: ActiveModel, baseline: ActiveModel) => {
+  upsertState(instance, { baseline })
+}
+
+export const getBaseline = (instance: ActiveModel) => sharedState.get(instance)?.baseline
 
 /**
  * Checking whatever instance is touched
@@ -241,6 +250,8 @@ export const useMeta = (instance?: ActiveModel) => {
       saveInitialState(requiredInstance(inst), initialState),
     saveRaw: (raw: any) => saveRaw(requiredInstance(inst), raw),
     getRaw: () => getRaw(requiredInstance(inst)),
+    saveBaseline: (baseline: ActiveModel) => saveBaseline(requiredInstance(inst), baseline),
+    getBaseline: () => getBaseline(requiredInstance(inst)),
     isTouched: () => isTouched(requiredInstance(inst)),
   }
 }

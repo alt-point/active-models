@@ -64,6 +64,11 @@ covers **all** fields, including ones never set (`required`), nested models and 
 `assertValid()` throws; `create(data, { validate: true })` too. `transitions: { new: ['paid'], paid: [] }` restricts state
 changes (first value and creation from data are free); `canTransition()`, `allowedTransitions()`.
 `static strict = true` refuses writes to undeclared properties. Rules are bypassed when values are restored (undo/rollback).
+Cross-field rules: `@InvariantMethod('msg') static ok(m) { return … }` / `Model.defineInvariant(name, check)`, checked by
+`validate()`/`transaction()`/atomic `fill()`, not per write. `model.transaction(fn)` is all-or-nothing (rolls back on a throw or an
+invalid result; async ok); `fill(data, { atomic: true })`. Tracked models (`{ tracked: true }`) have `changes()`, `dirtyFields()`,
+`isDirty(f)`, `revert(f?)`, `reset()`. `create(data, { history: true | { limit } })` enables `undo()`/`redo()`/`canUndo()`/`canRedo()`/`clearHistory()`;
+a transaction is one step.
 
 ## Events
 

@@ -1,4 +1,4 @@
-export { ActiveModel } from './ActiveModel'
+export { ActiveModel, type InvariantCheck } from './ActiveModel'
 export { CallableModel } from './CallableModel'
 export { ActiveCollection, type CollectionInput } from './ActiveCollection'
 export { isCollection } from './collectionRegistry'
@@ -15,6 +15,7 @@ export {
 } from './pipeline'
 export {
   GetterMethod,
+  InvariantMethod,
   SetterMethod,
   isHidden,
   isFillable,

@@ -205,6 +205,8 @@ export type FactoryOptions = {
   tracked?: boolean
   /** Run `validate()` after filling and throw a `ValidationError` listing every problem. */
   validate?: boolean
+  /** Record every later field write so it can be `undo()`ne and `redo()`ne; `{ limit }` caps the steps kept (default 100). */
+  history?: boolean | { limit?: number }
 }
 
 export enum StaticContainers {
@@ -218,6 +220,7 @@ export enum StaticContainers {
   __hidden__ = '__hidden__',
   __activeFields__ = '__activeFields__',
   __pipeline__ = '__pipeline__',
+  __invariants__ = '__invariants__',
 }
 
 // mapper types

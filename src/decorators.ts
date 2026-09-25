@@ -39,6 +39,24 @@ export function SetterMethod (property: string) {
   }
 }
 
+/**
+ * Declare a static method as a model-level invariant: it receives the model and returns `false`
+ * (or a message) when violated. Checked by `validate()`, `transaction()` and atomic `fill()`.
+ * @param message - shown when the method returns `false`
+ * @example
+ * @InvariantMethod('end must not be before start')
+ * static endAfterStart (trip: Trip) { return trip.end >= trip.start }
+ */
+export function InvariantMethod (message: string) {
+  return function (
+    target: typeof ActiveModel,
+    _prop: string,
+    descriptor: TypedPropertyDescriptor<any>
+  ) {
+    target.defineInvariant(message, descriptor.value)
+  }
+}
+
 export function isHidden () {
   return function (target: ActiveModel, prop: string) {
     ; (<typeof ActiveModel>target.constructor).addToHidden(prop)

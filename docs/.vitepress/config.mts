@@ -53,6 +53,7 @@ export default withMermaid(defineConfig({
               { text: 'Трансформация моделей: mapTo()', link: '/mapping' },
               { text: 'ActiveCollection: типизированный массив', link: '/collections' },
               { text: 'Валидация, нормализация, переходы', link: '/validation' },
+              { text: 'Инварианты, транзакции, undo', link: '/integrity' },
             ],
           },
           {
@@ -106,6 +107,7 @@ export default withMermaid(defineConfig({
               { text: 'Model mapping: mapTo()', link: '/en/mapping' },
               { text: 'ActiveCollection: a typed array', link: '/en/collections' },
               { text: 'Validation, normalization, transitions', link: '/en/validation' },
+              { text: 'Invariants, transactions, undo', link: '/en/integrity' },
             ],
           },
           {
