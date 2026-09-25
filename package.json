@@ -80,7 +80,10 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "docs:api": "typedoc"
+    "docs:api": "typedoc",
+    "test:perf": "vitest run --config vitest.perf.config.ts",
+    "bench": "vitest bench --run --config vitest.perf.config.ts",
+    "test:mutation": "stryker run"
   },
   "homepage": "https://github.com/alt-point/active-models#readme",
   "author": {
@@ -99,6 +102,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/typescript-checker": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^26.1.1",

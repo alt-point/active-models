@@ -106,4 +106,7 @@ bun run docs:dev                                         # VitePress
   published build; don't replace it with SWC/oxc — class-field/Proxy timing differs.
 - Style: no semicolons, single quotes, `space-before-function-paren` (enforced by ESLint).
 - Add a test for every behavior change and update `docs/` (RU) + `docs/en/` (EN) + `CHANGELOG.md`.
+- Versioning is strict SemVer (rules at the top of `CHANGELOG.md`): breaking → MAJOR, feature → MINOR,
+  fix → PATCH. Record every user-visible change under `## [Unreleased]` in the same commit and mark
+  breaking commits with `!` (`fix!:`) plus a `BREAKING CHANGE:` footer.
 - Commit messages: conventional commits; do not add co-author footers.

@@ -2,7 +2,21 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
-## [4.0.0]
+## Versioning policy
+
+- **MAJOR** - any incompatible change of the public API or of documented behavior (removed/renamed
+  exports, methods or options; a call that used to work now throws; changed default).
+- **MINOR** - backwards-compatible functionality (new methods, options, events, exports).
+- **PATCH** - backwards-compatible bug fixes, performance work, docs/tests/tooling-only changes that
+  don't touch the published API.
+- Every user-visible change is added to `## [Unreleased]` in the same commit; on release that section is
+  renamed to the version and `package.json` is bumped (`bun pm version <major|minor|patch>`), tag `vX.Y.Z`.
+- The published surface is what `src/index.ts` exports plus the documented behavior in `docs/`.
+  Undocumented internals (`src/meta.ts`, `src/emitter.ts`, `useEmitter`, ...) may change in a PATCH.
+
+## [Unreleased]
+
+## [4.0.0] - pending release
 
 Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migration.md)).
 
@@ -16,7 +30,7 @@ Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migrati
 - `Model.on()` / `Model.once()` - class-level subscriptions for every instance, subclasses included.
 - `created` / `touched` events carry `{ target }`; typed `EventPayloads` / `EventListener`.
 - `makeFreeze()` documented; throws a clear `TypeError` on write/delete/defineProperty.
-- Tests: edge cases, coverage (v8, thresholds), performance and mutation testing.
+- Tests: edge cases, coverage (v8, thresholds), performance budgets + benchmarks (`test:perf`, `bench`) and mutation testing (`test:mutation`, Stryker).
 - ESLint + `@stylistic`; `typecheck`, `lint`, `test:coverage` scripts; CI runs them.
 - Docs: known limitations, migration guide, `AGENTS.md` and `llms.txt` for AI agents.
 

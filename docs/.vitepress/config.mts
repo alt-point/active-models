@@ -57,6 +57,7 @@ export default withMermaid(defineConfig({
             items: [
               { text: 'Известные ограничения', link: '/limitations' },
               { text: 'Миграция на 4.0', link: '/migration' },
+              { text: 'Тестирование и качество', link: '/testing' },
               { text: 'Для AI-агентов', link: '/agents' },
             ],
           },
@@ -106,6 +107,7 @@ export default withMermaid(defineConfig({
             items: [
               { text: 'Known limitations', link: '/en/limitations' },
               { text: 'Migrating to 4.0', link: '/en/migration' },
+              { text: 'Testing and quality', link: '/en/testing' },
               { text: 'For AI agents', link: '/en/agents' },
             ],
           },
