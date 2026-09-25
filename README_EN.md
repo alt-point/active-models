@@ -119,6 +119,7 @@ User.on(EventType.created, ({ target }) => audit('user created', (target as User
 <details>
 <summary><b>Mapping and utilities</b></summary>
 
+- `ActiveCollection` / `Model.collection()` / `@ActiveField({ collection })` — an array that holds nothing but the model; sorting and binary search;
 - `Model.mapTo(Target, handler)` / `model.mapTo(Target)` — several projections of one model;
 - `CallableModel` — objects you can call like functions (no `unsafe-eval`, CSP-safe).
 </details>
@@ -153,6 +154,7 @@ class Notify extends CallableModel {
 | [Advanced features](docs/en/active-model-advanced.md) | validators, hooks, `new` vs `create` vs `fill`, `clone`, `makeFreeze` |
 | [Change tracking](docs/en/dirty-tracking.md) | `isTouched()` and `getRaw()` with Vue and React examples |
 | [Model mapping](docs/en/mapping.md) | `mapTo()`: compared to class-transformer and AutoMapper |
+| [ActiveCollection](docs/en/collections.md) | an array of the declared model only, sorting, binary search |
 | [Node.js example](docs/en/node-example.md) | a server on plain `node:http` |
 | [Known limitations](docs/en/limitations.md) | what doesn't work as you'd expect — and what to do |
 | [Migrating to 4.0](docs/en/migration.md) · [CHANGELOG](CHANGELOG.md) | what changed and how to upgrade |

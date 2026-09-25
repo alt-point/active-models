@@ -1,4 +1,5 @@
 import { type ActiveModel } from './ActiveModel'
+import { type ActiveCollection } from './ActiveCollection'
 
 export type ConstructorType = abstract new (...args: any[]) => any
 export type ActiveModelSource = undefined | object | null
@@ -47,11 +48,16 @@ export enum EventType {
   afterSetValue = 'afterSetValue',
   beforeDeletingAttribute = 'beforeDeletingAttribute',
   nulling = 'nulling',
+  itemsAdded = 'itemsAdded',
+  itemsRemoved = 'itemsRemoved',
 }
 
 export type PropEvent = Exclude<
   EventType,
-  EventType.touched | EventType.created
+  | EventType.touched
+  | EventType.created
+  | EventType.itemsAdded
+  | EventType.itemsRemoved
 >
 export type ActiveModelHookListener = (model: any) => void
 
@@ -70,8 +76,17 @@ export type DeleteEventPayload = {
   prop: string | symbol
 }
 
-/** Payload of `created` and `touched`: `target` is the model instance itself */
-export type InstanceEventPayload = { target: ActiveModel }
+/** Payload of `created` and `touched`: `target` is the model (or collection) instance itself */
+export type InstanceEventPayload = { target: ActiveModel | ActiveCollection<any> }
+
+/** Payload of `itemsAdded` / `itemsRemoved` of an `ActiveCollection` */
+export type CollectionEventPayload<T = any> = {
+  target: ActiveCollection<any>
+  /** the items that were added / removed */
+  items: T[]
+  /** position of the first affected item at the time of the change */
+  index: number
+}
 
 export type EventPayloads = {
   [EventType.touched]: InstanceEventPayload
@@ -80,6 +95,8 @@ export type EventPayloads = {
   [EventType.afterSetValue]: SetEventPayload
   [EventType.nulling]: SetEventPayload
   [EventType.beforeDeletingAttribute]: DeleteEventPayload
+  [EventType.itemsAdded]: CollectionEventPayload
+  [EventType.itemsRemoved]: CollectionEventPayload
 }
 
 /** Listener typed by the event it is subscribed to */
@@ -91,6 +108,23 @@ type PrimitiveValue = string | number | null | undefined | boolean
 
 /** A default for a field: a primitive, a plain object/array (copied per instance) or a `() => value` factory. */
 export type AttributeValue = (() => any) | PrimitiveValue | object
+
+/**
+ * Options of an `ActiveCollection`.
+ */
+export type CollectionOptions<T = any> = {
+  /**
+   * Keep the collection sorted by this key: a field name or a `(item) => key` function.
+   * `null`/`undefined` keys sort last.
+   */
+  sortBy?: (T extends object ? keyof T & string : string) | ((item: T) => unknown)
+  /** Keep the collection sorted by a custom comparator (takes precedence over `sortBy`). */
+  compare?: (a: T, b: T) => number
+  /** Sort direction, `asc` by default. */
+  order?: 'asc' | 'desc'
+  /** Turn plain objects into model instances (`Model.createLazy`). `true` by default; `false` accepts instances only. */
+  coerce?: boolean
+}
 
 /**
  * Options of the `@ActiveField()` decorator.
@@ -116,6 +150,11 @@ export type ActiveFieldDescriptor<_T = unknown> = {
   value?: AttributeValue
   /** Wrap a nested object (or every array item) in this `ActiveModel`; `[Model, () => default]` adds a default. */
   factory?: FactoryConfig
+  /**
+   * Store an array of `Model` instances as an `ActiveCollection` that accepts nothing else;
+   * `[Model, options]` also configures sorting. Defaults to an empty collection.
+   */
+  collection?: typeof ActiveModel | [Model: typeof ActiveModel, options?: CollectionOptions]
   /** Field-level hooks, shared by every instance of the class (and subclasses). */
   on?: Partial<Record<PropEvent, ActiveModelHookListener>>
   /** Like `on`, but each hook fires only once. */

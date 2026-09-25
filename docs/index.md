@@ -211,6 +211,7 @@ bun add @alt-point/active-models
 - [Пример для Node.js-сервера](/node-example) — без Vue/Nuxt, на чистом `node:http`
 - [Отслеживание изменений: isTouched()](/dirty-tracking) — dirty-tracking с примерами на Vue и React, сравнение с react-hook-form/Formik/MobX
 - [Трансформация моделей: mapTo()](/mapping) — маппинг в DTO/view-модели с примерами на Vue и React, сравнение с class-transformer/AutoMapper
+- [ActiveCollection](/collections) — массив, в который нельзя положить ничего, кроме объявленной модели; сортировка и бинарный поиск
 - [Известные ограничения](/limitations), [Миграция на 4.0](/migration), [Для AI-агентов](/agents)
 
 English version: [/en/](/en/)

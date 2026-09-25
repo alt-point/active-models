@@ -1,12 +1,11 @@
-import { ActiveModel } from './ActiveModel'
 import { type ActiveModelHookListener, EventType } from './types'
 
 type ListenersContainer = Set<ActiveModelHookListener>
 type EventsContainer = Map<EventType, ListenersContainer>
-const Registry = new WeakMap<
-  typeof ActiveModel | ActiveModel,
-  EventsContainer
->()
+/** Anything that can own listeners: a model class/instance or a collection class/instance. */
+type EmitterTarget = object
+
+const Registry = new WeakMap<EmitterTarget, EventsContainer>()
 
 /**
  * Make events container
@@ -19,7 +18,7 @@ const makeContainer = (): EventsContainer => {
   return map
 }
 
-const getOwnContainer = (target: typeof ActiveModel | ActiveModel): EventsContainer => {
+const getOwnContainer = (target: EmitterTarget): EventsContainer => {
   if (!Registry.has(target)) {
     Registry.set(target, makeContainer())
   }
@@ -31,12 +30,12 @@ const getOwnContainer = (target: typeof ActiveModel | ActiveModel): EventsContai
  * Helper for emitter
  * @param target
  */
-export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
+export const useEmitter = (target: EmitterTarget) => {
   const ownEvents = getOwnContainer(target)
 
   // Stryker disable next-line ConditionalExpression: class targets are only ever registered on, never emitted from
   const isInstance = typeof target === 'object'
-  const Ctor = isInstance ? (target.constructor as typeof ActiveModel) : undefined
+  const Ctor = isInstance ? target.constructor : undefined
 
   /**
    * remove listener
@@ -102,7 +101,7 @@ export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
       typeof current === 'function' && current !== Function.prototype;
       current = Object.getPrototypeOf(current)
     ) {
-      const listeners = Registry.get(current as typeof ActiveModel)?.get(eventName)
+      const listeners = Registry.get(current)?.get(eventName)
       // Stryker disable next-line ConditionalExpression,EqualityOperator: skipping empty containers is an optimisation
       if (listeners && listeners.size > 0) {
         chain.unshift(listeners)

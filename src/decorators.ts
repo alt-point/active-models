@@ -3,11 +3,14 @@ import type {
   ActiveFieldDescriptor,
   ActiveModelHookListener,
   AttributeValue,
+  CollectionOptions,
   FactoryConfig,
   PropEvent,
 } from './types'
 import { getValue } from './utils'
 import { useEmitter } from './emitter'
+import { ActiveCollection } from './ActiveCollection'
+import { isCollection } from './collectionRegistry'
 
 const defaultOpts: ActiveFieldDescriptor = {
   fillable: true,
@@ -110,6 +113,42 @@ const factoryDecorator = (
   })
 }
 
+/**
+ * Turn whatever is assigned to a `collection` field into an `ActiveCollection`:
+ * an array/iterable becomes one, `null`/`undefined` an empty one, a collection of the same model stays as is.
+ */
+const toCollection = (Model: typeof ActiveModel, value: unknown, options?: CollectionOptions) => {
+  if (isCollection(value) && value.model === Model) {
+    return value
+  }
+  if (value === null || value === undefined) {
+    return ActiveCollection.create(Model, [], options)
+  }
+  if (typeof value === 'object' && Symbol.iterator in value) {
+    return ActiveCollection.create(Model, value as Iterable<unknown>, options)
+  }
+  throw new TypeError(`A collection of ${Model.name} expects an array, got ${typeof value}`)
+}
+
+const collectionDecorator = (
+  target: ActiveModel,
+  prop: string,
+  config: ActiveFieldDescriptor['collection'],
+  hasOwnDefault: boolean
+) => {
+  if (!config) {
+    return
+  }
+  const [Model, options] = Array.isArray(config) ? config : [config, undefined]
+  validateModelType(Model, prop)
+  const Ctor = <typeof ActiveModel>target.constructor
+
+  Ctor.defineSetter(prop, (m, p, v, r) => Reflect.set(m, p, toCollection(Model, v, options), r))
+  if (!hasOwnDefault) {
+    Ctor.defineAttribute(prop, () => ActiveCollection.create(Model, [], options))
+  }
+}
+
 export function ActiveFactory (
   factory: FactoryConfig,
   // Stryker disable next-line BooleanLiteral: reserved parameter, currently unused
@@ -167,12 +206,18 @@ export function ActiveField<_T extends ActiveModel> (
       Ctor.defineAttribute(prop, options.attribute || options.value)
     }
 
-    if (options.setter && !options.factory) {
+    if (options.factory && options.collection) {
+      throw new Error(`Field "${prop}": use either factory or collection, not both`)
+    }
+
+    if (options.setter && !options.factory && !options.collection) {
       Ctor.defineSetter(prop, options.setter)
     }
 
     // Stryker disable next-line BooleanLiteral: reserved parameter, currently unused
     factoryDecorator(target, prop, options.factory, false)
+
+    collectionDecorator(target, prop, options.collection, Boolean(options.attribute || options.value))
 
     if (options.getter) {
       Ctor.defineGetter(prop, options.getter)

@@ -27,6 +27,7 @@ Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migrati
 - `createFromCollection*` skips only `null`/`undefined` items (previously any falsy value).
 
 ### Added
+- `ActiveCollection` - an array that accepts only instances of one model, optionally kept sorted (`sortBy` / `compare` / `order`), with binary search (`bisectLeft`, `bisectRight`, `findByKey`, `range`), `itemsAdded` / `itemsRemoved` / `touched` events that bubble into a parent model. Created via `Model.collection()`, `Model.createCollection()`, `ActiveCollection.create()` or the `collection` field option.
 - `model.getRaw()` - the deep-frozen source data of a model created with `tracked: true` (`undefined` otherwise).
 - `Model.on()` / `Model.once()` - class-level subscriptions for every instance, subclasses included.
 - `created` / `touched` events carry `{ target }`; typed `EventPayloads` / `EventListener`.

@@ -119,6 +119,7 @@ User.on(EventType.created, ({ target }) => audit('user created', (target as User
 <details>
 <summary><b>Маппинг и утилиты</b></summary>
 
+- `ActiveCollection` / `Model.collection()` / `@ActiveField({ collection })` — массив, в который нельзя положить ничего, кроме модели; сортировка и бинарный поиск;
 - `Model.mapTo(Target, handler)` / `model.mapTo(Target)` — несколько проекций одной модели;
 - `CallableModel` — объекты, которые можно вызывать как функции (без `unsafe-eval`, CSP-безопасно).
 </details>
@@ -153,6 +154,7 @@ class Notify extends CallableModel {
 | [Продвинутые возможности](docs/active-model-advanced.md) | валидаторы, хуки, `new` vs `create` vs `fill`, `clone`, `makeFreeze` |
 | [Отслеживание изменений](docs/dirty-tracking.md) | `isTouched()` и `getRaw()` с примерами на Vue и React |
 | [Трансформация моделей](docs/mapping.md) | `mapTo()`: сравнение с class-transformer и AutoMapper |
+| [ActiveCollection](docs/collections.md) | массив только из объявленной модели, сортировка, бинарный поиск |
 | [Пример для Node.js](docs/node-example.md) | сервер на чистом `node:http` |
 | [Известные ограничения](docs/limitations.md) | что работает не так, как ожидаешь — и что делать |
 | [Миграция на 4.0](docs/migration.md) · [CHANGELOG](CHANGELOG.md) | что изменилось и как перейти |

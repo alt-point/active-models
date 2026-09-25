@@ -51,6 +51,7 @@ export default withMermaid(defineConfig({
             items: [
               { text: 'Отслеживание изменений: isTouched()', link: '/dirty-tracking' },
               { text: 'Трансформация моделей: mapTo()', link: '/mapping' },
+              { text: 'ActiveCollection: типизированный массив', link: '/collections' },
             ],
           },
           {
@@ -102,6 +103,7 @@ export default withMermaid(defineConfig({
             items: [
               { text: 'Change tracking: isTouched()', link: '/en/dirty-tracking' },
               { text: 'Model mapping: mapTo()', link: '/en/mapping' },
+              { text: 'ActiveCollection: a typed array', link: '/en/collections' },
             ],
           },
           {
