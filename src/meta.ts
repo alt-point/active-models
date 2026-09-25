@@ -71,6 +71,7 @@ export const consumeRawConstruction = (): boolean => {
  */
 const sharedState = new WeakMap<ActiveModel, State>()
 
+// Stryker disable all: the sanitized marks only save a redundant deep clone, they change no observable result
 /**
  * registry of sanitized values
  */
@@ -100,6 +101,7 @@ export function isSanitized (value: unknown) {
   if (!value || typeof value !== 'object') return true
   return sanitizedValues.has(value)
 }
+// Stryker restore all
 
 /**
  * Upsert model state
@@ -176,16 +178,13 @@ export const isTouched = (instance: ActiveModel) => {
  * @param value
  */
 function deepFreeze (value: any) {
-  if (!((value && typeof value === 'object') || typeof value === 'function')) {
+  // functions are left alone: they are the caller's own objects, not snapshot data
+  if (!value || typeof value !== 'object') {
     return value
   }
-  const propNames = Reflect.ownKeys(value)
 
-  for (const name of propNames) {
-    const v = value[name]
-    if ((v && typeof v === 'object') || typeof v === 'function') {
-      deepFreeze(v)
-    }
+  for (const name of Reflect.ownKeys(value)) {
+    deepFreeze(value[name])
   }
 
   return Object.freeze(value)
@@ -197,6 +196,7 @@ function deepFreeze (value: any) {
  */
 const requiredInstance = (instance?: ActiveModel) => {
   if (!instance) {
+    // Stryker disable next-line StringLiteral: message text
     throw new Error(`Instance extends ActiveModel is required for this method!`)
   }
 

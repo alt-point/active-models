@@ -27,6 +27,7 @@ Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migrati
 - `createFromCollection*` skips only `null`/`undefined` items (previously any falsy value).
 
 ### Added
+- `model.getRaw()` - the deep-frozen source data of a model created with `tracked: true` (`undefined` otherwise).
 - `Model.on()` / `Model.once()` - class-level subscriptions for every instance, subclasses included.
 - `created` / `touched` events carry `{ target }`; typed `EventPayloads` / `EventListener`.
 - `makeFreeze()` documented; throws a clear `TypeError` on write/delete/defineProperty.

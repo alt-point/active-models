@@ -48,6 +48,23 @@ async function save (form: UserForm) {
 }
 ```
 
+## The source data: `getRaw()`
+
+Alongside the state snapshot, `create(data, { tracked: true })` also keeps the **source data** exactly as you
+passed it - before defaults are applied and before `fillable: false` keys are stripped. The public
+`getRaw()` method returns it:
+
+```ts
+const order = Order.create({ locked: 'attempt', tags: ['a'] }, { tracked: true })
+
+order.getRaw() // { locked: 'attempt', tags: ['a'] } - what came in, not what ended up in the model
+order.locked   // the default: 'attempt' was discarded
+```
+
+It is a deep-frozen copy: changing the original object doesn't affect it, and you can't write to it. A model
+created without `tracked: true` returns `undefined`; `clone()` carries it over. Handy for sending the backend
+exactly what the user entered, or for showing "what arrived" vs. "what was accepted".
+
 ## Three states, not two
 
 `isTouched()` returns `boolean | undefined` — that's deliberate, not an oversight:

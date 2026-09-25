@@ -80,7 +80,8 @@ user.once(...) / User.once(...)
 - `model.clone()` — deep, fully working proxied copy (hidden kept, locks + `isTouched` baseline carried).
 - `model.makeFreeze()` — shallow; later write/delete throws `TypeError`.
 - Dirty tracking: `Model.create(data, { tracked: true })`; `model.isTouched()` → `true`/`false`, or
-  `undefined` if never tracked. Reset the baseline by re-creating the model.
+  `undefined` if never tracked. Reset the baseline by re-creating the model. `model.getRaw()` returns the
+  frozen source data exactly as passed to that `create()` (pre-defaults, pre-strip), `undefined` if untracked.
 - Mapping: `Model.mapTo(Target, (m, ...args) => ...)`, `model.mapTo(Target, lazy = true, ...args)`,
   `hasMapping(Target)`. `lazy` (default) falls back to `clone()`; `lazy: false` throws.
 - `CallableModel` — instances are callable, implement `__call`. `Enum` is deprecated.

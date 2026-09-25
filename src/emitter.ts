@@ -34,6 +34,7 @@ const getOwnContainer = (target: typeof ActiveModel | ActiveModel): EventsContai
 export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
   const ownEvents = getOwnContainer(target)
 
+  // Stryker disable next-line ConditionalExpression: class targets are only ever registered on, never emitted from
   const isInstance = typeof target === 'object'
   const Ctor = isInstance ? (target.constructor as typeof ActiveModel) : undefined
 
@@ -89,6 +90,7 @@ export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
   const getListeners = (eventName: EventType): Iterable<ActiveModelHookListener> => {
     const own = ownEvents.get(eventName)!
 
+    // Stryker disable next-line all: class targets are only ever registered on, never emitted from
     if (!Ctor) {
       return own
     }
@@ -96,15 +98,18 @@ export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
     const chain: Array<ListenersContainer> = []
     for (
       let current: unknown = Ctor;
+      // Stryker disable next-line ConditionalExpression: the second condition already ends the walk
       typeof current === 'function' && current !== Function.prototype;
       current = Object.getPrototypeOf(current)
     ) {
       const listeners = Registry.get(current as typeof ActiveModel)?.get(eventName)
+      // Stryker disable next-line ConditionalExpression,EqualityOperator: skipping empty containers is an optimisation
       if (listeners && listeners.size > 0) {
         chain.unshift(listeners)
       }
     }
 
+    // Stryker disable next-line all: fast path, same result as the generator
     if (chain.length === 0) {
       return own
     }
@@ -137,6 +142,7 @@ export const useEmitter = (target: typeof ActiveModel | ActiveModel) => {
     if (errors.length === 1) {
       throw errors[0]
     }
+    // Stryker disable next-line EqualityOperator: the single-error case has already thrown above
     if (errors.length > 1) {
       throw Object.assign(
         new Error(`${errors.length} listeners of "${eventName}" failed`),

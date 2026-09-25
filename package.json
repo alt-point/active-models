@@ -83,7 +83,7 @@
     "docs:api": "typedoc",
     "test:perf": "vitest run --config vitest.perf.config.ts",
     "bench": "vitest bench --run --config vitest.perf.config.ts",
-    "test:mutation": "stryker run"
+    "test:mutation": "stryker run && node scripts/mutation-gate.mjs"
   },
   "homepage": "https://github.com/alt-point/active-models#readme",
   "author": {

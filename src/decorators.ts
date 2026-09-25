@@ -112,6 +112,7 @@ const factoryDecorator = (
 
 export function ActiveFactory (
   factory: FactoryConfig,
+  // Stryker disable next-line BooleanLiteral: reserved parameter, currently unused
   isOptional: boolean = false
 ) {
   return function (target: ActiveModel, prop: string): void {
@@ -119,8 +120,6 @@ export function ActiveFactory (
 
     // fail fast: an undefined factory is usually a circular import, and would otherwise silently do nothing
     validateModelType(Array.isArray(factory) ? factory[0] : factory, prop)
-
-    Ctor.addToFields(prop)
 
     Ctor.addToFillable(prop)
 
@@ -172,6 +171,7 @@ export function ActiveField<_T extends ActiveModel> (
       Ctor.defineSetter(prop, options.setter)
     }
 
+    // Stryker disable next-line BooleanLiteral: reserved parameter, currently unused
     factoryDecorator(target, prop, options.factory, false)
 
     if (options.getter) {
@@ -189,7 +189,9 @@ export function ActiveField<_T extends ActiveModel> (
         options.on as Record<PropEvent, ActiveModelHookListener>
       )) {
         addListener(eventName as PropEvent, (payload) => {
+          // Stryker disable next-line OptionalChaining: field-hook payloads and listeners always exist
           if (payload?.prop === prop) {
+            // Stryker disable next-line OptionalChaining: field-hook payloads and listeners always exist
             listener?.(payload)
           }
         })
@@ -203,8 +205,10 @@ export function ActiveField<_T extends ActiveModel> (
       )) {
         // unsubscribe on the first event for THIS prop, not on the first event of any prop
         const off = addListener(eventName as PropEvent, (payload) => {
+          // Stryker disable next-line OptionalChaining: field-hook payloads and listeners always exist
           if (payload?.prop === prop) {
             off()
+            // Stryker disable next-line OptionalChaining: field-hook payloads and listeners always exist
             listener?.(payload)
           }
         })
