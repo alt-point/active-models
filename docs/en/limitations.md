@@ -52,7 +52,8 @@ An exception in a listener reaches the caller, but the value has already been wr
 
 ## `validator` doesn't run for an absent or unchanged value
 
-Details: [Advanced features → Validators](/en/active-model-advanced#validators).
+Details: [Advanced features → Validators](/en/active-model-advanced#validators). For required fields use
+`required` and `model.validate()` — they also see a field that was never set: [Validation](/en/validation).
 
 ## `createFromCollection` skips only `null`/`undefined`
 

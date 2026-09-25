@@ -52,7 +52,8 @@ model.items = [...model.items, 'a'] // эмитится afterSetValue и touched
 
 ## `validator` не вызывается для отсутствующего или неизменившегося значения
 
-Подробно: [Продвинутые возможности → Валидаторы](/active-model-advanced#валидаторы).
+Подробно: [Продвинутые возможности → Валидаторы](/active-model-advanced#валидаторы). Для обязательности полей есть
+`required` и `model.validate()` — они видят и поле, которое так и не было задано: [Валидация](/validation).
 
 ## `createFromCollection` пропускает только `null`/`undefined`
 

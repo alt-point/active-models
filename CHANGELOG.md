@@ -27,6 +27,10 @@ Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migrati
 - `createFromCollection*` skips only `null`/`undefined` items (previously any falsy value).
 
 ### Added
+- Declarative field rules - `required`, `type`, `min`, `max`, `minLength`, `maxLength`, `pattern`, `oneOf` - with `model.validate()` (reports **all** problems, recurses into nested models and collections), `model.assertValid()`, `create(data, { validate: true })` and a `ValidationError` carrying `issues`.
+- Normalizers (`trim`, `lowercase`, `uppercase`, `transform`) and type coercion (`coerce: 'number' | 'integer' | 'boolean' | 'date' | 'string'`).
+- State machines: `transitions` on a field, `model.canTransition()`, `model.allowedTransitions()`.
+- `static strict = true` - a model that refuses writes to undeclared properties.
 - `ActiveCollection` - an array that accepts only instances of one model, optionally kept sorted (`sortBy` / `compare` / `order`), with binary search (`bisectLeft`, `bisectRight`, `findByKey`, `range`), `itemsAdded` / `itemsRemoved` / `touched` events that bubble into a parent model. Created via `Model.collection()`, `Model.createCollection()`, `ActiveCollection.create()` or the `collection` field option.
 - `model.getRaw()` - the deep-frozen source data of a model created with `tracked: true` (`undefined` otherwise).
 - `Model.on()` / `Model.once()` - class-level subscriptions for every instance, subclasses included.
@@ -42,6 +46,7 @@ Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migrati
 - `toJSON()` honors `toJSON()` methods (`Date`...), serializes `Set` as an array and `Map` as an object.
 - `clone()` returns a fully working proxied model, keeps `hidden` values, `readonly`/`fillable: false`
   locks and the `isTouched()` baseline.
+- A rejected first write no longer locks a `readonly`/`fillable: false` field.
 - `hidden` fields are concealed from `in` and `Object.getOwnPropertyDescriptor`.
 - `createFromCollection*` return `InstanceType<T>[]`.
 - `CallableModel` no longer extends `Function` via `super()` (CSP-safe).

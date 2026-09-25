@@ -20,6 +20,23 @@ let creatingDepth = 0
 let rawConstruction = false
 
 /**
+ * Depth of the operations that put values back (rollback, undo, revert): they bypass
+ * normalizers, rules, transitions and validators - the values were valid when they were taken.
+ */
+let restoringDepth = 0
+
+export const isRestoring = (): boolean => restoringDepth > 0
+
+export const runRestoring = <T>(fn: () => T): T => {
+  restoringDepth++
+  try {
+    return fn()
+  } finally {
+    restoringDepth--
+  }
+}
+
+/**
  * Helper for check creating state
  */
 export const isCreating = (): boolean => creatingDepth > 0
@@ -215,6 +232,8 @@ export const useMeta = (instance?: ActiveModel) => {
     },
     isCreating,
     isNotCreating,
+    isRestoring,
+    runRestoring,
     runInCreatingContext,
     runRawConstruction,
     consumeRawConstruction,

@@ -55,6 +55,16 @@ JSON.stringify(user)                                  // hidden fields are exclu
 | `factory: Model` / `[Model, () => default]` | wrap nested object / array items in `Model` |
 | `on: { afterSetValue, ... }` / `once` | field-level hooks, shared by all instances (and subclasses) |
 
+## Validation pipeline (every write)
+
+`transform (trim/lowercase/uppercase/fn) → coerce → same value? stop → transitions → rules → validator → events`.
+Rules: `required` (not null/undefined/''), `type`, `min`/`max` (number or Date), `minLength`/`maxLength`, `pattern`,
+`oneOf` (array or TS enum). A refused write throws `ValidationError` (`.issues`). `model.validate()` → `{ valid, issues }`
+covers **all** fields, including ones never set (`required`), nested models and collections (`history[1].city`);
+`assertValid()` throws; `create(data, { validate: true })` too. `transitions: { new: ['paid'], paid: [] }` restricts state
+changes (first value and creation from data are free); `canTransition()`, `allowedTransitions()`.
+`static strict = true` refuses writes to undeclared properties. Rules are bypassed when values are restored (undo/rollback).
+
 ## Events
 
 `EventType`: `beforeSetValue`, `afterSetValue`, `nulling` (non-null → `null` only),

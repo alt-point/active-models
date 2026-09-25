@@ -31,6 +31,17 @@ import { useEmitter } from './emitter'
 import { useMapper } from './mapper'
 import { ActiveCollection } from './ActiveCollection'
 import { isCollection } from './collectionRegistry'
+import {
+  ValidationError,
+  canTransition as canTransitionFn,
+  coerceValue,
+  nextStates,
+  ruleIssues,
+  runTransforms,
+  type PipelineConfig,
+  type ValidationIssue,
+  type ValidationResult,
+} from './pipeline'
 
 /**
  * proxy -> raw instance. Instance methods run with `this === proxy`, but state
@@ -84,6 +95,43 @@ const getReadonlyWritten = makeWrittenTracker()
  * incoming data before `fill()` ever sees them (see `stripNonFillable`).
  */
 const getFillableWritten = makeWrittenTracker()
+
+/**
+ * Every rule/validator problem of `model`, recursing into nested models and collections.
+ * `seen` guards against reference cycles.
+ */
+const collectIssues = (model: ActiveModel, prefix: string, issues: ValidationIssue[], seen: WeakSet<object>) => {
+  if (seen.has(model)) {
+    return
+  }
+  seen.add(model)
+  const Ctor = <typeof ActiveModel>model.constructor
+  for (const prop of Ctor.fieldNames()) {
+    const path = prefix ? `${prefix}.${String(prop)}` : String(prop)
+    const value = Reflect.get(model, prop)
+    const pipeline = Ctor.resolvePipeline(prop)
+
+    if (pipeline) {
+      issues.push(...ruleIssues(pipeline.rules, value, path, pipeline.coerce))
+    }
+    const validator = Ctor.resolveValidator(prop)
+    if (validator && value !== undefined && value !== null) {
+      try {
+        validator(model, String(prop), value)
+      } catch (error) {
+        issues.push({ path, code: 'validator', message: (error as Error).message, value })
+      }
+    }
+
+    const items = isCollection(value) || Array.isArray(value) ? Array.from(value as Iterable<unknown>) : [value]
+    items.forEach((item, index) => {
+      if (item instanceof ActiveModel) {
+        const nested = rawOf.get(item) ?? item
+        collectIssues(nested, items.length === 1 && !(isCollection(value) || Array.isArray(value)) ? path : `${path}[${index}]`, issues, seen)
+      }
+    })
+  }
+}
 
 /**
  * Class ActiveModel
@@ -294,6 +342,15 @@ export class ActiveModel {
   protected static [SC.__activeFields__]?: Set<
     string | keyof InstanceType<typeof this> | symbol
   >
+  protected static [SC.__pipeline__]?: Map<string | symbol, PipelineConfig>
+
+  /**
+   * A strict model refuses writes to properties that are neither declared with `@ActiveField()`
+   * nor already present (so `model.typo = 1` throws instead of silently adding a property).
+   * Build strict models with `create()`: `new Model(data)` routes undeclared class-field
+   * initializers through the same check.
+   */
+  static strict: boolean = false
 
   /**
    * Add field name to hidden scope
@@ -323,6 +380,11 @@ export class ActiveModel {
       () => new Set(this[SC.__activeFields__] || [])
     )
     prop.forEach((p) => this[SC.__activeFields__]!.add(p))
+  }
+
+  /** Names of the declared fields (`@ActiveField()`), hidden ones included */
+  static fieldNames (): Array<string | symbol> {
+    return [...(this[SC.__activeFields__] ?? [])] as Array<string | symbol>
   }
 
   /**
@@ -479,6 +541,29 @@ export class ActiveModel {
   }
 
   /**
+   * Define the write pipeline (normalizers, coercion, rules, transitions) of a field
+   * @param prop
+   * @param config
+   */
+  static definePipeline (
+    prop: string | symbol,
+    config: PipelineConfig
+  ): void {
+    this.addToFields(prop)
+    // Stryker disable next-line LogicalOperator,ArrayDeclaration: class-definition-time code, killed by the option-inheritance tests
+    this.defineStaticProperty(SC.__pipeline__, () => new Map(this[SC.__pipeline__] || []))
+    this[SC.__pipeline__]!.set(prop, config)
+  }
+
+  /**
+   * Resolve the write pipeline of a field
+   * @param prop
+   */
+  static resolvePipeline (prop: string | symbol): PipelineConfig | undefined {
+    return this[SC.__pipeline__]?.get(prop)
+  }
+
+  /**
    * Define attribute (default value) for field by name
    * @param prop
    * @param value
@@ -495,6 +580,32 @@ export class ActiveModel {
       () => new Map(this[SC.__attributes__] || [])
     )
     this[SC.__attributes__]!.set(prop, value)
+  }
+
+  /**
+   * Normalizers and coercion of one write (the rules run separately, on the result)
+   * @protected
+   */
+  protected static applyPipeline (
+    target: ActiveModel,
+    prop: string | symbol,
+    config: PipelineConfig,
+    value: unknown
+  ): unknown {
+    const normalized = runTransforms(config, value, target, String(prop))
+    if (!config.coerce) {
+      return normalized
+    }
+    const coerced = coerceValue(config.coerce, normalized)
+    if (!coerced.ok) {
+      throw new ValidationError([{
+        path: String(prop),
+        code: 'coerce',
+        message: `"${String(prop)}" cannot be converted to ${config.coerce}, got ${JSON.stringify(normalized)}`,
+        value: normalized,
+      }])
+    }
+    return coerced.value
   }
 
   /**
@@ -669,6 +780,10 @@ export class ActiveModel {
 
       // Stryker disable next-line all: only releases a WeakSet entry
       unmarkSanitized(data as object)
+
+      if (opts.validate) {
+        model.assertValid()
+      }
 
       // Fires exactly once, synchronously, after this model - and,
       // transitively, every nested model a `factory` field created along the
@@ -998,38 +1113,39 @@ export class ActiveModel {
         if (frozenModels.has(target)) {
           throw new TypeError(`Cannot assign to "${String(prop)}": the model is frozen (makeFreeze)`)
         }
-        const { isNotCreating } = useMeta()
-        const isActiveField = (<typeof ActiveModel>(
-          target.constructor
-        )).isActiveField(prop)
+        const { isNotCreating, isRestoring } = useMeta()
+        const Ctor: typeof ActiveModel = <typeof ActiveModel>target.constructor
+        const restoring = isRestoring()
         const oldValue = Reflect.get(target, prop, receiver)
 
-        const isEqual = Object.is(oldValue, value)
-
-        if (isEqual || !isActiveField) {
-          // if value for current property is equal previews value or property is not ActiveField → eager return with delegate set value to property
+        if (!Ctor.isActiveField(prop)) {
+          if (Ctor.strict && !restoring && typeof prop === 'string' && !(prop in target)) {
+            throw new TypeError(`Unknown property "${prop}" on ${Ctor.name}: declare it with @ActiveField() (strict model)`)
+          }
           return Reflect.set(target, prop, value, receiver)
         }
 
-        const Ctor: typeof ActiveModel = <typeof ActiveModel>target.constructor
+        if (Object.is(oldValue, value)) {
+          // same value as before: nothing to validate, store or announce
+          return Reflect.set(target, prop, value, receiver)
+        }
 
+        let markFillable = false
         if (!Ctor.fieldIsFillable(prop)) {
-          const written = getFillableWritten(target)
-          if (written.has(prop)) {
+          if (getFillableWritten(target).has(prop)) {
             // A real, later write attempt (data can never reach here - see
             // stripNonFillable) - block it loudly, same as always.
             return false
           }
           // The one legitimate write: the class-field initializer's own default,
           // routed through this proxy by `new Model(data)` after `super()` returns.
-          // Record it (so nothing can write this field again) and fall through to
-          // the normal set pipeline below.
-          written.add(prop)
+          // It is recorded only once the value has passed every check below.
+          markFillable = true
         }
 
+        let markReadonly = false
         if (Ctor.fieldIsReadOnly(prop)) {
-          const written = getReadonlyWritten(target)
-          if (written.has(prop)) {
+          if (getReadonlyWritten(target).has(prop)) {
             // Already set once (at creation, via factory or constructor) — locked.
             // Returning `true` (not `false`) is deliberate: `new Model(data)` wraps
             // `this` in the proxy and fills it *before* the subclass's own class-field
@@ -1042,36 +1158,65 @@ export class ActiveModel {
             // still preserving the value written the first time.
             return true
           }
-          // this is the one allowed write; fall through and let it happen
-          written.add(prop)
+          // this is the one allowed write; recorded once it has passed every check
+          markReadonly = true
         }
-        // validate value
 
-        Ctor.resolveValidator(prop)?.(target, prop as string, value)
+        let next = value
+        if (!restoring) {
+          // normalizers -> coercion -> (no change?) -> transition -> rules -> validator
+          const pipeline = Ctor.resolvePipeline(prop)
+          if (pipeline) {
+            next = Ctor.applyPipeline(target, prop, pipeline, value)
+            if (Object.is(oldValue, next)) {
+              return true
+            }
+            if (pipeline.transitions && isNotCreating() && !canTransitionFn(pipeline.transitions, oldValue, next)) {
+              throw new ValidationError([{
+                path: String(prop),
+                code: 'transition',
+                message: `"${String(prop)}" cannot change from ${JSON.stringify(oldValue)} to ${JSON.stringify(next)}`,
+                value: next,
+              }])
+            }
+            const issues = ruleIssues(pipeline.rules, next, String(prop), pipeline.coerce)
+            if (issues.length > 0) {
+              throw new ValidationError(issues)
+            }
+          }
+          Ctor.resolveValidator(prop)?.(target, prop as string, next)
+        }
+
+        if (markFillable) {
+          getFillableWritten(target).add(prop)
+        }
+        if (markReadonly) {
+          getReadonlyWritten(target).add(prop)
+        }
 
         useEmitter(target).emit(EventType.beforeSetValue, {
           target,
           prop,
-          value,
+          value: next,
           oldValue,
         })
 
         const result =
-          Ctor.resolveSetter(prop)?.(target, prop as string, value, receiver) ??
-          Reflect.set(target, prop, value, receiver)
+          Ctor.resolveSetter(prop)?.(target, prop as string, next, receiver) ??
+          Reflect.set(target, prop, next, receiver)
         useEmitter(target).emit(EventType.afterSetValue, {
           target,
           prop,
-          value,
+          value: next,
           oldValue,
         })
 
         // nullabling definition
-        if (!isNull(oldValue) && isNull(value)) {
+        if (!isNull(oldValue) && isNull(next)) {
           useEmitter(target).emit(EventType.nulling, {
             target,
             prop,
-            value,
+            value: next,
             oldValue,
           })
         }
@@ -1126,6 +1271,49 @@ export class ActiveModel {
     }) as RType
     rawOf.set(proxy, instance)
     return proxy
+  }
+
+  /**
+   * Check the current state against every rule and validator, nested models and collections
+   * included, and report **all** problems instead of stopping at the first. A field that was never
+   * set is caught by `required`; validators run only for values that are set.
+   * @example
+   * const { valid, issues } = user.validate()
+   * // issues: [{ path: 'address.city', code: 'required', message: '"address.city" is required' }]
+   */
+  validate (): ValidationResult {
+    const issues: ValidationIssue[] = []
+    collectIssues(rawOf.get(this) ?? this, '', issues, new WeakSet())
+    return { valid: issues.length === 0, issues }
+  }
+
+  /**
+   * Like `validate()`, but throws a `ValidationError` (its `issues` lists every problem) instead of returning them.
+   */
+  assertValid (): this {
+    const { valid, issues } = this.validate()
+    if (!valid) {
+      throw new ValidationError(issues)
+    }
+    return this
+  }
+
+  /**
+   * Whether the field's `transitions` allow it to change to `to` right now (`true` for a field without transitions).
+   */
+  canTransition (prop: string, to: unknown): boolean {
+    const raw = rawOf.get(this) ?? this
+    const transitions = (<typeof ActiveModel>raw.constructor).resolvePipeline(prop)?.transitions
+    return transitions ? canTransitionFn(transitions, Reflect.get(raw, prop), to) : true
+  }
+
+  /**
+   * The states the field may change to from its current value (all known states while it is not set).
+   */
+  allowedTransitions (prop: string): unknown[] {
+    const raw = rawOf.get(this) ?? this
+    const transitions = (<typeof ActiveModel>raw.constructor).resolvePipeline(prop)?.transitions
+    return transitions ? nextStates(transitions, Reflect.get(raw, prop)) : []
   }
 
   /**

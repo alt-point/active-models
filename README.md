@@ -154,6 +154,7 @@ class Notify extends CallableModel {
 | [Продвинутые возможности](docs/active-model-advanced.md) | валидаторы, хуки, `new` vs `create` vs `fill`, `clone`, `makeFreeze` |
 | [Отслеживание изменений](docs/dirty-tracking.md) | `isTouched()` и `getRaw()` с примерами на Vue и React |
 | [Трансформация моделей](docs/mapping.md) | `mapTo()`: сравнение с class-transformer и AutoMapper |
+| [Валидация и нормализация](docs/validation.md) | правила, `validate()`, `coerce`, `trim`, переходы состояний, строгий режим |
 | [ActiveCollection](docs/collections.md) | массив только из объявленной модели, сортировка, бинарный поиск |
 | [Пример для Node.js](docs/node-example.md) | сервер на чистом `node:http` |
 | [Известные ограничения](docs/limitations.md) | что работает не так, как ожидаешь — и что делать |

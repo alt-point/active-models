@@ -1,5 +1,6 @@
 import { type ActiveModel } from './ActiveModel'
 import { type ActiveCollection } from './ActiveCollection'
+import type { CoerceTo, Transform, Transitions, ValueType } from './pipeline'
 
 export type ConstructorType = abstract new (...args: any[]) => any
 export type ActiveModelSource = undefined | object | null
@@ -148,6 +149,37 @@ export type ActiveFieldDescriptor<_T = unknown> = {
   attribute?: AttributeValue
   /** Alias for `attribute`. */
   value?: AttributeValue
+  /** Normalizers, run first and in order: `(value, { model, prop }) => newValue`. */
+  transform?: Transform | Transform[]
+  /** Trim surrounding whitespace of a string. */
+  trim?: boolean
+  /** Lower-case a string. */
+  lowercase?: boolean
+  /** Upper-case a string. */
+  uppercase?: boolean
+  /** Convert the written value (`'42'` to `42`, `'true'` to `true`, a date string to a `Date`); an impossible conversion is refused. */
+  coerce?: CoerceTo
+  /** The value must not be `null`, `undefined` or `''`. Also checked by `validate()`, which catches a field that was never set. */
+  required?: boolean
+  /** Runtime type of the value (`coerce` implies one). */
+  type?: ValueType
+  /** Smallest allowed number or date. */
+  min?: number | Date
+  /** Largest allowed number or date. */
+  max?: number | Date
+  /** Fewest characters / items. */
+  minLength?: number
+  /** Most characters / items. */
+  maxLength?: number
+  /** A string must match. */
+  pattern?: RegExp
+  /** Allowed values: an array or a TypeScript `enum`. */
+  oneOf?: readonly unknown[] | Record<string, unknown>
+  /**
+   * Allowed state changes: `{ new: ['paid', 'cancelled'], paid: ['shipped'] }`. A state with no entry is terminal;
+   * the first value (from `undefined`/`null`) and creation from data are unrestricted.
+   */
+  transitions?: Transitions
   /** Wrap a nested object (or every array item) in this `ActiveModel`; `[Model, () => default]` adds a default. */
   factory?: FactoryConfig
   /**
@@ -171,6 +203,8 @@ export type FactoryOptions = {
   sanitize?: boolean
   /** Take the baseline snapshot used by `isTouched()`. */
   tracked?: boolean
+  /** Run `validate()` after filling and throw a `ValidationError` listing every problem. */
+  validate?: boolean
 }
 
 export enum StaticContainers {
@@ -183,6 +217,7 @@ export enum StaticContainers {
   __readonly__ = '__readonly__',
   __hidden__ = '__hidden__',
   __activeFields__ = '__activeFields__',
+  __pipeline__ = '__pipeline__',
 }
 
 // mapper types

@@ -11,6 +11,7 @@ import { getValue } from './utils'
 import { useEmitter } from './emitter'
 import { ActiveCollection } from './ActiveCollection'
 import { isCollection } from './collectionRegistry'
+import type { FieldRules, PipelineConfig, Transform } from './pipeline'
 
 const defaultOpts: ActiveFieldDescriptor = {
   fillable: true,
@@ -149,6 +150,41 @@ const collectionDecorator = (
   }
 }
 
+const RULE_KEYS = ['required', 'type', 'min', 'max', 'minLength', 'maxLength', 'pattern', 'oneOf'] as const
+
+/**
+ * Turn the declarative options of a field (normalizers, coercion, rules, transitions)
+ * into its write pipeline; `undefined` when none was given.
+ */
+const buildPipeline = (options: ActiveFieldDescriptor): PipelineConfig | undefined => {
+  const transforms: Transform[] = []
+  if (options.trim) {
+    transforms.push((value) => (typeof value === 'string' ? value.trim() : value))
+  }
+  if (options.lowercase) {
+    transforms.push((value) => (typeof value === 'string' ? value.toLowerCase() : value))
+  }
+  if (options.uppercase) {
+    transforms.push((value) => (typeof value === 'string' ? value.toUpperCase() : value))
+  }
+  if (options.transform) {
+    transforms.push(...(Array.isArray(options.transform) ? options.transform : [options.transform]))
+  }
+
+  const rules: FieldRules = {}
+  for (const key of RULE_KEYS) {
+    if (options[key] !== undefined) {
+      (rules as Record<string, unknown>)[key] = options[key]
+    }
+  }
+
+  const hasRules = Object.keys(rules).length > 0
+  if (transforms.length === 0 && !options.coerce && !hasRules && !options.transitions) {
+    return undefined
+  }
+  return { transforms, coerce: options.coerce, rules, transitions: options.transitions }
+}
+
 export function ActiveFactory (
   factory: FactoryConfig,
   // Stryker disable next-line BooleanLiteral: reserved parameter, currently unused
@@ -225,6 +261,11 @@ export function ActiveField<_T extends ActiveModel> (
 
     if (options.validator) {
       Ctor.defineValidator(prop, options.validator)
+    }
+
+    const pipeline = buildPipeline(options)
+    if (pipeline) {
+      Ctor.definePipeline(prop, pipeline)
     }
 
     if (options.on) {
