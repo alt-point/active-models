@@ -628,10 +628,14 @@ export class ActiveModel {
 
       setInstance(model)
 
+      if (opts.tracked) {
+        // the source exactly as it was passed in - before defaults are added and non-fillable keys stripped
+        saveRaw(data)
+      }
+
       this.fill(model, this.stripNonFillable(this.setDefaultAttributes(data)))
 
       if (opts.tracked) {
-        saveRaw(data)
         saveInitialState(model)
       }
 
@@ -1057,6 +1061,17 @@ export class ActiveModel {
     }) as RType
     rawOf.set(proxy, instance)
     return proxy
+  }
+
+  /**
+   * The source data this model was created from, exactly as it was passed to
+   * `create(data, { tracked: true })` - before defaults were applied and
+   * non-fillable keys stripped. Deep-frozen; `undefined` for a model that was
+   * not created tracked. A `clone()` carries it over.
+   */
+  getRaw (): Readonly<Record<string, unknown>> | undefined {
+    const { getRaw } = useMeta(this)
+    return getRaw()
   }
 
   /**

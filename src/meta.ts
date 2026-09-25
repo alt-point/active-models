@@ -2,8 +2,6 @@ import { ActiveModel } from './ActiveModel'
 import deepEqual from 'fast-deep-equal/es6'
 import cloneDeep from 'lodash-es/cloneDeep'
 type State = {
-  creating: boolean
-  isDirty: boolean
   initialState?: ActiveModel | undefined
   raw?: any
 }
@@ -110,10 +108,7 @@ export function isSanitized (value: unknown) {
  */
 const upsertState = (instance: ActiveModel, data: Partial<State>) => {
   if (!sharedState.has(instance)) {
-    sharedState.set(instance, {
-      creating: false,
-      isDirty: false,
-    })
+    sharedState.set(instance, {})
   }
   const record = sharedState.get(instance)!
   for (const [p, v] of Object.entries(data) as [keyof State, any][]) {
@@ -154,6 +149,12 @@ export const saveRaw = (instance: ActiveModel, raw: any) => {
   raw = deepFreeze(cloneDeep(raw))
   upsertState(instance, { raw })
 }
+
+/**
+ * The deep-frozen source data saved by `saveRaw`, or `undefined` if the model was never tracked
+ * @param instance
+ */
+export const getRaw = (instance: ActiveModel) => sharedState.get(instance)?.raw
 
 /**
  * Checking whatever instance is touched
@@ -220,6 +221,7 @@ export const useMeta = (instance?: ActiveModel) => {
     saveInitialState: (initialState: ActiveModel) =>
       saveInitialState(requiredInstance(inst), initialState),
     saveRaw: (raw: any) => saveRaw(requiredInstance(inst), raw),
+    getRaw: () => getRaw(requiredInstance(inst)),
     isTouched: () => isTouched(requiredInstance(inst)),
   }
 }

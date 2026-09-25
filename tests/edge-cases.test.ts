@@ -99,7 +99,7 @@ describe('serialization edge cases', () => {
       @ActiveField() at: Date = new Date(0)
     }
     const json = JSON.stringify(Event.create({}))
-    expect(json).toContain('1970-01-01T00:00:00.000Z')
+    expect(json).toBe('{"at":"1970-01-01T00:00:00.000Z"}')
   })
 
   it('toJSON() drops functions and undefined, keeps null and nested arrays', () => {
@@ -189,8 +189,8 @@ describe('creation never emits touched', () => {
     new User({ name: 'b' })
     await Promise.resolve()
 
-    // only the subclass field initializer of `new User()` runs after the constructor - see docs
-    expect(touched).toBeLessThanOrEqual(2)
+    // create() emits nothing; new User() emits once, for its own `name` field initializer running after the constructor - see docs
+    expect(touched).toBe(1)
     const user = User.create({})
     const before = touched
     user.name = 'changed'
@@ -231,7 +231,7 @@ describe('event payloads', () => {
     expect(created).toEqual([viaCreate, viaNew])
     expect(created[0]).toBe(viaCreate)
     // (new Item() also emits touched for its own field initializers, after the constructor returned)
-    expect(touched).toContain(viaCreate)
+    expect(touched).toEqual([viaNew, viaCreate])
   })
 })
 

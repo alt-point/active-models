@@ -105,6 +105,7 @@ export type StaticContainers =
 export type BaseMethods =
   | 'clone'
   | 'fill'
+  | 'getRaw'
   | 'isTouched'
   | 'makeFreeze'
   | 'on'

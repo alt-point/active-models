@@ -150,7 +150,7 @@ describe('toJSON()', () => {
     expect(json.passwordHash).toBeUndefined()
     expect(json.role).toBe('admin')
     expect(json.fullName).toBe('Ada Lovelace')
-    expect(Object.keys(user)).not.toContain('passwordHash')
+    expect(Object.keys(user)).toEqual(['id', 'role', 'fullName', 'firstName', 'lastName'])
   })
 
   it('recurses into nested ActiveModel instances', () => {

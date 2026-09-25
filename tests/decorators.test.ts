@@ -28,7 +28,7 @@ describe('hidden', () => {
     }
 
     const user = User.create({ secret: 'shh' })
-    expect(Object.keys(user)).not.toContain('secret')
+    expect(Object.keys(user)).toEqual([])
     expect(JSON.parse(JSON.stringify(user)).secret).toBeUndefined()
     expect(user.secret).toBe('shh')
   })

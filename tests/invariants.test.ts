@@ -101,7 +101,7 @@ describe('touched', () => {
     b.peer = a
     const seen = count(a)
     b.label = 'x'
-    expect(seen.n).toBeGreaterThanOrEqual(1)
+    expect(seen.n).toBe(1)
   })
 
   it('is emitted once per real change, after the value is written', () => {
@@ -143,9 +143,7 @@ describe('option inheritance', () => {
 
   it('a subclass keeps every parent option', () => {
     const d = Derived.create({ id: '1', fixed: 'x', checked: 'ok', shout: 'hi' })
-    expect(Object.keys(d)).toEqual(expect.arrayContaining(['id', 'free', 'withDefault', 'checked', 'shout', 'tagged', 'extra']))
-    expect(Object.keys(d)).not.toContain('secret')
-    expect(Object.keys(d)).not.toContain('derivedSecret')
+    expect(Object.keys(d)).toEqual(['id', 'free', 'fixed', 'withDefault', 'checked', 'shout', 'tagged', 'extra'])
     d.id = 'z'
     expect(d.id).toBe('1')
     expect(d.fixed).toBe('k')
@@ -161,7 +159,7 @@ describe('option inheritance', () => {
   it("a subclass's own options do not leak into the parent", () => {
     Derived.create({})
     const b = Base.create({})
-    expect(Object.keys(b)).not.toContain('extra')
+    expect(Object.keys(b)).toEqual(['id', 'free', 'fixed', 'withDefault', 'checked', 'shout', 'tagged'])
     expect((b as any).derivedSecret).toBeUndefined()
     expect(Base.hasMapping(Derived)).toBe(false)
   })
@@ -299,7 +297,7 @@ describe('creation internals', () => {
       @ActiveField() maybe?: string
     }
     const late = Late.create({})
-    expect(Object.keys(late)).not.toContain('maybe')
+    expect(Object.keys(late)).toEqual([])
     late.fill({ maybe: 'now' })
     expect(late.maybe).toBe('now')
   })
@@ -478,5 +476,43 @@ describe('no system state on the instance', () => {
     expect(JSON.parse(JSON.stringify(model))).toEqual({ name: 'changed' })
     expect({ ...model }).toEqual({ name: 'changed' })
     expect(Object.entries(model)).toEqual([['name', 'changed']])
+  })
+})
+
+describe('getRaw()', () => {
+  class Order extends ActiveModel {
+    @ActiveField({ value: 'new' }) status: string = ''
+    @ActiveField({ fillable: false }) locked: string = 'l'
+    @ActiveField() tags: string[] = []
+  }
+
+  it('returns the source data as passed in - before defaults and stripping - for a tracked model', () => {
+    const order = Order.create({ locked: 'attempt', tags: ['a'] }, { tracked: true })
+    expect(order.getRaw()).toEqual({ locked: 'attempt', tags: ['a'] })
+    expect(order.status).toBe('new')
+    expect(order.locked).toBe('l')
+  })
+
+  it('is undefined for an untracked model and survives clone()', () => {
+    expect(Order.create({ tags: [] }).getRaw()).toBeUndefined()
+    const tracked = Order.create({ tags: ['a'] }, { tracked: true })
+    expect(tracked.clone().getRaw()).toEqual({ tags: ['a'] })
+  })
+
+  it('is a deep-frozen snapshot: independent of the source and not writable', () => {
+    const source = { tags: ['a'] }
+    const order = Order.create(source, { tracked: true })
+    source.tags.push('b')
+    const raw = order.getRaw() as { tags: string[] }
+    expect(raw.tags).toEqual(['a'])
+    expect(Object.isFrozen(raw)).toBe(true)
+    expect(Object.isFrozen(raw.tags)).toBe(true)
+    expect(() => raw.tags.push('c')).toThrow(TypeError)
+  })
+
+  it('does not appear in the serialized model or the key list', () => {
+    const order = Order.create({ tags: [] }, { tracked: true })
+    expect(Object.keys(order)).toEqual(['status', 'locked', 'tags'])
+    expect(JSON.parse(JSON.stringify(order))).toEqual({ status: 'new', locked: 'l', tags: [] })
   })
 })
