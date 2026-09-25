@@ -93,7 +93,7 @@ export class ActiveModel {
 
   /**
    * Subscribe to a lifecycle/field event for *every* instance of this class
-   * (including subclasses' instances), not just one. Registered against the
+   * (NOT subclasses' instances - known limitation), not just one. Registered against the
    * constructor itself, which `useEmitter()`'s `getListeners()` merges in as
    * "inherited" listeners for any instance of this class - the same
    * mechanism `@ActiveField({ on: {...} })` already uses internally.
