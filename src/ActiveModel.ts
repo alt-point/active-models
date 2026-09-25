@@ -13,6 +13,7 @@ import {
   type HandlerMapTo,
   type MapTarget,
 } from './types'
+import cloneDeep from 'lodash-es/cloneDeep'
 import cloneDeepWith from 'lodash-es/cloneDeepWith'
 import { copyTrackingState, isSanitized, markSanitized, unmarkSanitized, useMeta } from './meta'
 import {
@@ -28,8 +29,6 @@ import {
 import { useEmitter } from './emitter'
 import { useMapper } from './mapper'
 
-const isTouched = Symbol('@touched')
-
 /**
  * proxy -> raw instance. Instance methods run with `this === proxy`, but state
  * that must include `hidden` fields (clone) has to be read from the raw object.
@@ -40,6 +39,16 @@ const rawOf = new WeakMap<object, ActiveModel>()
  * Instances frozen by `makeFreeze()`; checked by the traps for a clear error.
  */
 const frozenModels = new WeakSet<object>()
+
+/**
+ * Per parent instance: prop -> unsubscribe functions of the `touched`
+ * listeners it holds on its nested models. Lets a replaced child stop
+ * notifying the parent, and keeps repeated assignments from stacking listeners.
+ */
+const childSubscriptions = new WeakMap<object, Map<string | symbol, Array<() => void>>>()
+
+/** Parents currently re-emitting a bubbled `touched` (guards against reference cycles). */
+const bubbling = new WeakSet<object>()
 
 const makeWrittenTracker = () => {
   const registry = new WeakMap<ActiveModel, Set<string | symbol>>()
@@ -77,8 +86,6 @@ const getFillableWritten = makeWrittenTracker()
  * Class ActiveModel
  */
 export class ActiveModel {
-  [isTouched]: boolean = false
-
   /**
    * Subscribe to a lifecycle/field event on this instance. Implemented as a
    * getter (not a plain method) so that accessing it through the proxy - via
@@ -148,7 +155,12 @@ export class ActiveModel {
           continue
         }
 
-        const value = getValue(attributes?.[prop])
+        const declared = attributes?.[prop]
+        let value = getValue(declared)
+        if (typeof declared !== 'function' && isComplexValue(value)) {
+          // a plain `value: []` is one shared object - give every instance its own copy
+          value = value instanceof ActiveModel ? value.clone() : cloneDeep(value)
+        }
         if (isComplexValue(value)) {
           markSanitized(value)
         }
@@ -487,12 +499,14 @@ export class ActiveModel {
       ? instance.map((i) => this.toJSON(i))
       : Object.keys(instance).reduce(
         (a: { [key: string]: unknown }, b: string) => {
+          // getters receive the raw instance, exactly like on a regular read
+          const source = rawOf.get(instance) ?? instance
           // @ts-ignore
           const value =
             (<typeof ActiveModel>instance.constructor)?.getter?.(
-              instance as ActiveModel,
+              source as ActiveModel,
               b
-            ) ?? Reflect.get(instance, b)
+            ) ?? Reflect.get(source, b)
           if (!isPOJOSSafetyValue(value)) {
             return a
           }
@@ -817,7 +831,50 @@ export class ActiveModel {
     for (const p of getFillableWritten(source)) getFillableWritten(copy).add(p)
     const model = Ctor.wrap(copy)
     copyTrackingState(this, model)
+    Ctor.bindNestedModels(copy, model)
     return model
+  }
+
+  /**
+   * Re-subscribe `target` to the `touched` of the model(s) now stored under `prop`,
+   * so a change deep inside a nested model bubbles up as a `touched` of the parent.
+   */
+  protected static bindChildren (target: ActiveModel, prop: string | symbol, receiver: unknown) {
+    let byProp = childSubscriptions.get(target)
+    if (!byProp) {
+      byProp = new Map()
+      childSubscriptions.set(target, byProp)
+    }
+    byProp.get(prop)?.forEach((off) => off())
+    byProp.delete(prop)
+
+    const stored = Reflect.get(target, prop)
+    const children = (Array.isArray(stored) ? stored : [stored]).filter(
+      (child): child is ActiveModel => child instanceof ActiveModel
+    )
+    if (children.length === 0) {
+      return
+    }
+    byProp.set(prop, children.map((child) => child.on(EventType.touched, () => {
+      if (bubbling.has(target)) {
+        return
+      }
+      bubbling.add(target)
+      try {
+        useEmitter(target).emit(EventType.touched, { target: receiver })
+      } finally {
+        bubbling.delete(target)
+      }
+    })))
+  }
+
+  /** Subscribe a freshly cloned instance to the `touched` of its (already cloned) nested models. */
+  protected static bindNestedModels (raw: ActiveModel, model: ActiveModel) {
+    for (const prop of Reflect.ownKeys(raw)) {
+      if (this.isActiveField(prop)) {
+        this.bindChildren(raw, prop, model)
+      }
+    }
   }
 
   protected static cloneCustomizer (
@@ -879,27 +936,10 @@ export class ActiveModel {
         const oldValue = Reflect.get(target, prop, receiver)
 
         const isEqual = Object.is(oldValue, value)
-        if (!isEqual && isNotCreating()) {
-          target[isTouched] = true
-          useEmitter(target).emit(EventType.touched, { target: receiver })
-        }
 
         if (isEqual || !isActiveField) {
           // if value for current property is equal previews value or property is not ActiveField → eager return with delegate set value to property
           return Reflect.set(target, prop, value, receiver)
-        }
-
-        const defineListenerTouchValue = (value: unknown) => {
-          if (value instanceof ActiveModel) {
-            value.on(EventType.touched, () => {
-              target[isTouched] = true
-            })
-          }
-        }
-        if (Array.isArray(value)) {
-          value.forEach((v) => defineListenerTouchValue(v))
-        } else {
-          defineListenerTouchValue(value)
         }
 
         const Ctor: typeof ActiveModel = <typeof ActiveModel>target.constructor
@@ -965,6 +1005,12 @@ export class ActiveModel {
             value,
             oldValue,
           })
+        }
+
+        // only a write that actually went through counts as a change
+        Ctor.bindChildren(target, prop, receiver)
+        if (isNotCreating()) {
+          useEmitter(target).emit(EventType.touched, { target: receiver })
         }
         return result
       },
@@ -1073,10 +1119,10 @@ export class ActiveModel {
   > (
     this: T,
     target: RT extends MapTarget ? RT : MapTarget,
-    handler: HandlerMapTo<T, RT extends ConstructorType ? InstanceType<RT> : RT>
+    handler: HandlerMapTo<T, RT extends ConstructorType ? InstanceType<RT> : unknown>
   ): void {
     const { setMapTo } = useMapper<RT, T>(this as T)
-    setMapTo<RT extends ConstructorType ? InstanceType<RT> : RT>(
+    setMapTo<RT extends ConstructorType ? InstanceType<RT> : unknown>(
       target,
       handler
     )

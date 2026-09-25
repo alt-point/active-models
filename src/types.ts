@@ -89,7 +89,8 @@ export type EventListener<E extends EventType = EventType> = (
 
 type PrimitiveValue = string | number | null | undefined | boolean
 
-export type AttributeValue = (() => any) | PrimitiveValue
+/** A default for a field: a primitive, a plain object/array (copied per instance) or a `() => value` factory. */
+export type AttributeValue = (() => any) | PrimitiveValue | object
 
 /**
  * Options of the `@ActiveField()` decorator.

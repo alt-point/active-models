@@ -51,6 +51,10 @@ Any falsy value (`0`, `''`, `false`) used to be dropped. Now only `null`/`undefi
 | Subscriptions on a parent class | didn't fire for subclasses | fire |
 | `created` / `touched` payload | none | `{ target }` |
 | `touched` during `create()` | emitted for the initial fill | not emitted |
+| `touched` and a rejected write | emitted before the checks | emitted after a successful write; bubbles up from nested models |
+| A `value: []` / `{}` default | one object shared by every instance | a copy per instance |
+| `once` in `@ActiveField` | could miss if the first event was for another field | fires on the first event of its own field |
+| `@ActiveFactory(undefined)` | silently did nothing | `ReferenceError` at class definition |
 | An exception in a listener | aborted the remaining listeners | all listeners run, then the first error is thrown |
 | `toJSON()` for `Date`/`Set`/`Map` | `{}` | ISO string / array / object |
 | `clone()` | a plain object without `Proxy`, lost `hidden` | a full model, `hidden` kept, baseline carried over |

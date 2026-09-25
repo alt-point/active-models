@@ -117,6 +117,9 @@ export function ActiveFactory (
   return function (target: ActiveModel, prop: string): void {
     const Ctor = <typeof ActiveModel>target.constructor
 
+    // fail fast: an undefined factory is usually a circular import, and would otherwise silently do nothing
+    validateModelType(Array.isArray(factory) ? factory[0] : factory, prop)
+
     Ctor.addToFields(prop)
 
     Ctor.addToFillable(prop)
@@ -198,15 +201,13 @@ export function ActiveField<_T extends ActiveModel> (
       for (const [eventName, listener] of Object.entries(
         options.once as Record<PropEvent, ActiveModelHookListener>
       )) {
-        addListener(
-          eventName as PropEvent,
-          (payload) => {
-            if (payload?.prop === prop) {
-              listener?.(payload)
-            }
-          },
-          true
-        )
+        // unsubscribe on the first event for THIS prop, not on the first event of any prop
+        const off = addListener(eventName as PropEvent, (payload) => {
+          if (payload?.prop === prop) {
+            off()
+            listener?.(payload)
+          }
+        })
       }
     }
   }

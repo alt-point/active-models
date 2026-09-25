@@ -58,11 +58,8 @@ flowchart TD
     A["model.prop = value"] --> B{"Object.is(old, new)?"}
     B -- equal --> B1["Reflect.set directly\nnothing below runs"]
     B -- not equal --> C{"prop is an ActiveField?"}
-    C -- no --> C1["Reflect.set directly"]
-    C -- yes --> D{"isNotCreating()?"}
-    D -- yes --> D1["event: touched"]
-    D -- no --> E
-    D1 --> E{"fillable: false?"}
+    C -- no --> C1["Reflect.set directly\nno events"]
+    C -- yes --> E{"fillable: false?"}
     E -- yes, already\nwritten once --> E1["blocked - throws"]
     E -- yes, first write --> E2["allow, remember\nas 'written'"]
     E -- fillable: true --> F
@@ -77,8 +74,12 @@ flowchart TD
     I2 --> J
     J --> K{"old value wasn't null,\nnew value is null?"}
     K -- yes --> K1["event: nulling"]
-    K -- no --> L["done"]
-    K1 --> L
+    K -- no --> M
+    K1 --> M["subscribe to nested models' touched"]
+    M --> N{"isNotCreating()?"}
+    N -- yes --> N1["event: touched"]
+    N -- no --> L["done"]
+    N1 --> L
 ```
 
 ## Deleting a field
@@ -134,8 +135,10 @@ to fire - so this hook can't meaningfully be used on a protected field. Payload:
 
 ### `touched` (payload `{ target }`)
 
-Fires on **any** real change to **any** active field on the instance - but not during `create()` and not
-for the initial fill of `new Model(data)`. The payload is `{ target }`, where `target` is the model
+Fires **after** every write that actually went through to **any** active field on the instance (a rejected
+write - `readonly`, `fillable: false`, a throwing `validator` - doesn't emit it) - but not during
+`create()` and not for the initial fill of `new Model(data)`. A change to a field of a **nested** model
+(via `factory`) bubbles up as the parent's `touched`; replacing a nested model unsubscribes it from the parent. The payload is `{ target }`, where `target` is the model
 instance itself.
 
 You can't subscribe to it via the decorator: `touched` is deliberately excluded from `PropEvent`, the set

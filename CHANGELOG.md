@@ -47,7 +47,15 @@ Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migrati
 - `files` in `package.json` narrowed to `dist` and `src`; `LICENSE.txt` filled in (was empty).
 
 ### Fixed
-- `touched` was emitted during `create()`.
+- `touched` was emitted during `create()`, and for writes that were then rejected or that hit non-field properties.
+- `touched` never bubbled up from nested models (docs claimed it did); now it does, with de-duplication,
+  unsubscription on replacement and a cycle guard.
+- A plain object/array `value: ...` default was one object shared by every instance; now copied per instance.
+- Decorator `once` hooks fired only if the first event of that type happened to be for their own field.
+- `toJSON()` passed the proxy (not the raw instance) to getters, unlike a regular read.
+- `mapTo()` typing required the handler to return the key's own type for `Symbol`/string targets.
+- `AttributeValue` now allows arrays/objects (the runtime always did).
+- `@ActiveFactory(undefined)` (typically a circular import) silently did nothing; it now throws a `ReferenceError`.
 - License badge link in the READMEs.
 
 ## [3.5.0]
