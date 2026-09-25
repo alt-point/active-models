@@ -455,3 +455,28 @@ describe('mapping registry', () => {
     expect(A.create({}).mapTo(target, true, 'x', 2)).toEqual([1, 'x', 2])
   })
 })
+
+describe('no system state on the instance', () => {
+  class Account extends ActiveModel {
+    @ActiveField() name: string = 'n'
+    @ActiveField({ hidden: true }) token: string = 't'
+  }
+
+  it('exposes no symbol keys and no internal properties - only declared fields', () => {
+    const model = Account.create({}, { tracked: true })
+    model.name = 'changed'
+    model.on(EventType.touched, () => {})
+
+    expect(Object.getOwnPropertySymbols(model)).toEqual([])
+    expect(Reflect.ownKeys(model)).toEqual(['name'])
+    expect(Object.getOwnPropertySymbols(Account.create({}).clone())).toEqual([])
+  })
+
+  it('serialization, spread and structuredClone see only declared fields', () => {
+    const model = Account.create({}, { tracked: true })
+    model.name = 'changed'
+    expect(JSON.parse(JSON.stringify(model))).toEqual({ name: 'changed' })
+    expect({ ...model }).toEqual({ name: 'changed' })
+    expect(Object.entries(model)).toEqual([['name', 'changed']])
+  })
+})
