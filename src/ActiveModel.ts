@@ -16,7 +16,7 @@ import {
 } from './types'
 import cloneDeep from 'lodash-es/cloneDeep'
 import cloneDeepWith from 'lodash-es/cloneDeepWith'
-import deepEqual from 'fast-deep-equal/es6'
+import { deepEqual } from './equal'
 import { copyTrackingState, isSanitized, markSanitized, runRestoring, unmarkSanitized, useMeta } from './meta'
 import {
   abortGroup,

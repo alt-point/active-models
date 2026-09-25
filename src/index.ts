@@ -1,6 +1,8 @@
 export { ActiveModel, type InvariantCheck } from './ActiveModel'
 export { CallableModel } from './CallableModel'
 export { ActiveCollection, type CollectionInput } from './ActiveCollection'
+export { ActiveMap } from './ActiveMap'
+export { ActiveSet } from './ActiveSet'
 export { isCollection } from './collectionRegistry'
 export {
   ValidationError,

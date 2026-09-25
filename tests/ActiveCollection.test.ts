@@ -490,7 +490,7 @@ describe('ActiveCollection: bulk load', () => {
 
   it('reports the sorted position of the first batch item and emits once', () => {
     const tasks = Task.collection([{ id: 1 }, { id: 100 }], { sortBy: 'id' })
-    const events: number[] = []
+    const events: Array<number | undefined> = []
     tasks.on(EventType.itemsAdded, ({ index }) => events.push(index))
     tasks.push(...Array.from({ length: 40 }, (_, i) => ({ id: 50 + i })))
     expect(events).toEqual([1])

@@ -21,8 +21,7 @@
     ],
     "types": [
       "node",
-      "lodash-es",
-      "fast-deep-equal"
+      "lodash-es"
     ],
     "paths": {
       "~/*": [

@@ -1,5 +1,7 @@
 import { type ActiveModel } from './ActiveModel'
 import { type ActiveCollection } from './ActiveCollection'
+import { type ActiveMap } from './ActiveMap'
+import { type ActiveSet } from './ActiveSet'
 import type { CoerceTo, Transform, Transitions, ValueType } from './pipeline'
 
 export type ConstructorType = abstract new (...args: any[]) => any
@@ -78,15 +80,17 @@ export type DeleteEventPayload = {
 }
 
 /** Payload of `created` and `touched`: `target` is the model (or collection) instance itself */
-export type InstanceEventPayload = { target: ActiveModel | ActiveCollection<any> }
+export type InstanceEventPayload = { target: ActiveModel | ActiveCollection<any> | ActiveMap<any> | ActiveSet<any> }
 
 /** Payload of `itemsAdded` / `itemsRemoved` of an `ActiveCollection` */
 export type CollectionEventPayload<T = any> = {
-  target: ActiveCollection<any>
+  target: ActiveCollection<any> | ActiveMap<any> | ActiveSet<any>
   /** the items that were added / removed */
   items: T[]
-  /** position of the first affected item at the time of the change */
-  index: number
+  /** position of the first affected item at the time of the change (collections only) */
+  index?: number
+  /** the keys of those items (maps only) */
+  keys?: unknown[]
 }
 
 export type EventPayloads = {
@@ -110,6 +114,9 @@ type PrimitiveValue = string | number | null | undefined | boolean
 /** A default for a field: a primitive, a plain object/array (copied per instance) or a `() => value` factory. */
 export type AttributeValue = (() => any) | PrimitiveValue | object
 
+/** A field name of the model, or a function computing a key from an item */
+export type KeyOf<T = any> = (T extends object ? keyof T & string : string) | ((item: T) => unknown)
+
 /**
  * Options of an `ActiveCollection`.
  */
@@ -118,12 +125,33 @@ export type CollectionOptions<T = any> = {
    * Keep the collection sorted by this key: a field name or a `(item) => key` function.
    * `null`/`undefined` keys sort last.
    */
-  sortBy?: (T extends object ? keyof T & string : string) | ((item: T) => unknown)
+  sortBy?: KeyOf<T>
+  /**
+   * No two items may share this key (a field name or a `(item) => key`); `null`/`undefined` keys are exempt.
+   * Checked when items come in, and it enables `getByKey()` / `hasKey()`.
+   */
+  unique?: KeyOf<T>
   /** Keep the collection sorted by a custom comparator (takes precedence over `sortBy`). */
   compare?: (a: T, b: T) => number
   /** Sort direction, `asc` by default. */
   order?: 'asc' | 'desc'
   /** Turn plain objects into model instances (`Model.createLazy`). `true` by default; `false` accepts instances only. */
+  coerce?: boolean
+}
+
+/** Options of an `ActiveMap`. */
+export type MapOptions<T = any> = {
+  /** How an item's key is computed: a field name or a `(item) => key` function. */
+  key: KeyOf<T>
+  /** Turn plain objects into model instances. `true` by default. */
+  coerce?: boolean
+}
+
+/** Options of an `ActiveSet`. */
+export type SetOptions<T = any> = {
+  /** No two items may share this key (a field name or a `(item) => key`). */
+  unique?: KeyOf<T>
+  /** Turn plain objects into model instances. `true` by default. */
   coerce?: boolean
 }
 
@@ -187,6 +215,10 @@ export type ActiveFieldDescriptor<_T = unknown> = {
    * `[Model, options]` also configures sorting. Defaults to an empty collection.
    */
   collection?: typeof ActiveModel | [Model: typeof ActiveModel, options?: CollectionOptions]
+  /** Store instances of `Model` in an `ActiveMap` keyed by `options.key`; accepts an array, a `Map` or an object of items. */
+  map?: [Model: typeof ActiveModel, options: MapOptions]
+  /** Store instances of `Model` in an `ActiveSet`; accepts an array or a `Set`. */
+  set?: typeof ActiveModel | [Model: typeof ActiveModel, options?: SetOptions]
   /** Field-level hooks, shared by every instance of the class (and subclasses). */
   on?: Partial<Record<PropEvent, ActiveModelHookListener>>
   /** Like `on`, but each hook fires only once. */

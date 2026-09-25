@@ -156,7 +156,7 @@ class Notify extends CallableModel {
 | [Трансформация моделей](docs/mapping.md) | `mapTo()`: сравнение с class-transformer и AutoMapper |
 | [Инварианты, транзакции, undo](docs/integrity.md) | `transaction()` с откатом, `changes()`/`revert()`, `undo()`/`redo()` |
 | [Валидация и нормализация](docs/validation.md) | правила, `validate()`, `coerce`, `trim`, переходы состояний, строгий режим |
-| [ActiveCollection](docs/collections.md) | массив только из объявленной модели, сортировка, бинарный поиск |
+| [ActiveCollection / Map / Set](docs/collections.md) | контейнеры только из объявленной модели: сортировка, бинарный поиск, уникальные ключи |
 | [Пример для Node.js](docs/node-example.md) | сервер на чистом `node:http` |
 | [Известные ограничения](docs/limitations.md) | что работает не так, как ожидаешь — и что делать |
 | [Миграция на 4.0](docs/migration.md) · [CHANGELOG](CHANGELOG.md) | что изменилось и как перейти |

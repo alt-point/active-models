@@ -15,6 +15,7 @@ export type ValidationCode =
   | 'pattern'
   | 'oneOf'
   | 'transition'
+  | 'unique'
   | 'validator'
   | 'invariant'
 

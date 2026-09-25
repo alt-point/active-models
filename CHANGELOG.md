@@ -27,6 +27,7 @@ Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migrati
 - `createFromCollection*` skips only `null`/`undefined` items (previously any falsy value).
 
 ### Added
+- `ActiveMap` (a `Map` keyed by a field of its items) and `ActiveSet` (with an optional unique key), plus the `map` / `set` field options; `unique` option and `getByKey()` / `hasKey()` for `ActiveCollection`.
 - Declarative field rules - `required`, `type`, `min`, `max`, `minLength`, `maxLength`, `pattern`, `oneOf` - with `model.validate()` (reports **all** problems, recurses into nested models and collections), `model.assertValid()`, `create(data, { validate: true })` and a `ValidationError` carrying `issues`.
 - Normalizers (`trim`, `lowercase`, `uppercase`, `transform`) and type coercion (`coerce: 'number' | 'integer' | 'boolean' | 'date' | 'string'`).
 - State machines: `transitions` on a field, `model.canTransition()`, `model.allowedTransitions()`.
@@ -57,6 +58,7 @@ Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migrati
 - `files` in `package.json` narrowed to `dist` and `src`; `LICENSE.txt` filled in (was empty).
 
 ### Fixed
+- `isTouched()` / `changes()` reported a `Set` of models as changed against its own clone: sets are now compared by content. (`fast-deep-equal` is replaced by a small adapted copy, one dependency fewer.)
 - `touched` was emitted during `create()`, and for writes that were then rejected or that hit non-field properties.
 - `touched` never bubbled up from nested models (docs claimed it did); now it does, with de-duplication,
   unsubscription on replacement and a cycle guard.

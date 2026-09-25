@@ -1,4 +1,4 @@
-# ActiveCollection: типизированный, при желании отсортированный массив
+# ActiveCollection, ActiveMap, ActiveSet: типизированные контейнеры
 
 ## Проблема
 
@@ -111,6 +111,60 @@ board.tasks.push({ id: 3 })                                    // всплыва
 `replaceAll(items)`, `sort`, `reverse`, `fill`, `copyWithin`; `filter`, `slice`, `concat` и `clone()` возвращают
 **новые коллекции того же вида**; `map`, `flatMap` — обычные массивы. Чтение (`[i]`, `for...of`, `find`,
 `includes`, ...) — обычное, как у `Array`.
+
+## Уникальные ключи
+
+```ts
+const users = User.collection(rows, { unique: 'email' })      // или unique: (u) => u.email.toLowerCase()
+users.push({ id: 9, email: 'a@x.io' })    // ValidationError, код 'unique': Duplicate key "a@x.io" in ActiveCollection<User>
+users.getByKey('a@x.io')                  // поиск за O(1)
+users.hasKey('b@x.io')
+```
+
+Ключ проверяется при поступлении элементов (`push`, `unshift`, `splice`, присваивание по индексу, `replaceAll`, начальные
+элементы), и при отказе **ничего не меняется**; `splice`/`replaceAll` могут переиспользовать ключ уходящего элемента. Ключи
+`null` и `undefined` не проверяются. Когда у элемента меняется поле-ключ, поиск следует за ним, но изменение на ключ,
+который уже занят другим элементом, **не предотвращается** (запись уже произошла) и запись не перехватывает. Неотсортированная
+уникальная коллекция отказывается от `fill()` и `copyWithin()`, которые положили бы один элемент в несколько слотов.
+
+## `ActiveMap`: по ключу из поля
+
+```ts
+const users = ActiveMap.create(User, { key: 'id' }, rows)     // key: имя поля или (item) => key
+
+users.get(1)                              // User
+users.add({ id: 2 }, { id: 3 })           // ключ берётся из каждого элемента
+users.set(4, { id: 4 })                   // ключ обязан быть собственным ключом элемента: set(5, { id: 4 }) бросит
+users.delete(1); users.clear()
+```
+
+Это настоящая `Map` (`instanceof Map`, `size`, `keys()`, `for...of`...), но хранит только экземпляры модели, с тем же
+правилом приведения, что и коллекция. Запись по существующему ключу заменяет элемент и сообщает об обоих; когда у элемента
+меняется поле-ключ, запись переезжает на новый ключ (вытесняя того, кто им владел). События: `itemsAdded`,
+`itemsRemoved` (в payload есть `keys`) и `touched`. `toJSON()` — объект, ключом служит ключ.
+
+## `ActiveSet`: идентичность плюс необязательный уникальный ключ
+
+```ts
+const members = ActiveSet.create(User, rows, { unique: 'email' })
+members.add({ id: 1 })                    // обычный объект станет User; повторное добавление того же экземпляра — no-op
+members.addAll([...])                     // атомарно
+members.getByKey('a@x.io'); members.hasKey('b@x.io')
+```
+
+## В модели
+
+```ts
+class Team extends ActiveModel {
+  @ActiveField({ map: [User, { key: 'id' }] }) byId!: ActiveMap<User>
+  @ActiveField({ set: [User, { unique: 'email' }] }) members!: ActiveSet<User>
+  @ActiveField({ collection: [User, { unique: 'email' }] }) list!: ActiveCollection<User>
+}
+```
+
+`map` принимает массив, `Map` или объект с элементами; `set` — массив или `Set`; по умолчанию оба пустые. Как и коллекция,
+они всплывают любым изменением как `touched` модели, сериализуются в обычные данные, глубоко клонируются и учитываются в
+`isTouched()`, `changes()` и `revert()`. Одна опция-контейнер на поле.
 
 ## Что важно знать
 

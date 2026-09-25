@@ -1,4 +1,4 @@
-# ActiveCollection: a typed, optionally sorted array
+# ActiveCollection, ActiveMap, ActiveSet: typed containers
 
 ## The problem
 
@@ -112,6 +112,60 @@ kept as is; anything else throws. `toJSON()` / `JSON.stringify` give plain array
 `replaceAll(items)`, `sort`, `reverse`, `fill`, `copyWithin`; `filter`, `slice`, `concat` and `clone()` return **new
 collections of the same kind**; `map`, `flatMap` return plain arrays. Reads (`[i]`, `for...of`, `find`,
 `includes`, ...) are the ordinary `Array` ones.
+
+## Unique keys
+
+```ts
+const users = User.collection(rows, { unique: 'email' })      // or unique: (u) => u.email.toLowerCase()
+users.push({ id: 9, email: 'a@x.io' })    // ValidationError code 'unique': Duplicate key "a@x.io" in ActiveCollection<User>
+users.getByKey('a@x.io')                  // O(1) lookup
+users.hasKey('b@x.io')
+```
+
+The key is checked when items come in (`push`, `unshift`, `splice`, index assignment, `replaceAll`, the initial items) and
+**nothing changes** if it is refused; `splice`/`replaceAll` may reuse the key of an item that is leaving. `null` and
+`undefined` keys are exempt. When an item's key field changes, the lookup follows it — but a change onto a key another item
+already holds is **not prevented** (the write has happened) and doesn't steal the entry. An unsorted unique collection
+refuses `fill()` and `copyWithin()`, which would put one item in several slots.
+
+## `ActiveMap`: keyed by a field
+
+```ts
+const users = ActiveMap.create(User, { key: 'id' }, rows)     // key: a field name or (item) => key
+
+users.get(1)                              // a User
+users.add({ id: 2 }, { id: 3 })           // the key is derived from each item
+users.set(4, { id: 4 })                   // the key must be the item's own: set(5, { id: 4 }) throws
+users.delete(1); users.clear()
+```
+
+It is a real `Map` (`instanceof Map`, `size`, `keys()`, `for...of`...), but holds only instances of the model, with the
+same coercion rule as the collection. Setting a key that exists replaces the item and reports both; when an item's key
+field changes the entry moves to the new key (displacing whatever held it). Events: `itemsAdded`, `itemsRemoved`
+(payload has `keys`) and `touched`. `toJSON()` is an object keyed by the key.
+
+## `ActiveSet`: identity plus an optional unique key
+
+```ts
+const members = ActiveSet.create(User, rows, { unique: 'email' })
+members.add({ id: 1 })                    // a plain object becomes a User; adding the same instance again is a no-op
+members.addAll([...])                     // atomic
+members.getByKey('a@x.io'); members.hasKey('b@x.io')
+```
+
+## On a model
+
+```ts
+class Team extends ActiveModel {
+  @ActiveField({ map: [User, { key: 'id' }] }) byId!: ActiveMap<User>
+  @ActiveField({ set: [User, { unique: 'email' }] }) members!: ActiveSet<User>
+  @ActiveField({ collection: [User, { unique: 'email' }] }) list!: ActiveCollection<User>
+}
+```
+
+`map` accepts an array, a `Map` or an object of items; `set` accepts an array or a `Set`; both default to empty. Like the
+collection they bubble every change up as the model's `touched`, serialize to plain data, clone deeply and are covered by
+`isTouched()`, `changes()` and `revert()`. One container option per field.
 
 ## Good to know
 

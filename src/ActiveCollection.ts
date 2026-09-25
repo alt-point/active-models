@@ -1,6 +1,8 @@
 import { ActiveModel } from './ActiveModel'
 import { useEmitter } from './emitter'
 import { registerCollection } from './collectionRegistry'
+import { attachItem, detachItem, isNilKey, keyFunction, normalizeItem } from './collectionCore'
+import { ValidationError } from './pipeline'
 import {
   EventType,
   type ActiveModelHookListener,
@@ -24,6 +26,12 @@ type State<T extends ActiveModel> = {
   order: 'asc' | 'desc'
   keyOf?: (item: T) => unknown
   compare?: Comparator<T>
+  /** `unique` option: the key no two items may share */
+  uniqueKey?: (item: T) => unknown
+  /** unique key -> the item that holds it */
+  keys: Map<unknown, T>
+  /** item -> the unique key it was registered under */
+  itemKey: Map<T, unknown>
   attached: Map<T, { off: () => void, count: number }>
 }
 
@@ -111,20 +119,6 @@ const stateOf = <T extends ActiveModel>(collection: object): State<T> => {
 const isIndex = (prop: string | symbol): prop is string =>
   typeof prop === 'string' && /^(0|[1-9]\d*)$/.test(prop) && Number(prop) < 2 ** 32 - 1
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> => {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-  const proto = Object.getPrototypeOf(value)
-  return proto === Object.prototype || proto === null
-}
-
-const describe = (value: unknown): string => {
-  if (value === null) return 'null'
-  if (typeof value === 'object') return (value as object).constructor?.name ?? 'object'
-  return typeof value
-}
-
 /** `null`/`undefined` keys always sort last, whatever the direction */
 const compareKeys = (a: any, b: any, order: 'asc' | 'desc'): number => {
   const aNil = a === null || a === undefined
@@ -140,18 +134,8 @@ const emit = (state: State<any>, event: EventType, payload: unknown) => {
   useEmitter(state.raw).emit(event, payload)
 }
 
-const normalize = <T extends ActiveModel>(state: State<T>, item: unknown): T => {
-  if (item instanceof state.model) {
-    return item as T
-  }
-  if (state.coerce && isPlainObject(item)) {
-    return state.model.createLazy(item as any) as T
-  }
-  throw new TypeError(
-    `ActiveCollection<${state.model.name}> accepts only ${state.model.name} instances` +
-    `${state.coerce ? ' or plain objects' : ''}, got ${describe(item)}`
-  )
-}
+const normalize = <T extends ActiveModel>(state: State<T>, item: unknown): T =>
+  normalizeItem<T>(state.model, state.coerce, 'ActiveCollection', item)
 
 const normalizeAll = <T extends ActiveModel>(state: State<T>, items: ArrayLike<unknown> | Iterable<unknown>): T[] =>
   Array.from(items as Iterable<unknown>, (item) => normalize(state, item))
@@ -172,38 +156,9 @@ const upperBound = <T extends ActiveModel>(state: State<T>, item: T): number => 
   return low
 }
 
-const attach = <T extends ActiveModel>(state: State<T>, item: T) => {
-  const known = state.attached.get(item)
-  if (known) {
-    known.count++
-    return
-  }
-  // The item outlives the collection it sits in, so it must not keep that collection alive:
-  // hold the state weakly and unsubscribe as soon as the collection has been collected.
-  const ref = new WeakRef(state)
-  const off: () => void = item.on(EventType.touched, () => {
-    const alive = ref.deref()
-    if (alive) {
-      onItemTouched(alive, item)
-    // Stryker disable all: the dead-collection branch needs a garbage collection to run - see the memory test in tests/perf
-    } else {
-      off()
-    }
-    // Stryker restore all
-  })
-  state.attached.set(item, { off, count: 1 })
-}
+const attach = <T extends ActiveModel>(state: State<T>, item: T) => attachItem(state, item, onItemTouched)
 
-const detach = <T extends ActiveModel>(state: State<T>, item: T) => {
-  const known = state.attached.get(item)
-  if (!known) {
-    return
-  }
-  if (--known.count === 0) {
-    known.off()
-    state.attached.delete(item)
-  }
-}
+const detach = <T extends ActiveModel>(state: State<T>, item: T) => detachItem(state, item)
 
 const resort = <T extends ActiveModel>(state: State<T>) => {
   const ordered = sortedCopy(state, Array.from(state.raw))
@@ -234,16 +189,88 @@ const reposition = <T extends ActiveModel>(state: State<T>, item: T) => {
 
 /** An item changed: keep the order, and let the change bubble up as the collection's own `touched` */
 const onItemTouched = <T extends ActiveModel>(state: State<T>, item: T) => {
+  if (state.uniqueKey) {
+    rekey(state, item)
+  }
   if (state.sorted) {
     reposition(state, item)
   }
   emit(state, EventType.touched, { target: state.self })
 }
 
+const duplicate = <T extends ActiveModel>(state: State<T>, key: unknown) =>
+  new ValidationError([{
+    path: '',
+    code: 'unique',
+    message: `Duplicate key ${JSON.stringify(key)} in ActiveCollection<${state.model.name}>`,
+    value: key,
+  }])
+
+/**
+ * Refuse `items` if two of them share a unique key, or one takes a key held by an item that is not `leaving`.
+ * Changes nothing, so a multi-step operation can check before it starts removing.
+ */
+const checkKeys = <T extends ActiveModel>(state: State<T>, items: T[], leaving: readonly T[]) => {
+  const fresh = new Set<unknown>()
+  for (const item of items) {
+    const key = state.uniqueKey!(item)
+    if (isNilKey(key)) {
+      continue
+    }
+    const holder = state.keys.get(key)
+    if (fresh.has(key) || (holder !== undefined && !leaving.includes(holder))) {
+      throw duplicate(state, key)
+    }
+    fresh.add(key)
+  }
+}
+
+/**
+ * Reserve the unique keys of `items` (throwing if one is taken, or repeated among them) before anything is
+ * changed. `replacing` is an item about to leave, whose key may be reused.
+ */
+const claimKeys = <T extends ActiveModel>(state: State<T>, items: T[], replacing?: T) => {
+  checkKeys(state, items, replacing === undefined ? [] : [replacing])
+  for (const item of items) {
+    const key = state.uniqueKey!(item)
+    state.itemKey.set(item, key)
+    if (!isNilKey(key)) {
+      state.keys.set(key, item)
+    }
+  }
+}
+
+const releaseKey = <T extends ActiveModel>(state: State<T>, item: T) => {
+  const key = state.itemKey.get(item)
+  state.itemKey.delete(item)
+  if (state.keys.get(key) === item) {
+    state.keys.delete(key)
+  }
+}
+
+/** An item's unique key changed: follow it, unless another item already has the new one */
+const rekey = <T extends ActiveModel>(state: State<T>, item: T) => {
+  const previous = state.itemKey.get(item)
+  const key = state.uniqueKey!(item)
+  if (Object.is(previous, key)) {
+    return
+  }
+  if (state.keys.get(previous) === item) {
+    state.keys.delete(previous)
+  }
+  state.itemKey.set(item, key)
+  if (!isNilKey(key) && !state.keys.has(key)) {
+    state.keys.set(key, item)
+  }
+}
+
 /** Insert already-validated items: at `position` when unsorted, at their sorted place otherwise */
 const insert = <T extends ActiveModel>(state: State<T>, items: T[], position: number) => {
   if (items.length === 0) {
     return
+  }
+  if (state.uniqueKey) {
+    claimKeys(state, items)
   }
   const raw = state.raw
   let index = position
@@ -278,17 +305,31 @@ const insert = <T extends ActiveModel>(state: State<T>, items: T[], position: nu
 const removeRange = <T extends ActiveModel>(state: State<T>, start: number, count: number): T[] => {
   const removed = rawSplice(state.raw, start, count, [])
   if (removed.length > 0) {
-    removed.forEach((item) => detach(state, item))
+    removed.forEach((item) => {
+      detach(state, item)
+      if (state.uniqueKey) {
+        releaseKey(state, item)
+      }
+    })
     emit(state, EventType.itemsRemoved, { target: state.self, items: removed, index: start })
     emit(state, EventType.touched, { target: state.self })
   }
   return removed
 }
 
+/** Operations that decide positions themselves are refused on a sorted collection */
 const assertIndexable = <T extends ActiveModel>(state: State<T>, action: string) => {
   if (state.sorted) {
     throw new TypeError(`A sorted ActiveCollection cannot ${action} - its order is defined by ${state.options.compare ? 'compare' : 'sortBy'}`)
   }
+}
+
+/** `fill` and `copyWithin` put one item in several slots: refused when order or uniqueness would break */
+const assertRearrangeable = <T extends ActiveModel>(state: State<T>, action: string) => {
+  if (state.uniqueKey && !state.sorted) {
+    throw new TypeError(`A unique ActiveCollection cannot ${action} - it could create duplicates`)
+  }
+  assertIndexable(state, action)
 }
 
 const setIndex = <T extends ActiveModel>(state: State<T>, index: number, value: unknown): boolean => {
@@ -303,6 +344,12 @@ const setIndex = <T extends ActiveModel>(state: State<T>, index: number, value: 
     return true
   }
   const previous = raw[index]
+  if (state.uniqueKey) {
+    claimKeys(state, [item], previous)
+    if (previous !== item) {
+      releaseKey(state, previous)
+    }
+  }
   raw[index] = item
   detach(state, previous)
   attach(state, item)
@@ -394,10 +441,7 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
 
     const raw = new this() as ActiveCollection<InstanceType<M>>
     const self = new Proxy(raw, handlers)
-    const sortBy = options.sortBy
-    const keyOf = typeof sortBy === 'function'
-      ? sortBy as (item: InstanceType<M>) => unknown
-      : typeof sortBy === 'string' ? (item: any) => item[sortBy] : undefined
+    const keyOf = keyFunction<InstanceType<M>>(options.sortBy)
 
     const state: State<InstanceType<M>> = {
       self,
@@ -408,6 +452,9 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
       sorted: Boolean(options.compare || keyOf),
       order: options.order ?? 'asc',
       keyOf,
+      uniqueKey: keyFunction<InstanceType<M>>(options.unique),
+      keys: new Map(),
+      itemKey: new Map(),
       attached: new Map(),
     }
     state.compare = options.compare
@@ -501,6 +548,10 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
     const length = state.raw.length
     const from = start < 0 ? Math.max(length + start, 0) : Math.min(start, length)
     const count = deleteCount === undefined ? length - from : Math.min(Math.max(deleteCount, 0), length - from)
+    if (state.uniqueKey) {
+      // check before removing anything, so a refused key leaves the collection as it was
+      checkKeys(state, added, Array.from({ length: count }, (_, i) => state.raw[from + i]))
+    }
     const removed = removeRange(state, from, count)
     insert(state, added, from)
     return removed
@@ -526,6 +577,9 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
   replaceAll (items: Iterable<CollectionInput<T>>): void {
     const state = stateOf<T>(this)
     const next = normalizeAll(state, items)
+    if (state.uniqueKey) {
+      checkKeys(state, next, Array.from(state.raw))
+    }
     removeRange(state, 0, state.raw.length)
     insert(state, next, 0)
   }
@@ -565,7 +619,7 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
 
   fill (value: CollectionInput<T>, start?: number, end?: number): this {
     const state = stateOf<T>(this)
-    assertIndexable(state, 'be filled')
+    assertRearrangeable(state, 'be filled')
     const item = normalize(state, value)
     const before = state.raw.slice()
     A.fill.call(state.raw, item, start, end)
@@ -577,7 +631,7 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
 
   copyWithin (target: number, start: number, end?: number): this {
     const state = stateOf<T>(this)
-    assertIndexable(state, 'be rearranged')
+    assertRearrangeable(state, 'be rearranged')
     const before = state.raw.slice()
     A.copyWithin.call(state.raw, target, start, end)
     before.forEach((previous) => detach(state, previous))
@@ -619,6 +673,24 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
       items,
       { ...state.options, order: state.order } as CollectionOptions<any>
     ) as unknown as ActiveCollection<T>
+  }
+
+  /** The item that holds this unique key, in O(1) (needs the `unique` option) */
+  getByKey (key: unknown): T | undefined {
+    return this.uniqueState().keys.get(key)
+  }
+
+  /** Whether an item holds this unique key (needs the `unique` option) */
+  hasKey (key: unknown): boolean {
+    return this.uniqueState().keys.has(key)
+  }
+
+  private uniqueState (): State<T> {
+    const state = stateOf<T>(this)
+    if (!state.uniqueKey) {
+      throw new TypeError('getByKey/hasKey need a collection created with unique')
+    }
+    return state
   }
 
   /** Index of the first item whose key is not before `key` (needs `sortBy`) */

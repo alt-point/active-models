@@ -3,13 +3,15 @@ import type {
   ActiveFieldDescriptor,
   ActiveModelHookListener,
   AttributeValue,
-  CollectionOptions,
   FactoryConfig,
   PropEvent,
 } from './types'
 import { getValue } from './utils'
 import { useEmitter } from './emitter'
 import { ActiveCollection } from './ActiveCollection'
+import { ActiveMap } from './ActiveMap'
+import { ActiveSet } from './ActiveSet'
+import { isPlainObject } from './collectionCore'
 import { isCollection } from './collectionRegistry'
 import type { FieldRules, PipelineConfig, Transform } from './pipeline'
 
@@ -132,39 +134,53 @@ const factoryDecorator = (
   })
 }
 
+type ContainerKind = 'collection' | 'map' | 'set'
+
 /**
- * Turn whatever is assigned to a `collection` field into an `ActiveCollection`:
- * an array/iterable becomes one, `null`/`undefined` an empty one, a collection of the same model stays as is.
+ * Turn whatever is assigned to a `collection` / `map` / `set` field into the container:
+ * an array/iterable becomes one, `null`/`undefined` an empty one, one of the same model stays as is.
  */
-const toCollection = (Model: typeof ActiveModel, value: unknown, options?: CollectionOptions) => {
-  if (isCollection(value) && value.model === Model) {
+const toContainer = (kind: ContainerKind, Model: typeof ActiveModel, value: unknown, options?: any) => {
+  const create = (items: Iterable<unknown>) =>
+    kind === 'collection'
+      ? ActiveCollection.create(Model, items, options)
+      : kind === 'map'
+        ? ActiveMap.create(Model, options, items)
+        : ActiveSet.create(Model, items, options)
+
+  const same = kind === 'collection' ? ActiveCollection : kind === 'map' ? ActiveMap : ActiveSet
+  if (isCollection(value) && value instanceof same && (value as { model: unknown }).model === Model) {
     return value
   }
   if (value === null || value === undefined) {
-    return ActiveCollection.create(Model, [], options)
+    return create([])
+  }
+  if (kind === 'map' && value instanceof Map) {
+    return create(Array.from(value.values()))
+  }
+  if (kind === 'map' && isPlainObject(value)) {
+    return create(Object.values(value))
   }
   if (typeof value === 'object' && Symbol.iterator in value) {
-    return ActiveCollection.create(Model, value as Iterable<unknown>, options)
+    return create(value as Iterable<unknown>)
   }
-  throw new TypeError(`A collection of ${Model.name} expects an array, got ${typeof value}`)
+  throw new TypeError(`A ${kind} of ${Model.name} expects ${kind === 'map' ? 'an array, a Map or an object' : 'an array'}, got ${typeof value}`)
 }
 
-const collectionDecorator = (
+const containerDecorator = (
   target: ActiveModel,
   prop: string,
-  config: ActiveFieldDescriptor['collection'],
+  kind: ContainerKind,
+  config: unknown,
   hasOwnDefault: boolean
 ) => {
-  if (!config) {
-    return
-  }
   const [Model, options] = Array.isArray(config) ? config : [config, undefined]
   validateModelType(Model, prop)
   const Ctor = <typeof ActiveModel>target.constructor
 
-  Ctor.defineSetter(prop, (m, p, v, r) => Reflect.set(m, p, toCollection(Model, v, options), r))
+  Ctor.defineSetter(prop, (m, p, v, r) => Reflect.set(m, p, toContainer(kind, Model, v, options), r))
   if (!hasOwnDefault) {
-    Ctor.defineAttribute(prop, () => ActiveCollection.create(Model, [], options))
+    Ctor.defineAttribute(prop, () => toContainer(kind, Model, undefined, options))
   }
 }
 
@@ -260,18 +276,25 @@ export function ActiveField<_T extends ActiveModel> (
       Ctor.defineAttribute(prop, options.attribute || options.value)
     }
 
+    const containers = [options.collection, options.map, options.set].filter(Boolean).length
     if (options.factory && options.collection) {
       throw new Error(`Field "${prop}": use either factory or collection, not both`)
     }
+    if (containers + (options.factory ? 1 : 0) > 1) {
+      throw new Error(`Field "${prop}": use only one of factory, collection, map or set`)
+    }
 
-    if (options.setter && !options.factory && !options.collection) {
+    if (options.setter && !options.factory && containers === 0) {
       Ctor.defineSetter(prop, options.setter)
     }
 
     // Stryker disable next-line BooleanLiteral: reserved parameter, currently unused
     factoryDecorator(target, prop, options.factory, false)
 
-    collectionDecorator(target, prop, options.collection, Boolean(options.attribute || options.value))
+    const hasOwnDefault = Boolean(options.attribute || options.value)
+    if (options.collection) containerDecorator(target, prop, 'collection', options.collection, hasOwnDefault)
+    if (options.map) containerDecorator(target, prop, 'map', options.map, hasOwnDefault)
+    if (options.set) containerDecorator(target, prop, 'set', options.set, hasOwnDefault)
 
     if (options.getter) {
       Ctor.defineGetter(prop, options.getter)

@@ -104,7 +104,9 @@ user.once(...) / User.once(...)
   `ActiveCollection`: an array that accepts only instances of that model (plain objects are coerced unless
   `coerce: false`; anything else throws), never has holes, and — with `sortBy`/`compare` — stays sorted
   (`push` inserts in place, items move when their key changes, `bisectLeft/Right`, `findByKey`, `range`).
-  Events: `itemsAdded`, `itemsRemoved`, `touched` (bubbles into the parent model). Use its own methods, not
+  `unique: 'field' | fn` rejects duplicate keys atomically (`ValidationError` code `unique`; `getByKey`/`hasKey`).
+  `ActiveMap.create(Model, { key })` / `ActiveSet.create(Model, items, { unique })` and the `map: [Model, { key }]` / `set: Model | [Model, opts]`
+  field options give the keyed / set flavours with the same rules. Events: `itemsAdded`, `itemsRemoved`, `touched` (bubbles into the parent model). Use its own methods, not
   `Array.prototype.x.call(collection)` (guarded but not atomic).
 - `CallableModel` — instances are callable, implement `__call`. `Enum` is deprecated.
 
