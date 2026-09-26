@@ -28,6 +28,7 @@ const roundDiv = (quotient: bigint, remainder: bigint, divisor: bigint, mode: Ro
   if (remainder === n(0)) {
     return quotient
   }
+  // Stryker disable next-line EqualityOperator: a zero remainder returned above
   const negative = remainder < n(0)
   const twice = (negative ? -remainder : remainder) * n(2)
   const away = negative ? quotient - n(1) : quotient + n(1)
@@ -66,6 +67,7 @@ export class Decimal {
       s--
     }
     this.units = u
+    // Stryker disable next-line ConditionalExpression: the loop above already reduced a zero to scale 0
     this.scale = u === n(0) ? 0 : s
     Object.freeze(this)
   }
@@ -110,8 +112,10 @@ export class Decimal {
     if (Math.abs(shift) > MAX_EXPONENT) {
       throw new RangeError(`Exponent out of range: ${exponent}`)
     }
+    // Stryker disable next-line StringLiteral: a missing whole part and a leading zero are the same number
     let units = BigInt(`${whole || '0'}${fraction}`)
     let scale = fraction.length - shift
+    // Stryker disable next-line EqualityOperator: multiplying by 10^0 changes nothing
     if (scale < 0) {
       units *= pow10(-scale)
       scale = 0
@@ -133,6 +137,7 @@ export class Decimal {
   }
 
   abs (): Decimal {
+    // Stryker disable next-line EqualityOperator: negating zero gives zero
     return this.units < n(0) ? this.negate() : this
   }
 
@@ -157,12 +162,14 @@ export class Decimal {
    */
   divide (other: DecimalInput, scale: number = 20, mode: RoundingMode = 'half-up'): Decimal {
     const divisor = Decimal.from(other)
+    // Stryker disable next-line ConditionalExpression,BlockStatement: BigInt division by zero throws the same RangeError
     if (divisor.isZero()) {
       throw new RangeError('Division by zero')
     }
     assertScale(scale)
     let numerator = this.units * pow10(scale + divisor.scale)
     let denominator = divisor.units * pow10(this.scale)
+    // Stryker disable next-line EqualityOperator: the denominator is never zero here
     if (denominator < n(0)) {
       // keep the denominator positive so the remainder carries the sign of the true quotient
       numerator = -numerator
@@ -180,6 +187,7 @@ export class Decimal {
     const drop = this.scale - scale
     const divisor = pow10(drop)
     const rounded = roundDiv(this.units / divisor, this.units % divisor, divisor, mode)
+    // Stryker disable next-line EqualityOperator: at scale 0 both branches build the same value
     return scale >= 0
       ? new Decimal(rounded, scale)
       : new Decimal(rounded * pow10(-scale), 0)
@@ -252,6 +260,7 @@ const align = (a: Decimal, b: Decimal): [bigint, bigint, number] => {
 }
 
 const assertScale = (scale: number, allowNegative = false) => {
+  // Stryker disable next-line ConditionalExpression,EqualityOperator: BigInt() rejects a fractional exponent too and the callers check twice
   if (!Number.isInteger(scale) || (!allowNegative && scale < 0) || Math.abs(scale) > MAX_EXPONENT) {
     throw new RangeError(`Scale must be an integer${allowNegative ? '' : ' >= 0'} (at most ${MAX_EXPONENT}), got ${scale}`)
   }

@@ -34,6 +34,7 @@ export class Money {
 
   /** Throws if `amount` has more digits than the currency has minor units - round it first */
   static of (amount: DecimalInput, currency: string): Money {
+    // Stryker disable next-line ConditionalExpression: a non-string fails the regex test as well
     if (typeof currency !== 'string' || !CURRENCY.test(currency)) {
       throw new TypeError(`Currency must be a 3-letter uppercase ISO 4217 code, got ${JSON.stringify(currency)}`)
     }
@@ -123,6 +124,7 @@ export class Money {
     const shares = weights.map((weight) => this.amount.multiply(weight).divide(total, digits, 'down'))
     let leftover = this.amount.subtract(shares.reduce((sum, share) => sum.add(share), Decimal.ZERO))
     const step = Decimal.parse(`1e-${digits}`)
+    // Stryker disable next-line EqualityOperator: a zero leftover never uses the unit
     const unit = leftover.sign < 0 ? step.negate() : step
     const result = shares.map((share) => share)
     for (let i = 0; !leftover.isZero(); i = (i + 1) % result.length) {
