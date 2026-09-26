@@ -12,6 +12,15 @@ const MIN = {
   'src/utils.ts': 92,
   'src/mapper.ts': 95,
   'src/CallableModel.ts': 95,
+  'src/pipeline.ts': 90,
+  'src/history.ts': 90,
+  'src/equal.ts': 90,
+  'src/collectionCore.ts': 95,
+  'src/ActiveMap.ts': 85,
+  'src/ActiveSet.ts': 88,
+  'src/scalars/Decimal.ts': 90,
+  'src/scalars/Money.ts': 88,
+  'src/scalars/LocalDate.ts': 92,
 }
 
 const report = JSON.parse(readFileSync('reports/stryker-incremental.json', 'utf8'))

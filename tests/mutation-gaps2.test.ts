@@ -481,3 +481,81 @@ describe('pipeline details', () => {
     expect([t.up, t.low, t.plain]).toEqual([' AB ', ' ab ', ' aB '])
   })
 })
+
+describe('decorator options applied inside a test (so the mutants are active)', () => {
+  it('map and set field options build containers, with defaults', () => {
+    class Holder extends ActiveModel {
+      @ActiveField({ map: [Item, { key: 'id' }] }) byId!: ActiveMap<Item>
+      @ActiveField({ set: [Item, { unique: 'id' }] }) uniq!: ActiveSet<Item>
+      @ActiveField({ collection: [Item, { sortBy: 'id' }] }) list!: Item[]
+    }
+    const holder = Holder.create({})
+    expect(holder.byId).toBeInstanceOf(ActiveMap)
+    expect(holder.uniq).toBeInstanceOf(ActiveSet)
+    expect(Array.isArray(holder.list)).toBe(true)
+    const other = Holder.create({})
+    expect(other.byId).not.toBe(holder.byId)
+    holder.byId = { 1: { id: 1 } } as never
+    expect(holder.byId).toBeInstanceOf(ActiveMap)
+    expect(holder.byId.get(1)).toBeInstanceOf(Item)
+    holder.uniq = [{ id: 1 }] as never
+    expect(holder.uniq).toBeInstanceOf(ActiveSet)
+    expect(holder.uniq.size).toBe(1)
+  })
+
+  it('a container field with its own default keeps it', () => {
+    class Holder extends ActiveModel {
+      @ActiveField({ map: [Item, { key: 'id' }], value: () => ActiveMap.create(Item, { key: 'id' }, [{ id: 9 }]) }) byId!: ActiveMap<Item>
+    }
+    expect(Holder.create({}).byId.has(9)).toBe(true)
+  })
+
+  it('refuses a container or factory whose model is not an ActiveModel', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    class Plain {}
+    expect(() => {
+      class A extends ActiveModel {
+        @ActiveField({ map: [Plain as never, { key: 'id' }] }) m?: unknown
+      }
+      return A
+    }).toThrow('Model factory for prop "m" must be instanceof ActiveModel!')
+    expect(() => {
+      class B extends ActiveModel {
+        @ActiveField({ factory: Plain as never }) f?: unknown
+      }
+      return B
+    }).toThrow('must be instanceof ActiveModel')
+    expect(warn).toHaveBeenCalledWith('Model factory for prop "m" must be instanceof ActiveModel!', Plain)
+    warn.mockRestore()
+  })
+
+  it('transform accepts a function or a list, in order, after trim', () => {
+    class T extends ActiveModel {
+      @ActiveField({ transform: (v) => `<${String(v)}>` }) one: string = ''
+      @ActiveField({ trim: true, transform: [(v) => `${String(v)}1`, (v) => `${String(v)}2`] }) many: string = ''
+    }
+    const t = T.create({})
+    t.one = 'x'
+    t.many = ' y '
+    expect([t.one, t.many]).toEqual(['<x>', 'y12'])
+  })
+
+  it('a bare value is shorthand for the default', () => {
+    class T extends ActiveModel {
+      @ActiveField(5 as never) n?: number
+      @ActiveField(null as never) z?: unknown
+    }
+    const t = T.create({})
+    expect(t.n).toBe(5)
+    expect(t.z).toBeUndefined()
+  })
+
+  it('a setter option works on its own', () => {
+    class T extends ActiveModel {
+      @ActiveField({ setter: (m, p, v, r) => Reflect.set(m, p, String(v).toUpperCase(), r) }) s: string = ''
+    }
+    const t = T.create({})
+    t.s = 'abc'
+    expect(t.s).toBe('ABC')
+  })
+})
