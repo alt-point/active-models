@@ -18,13 +18,63 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 
 ## [4.0.0] - 2026-09-25
 
-Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migration.md)).
+Upgrade from 3.5.0. Migration guide: [docs/en/migration.md](docs/en/migration.md) ([RU](docs/migration.md)).
 
-### Breaking
-- `model.emitter` / `Model.emitter` removed. Use `model.on()` / `model.once()`.
-- `model.startTracking()` removed. Tracking starts only via `create(data, { tracked: true })`.
-- `Model.create()` throws a `TypeError` for an array instead of returning an empty model.
-- `createFromCollection*` skips only `null`/`undefined` items (previously any falsy value).
+### Breaking changes
+
+**English**
+
+Removed or changed API (your code stops compiling or throws):
+
+| 3.5.0 | 4.0.0 |
+|---|---|
+| `model.emitter.on(...)`, `Model.emitter` | `model.on(...)` / `model.once(...)`; class-level `Model.on(...)` / `Model.once(...)` for every instance |
+| `form.startTracking()` | `form = Form.create(saved, { tracked: true })`; the baseline is reset by re-creating the model |
+| `Model.create([...])` returned an empty model | throws `TypeError`; use `Model.createFromCollection([...])` |
+| `createFromCollection*` skipped any falsy item (`0`, `''`, `false`) | skips only `null` / `undefined` |
+| `createFromCollection*` returned `T[]` | returns `InstanceType<T>[]` (stricter typing) |
+| `fast-deep-equal` was a dependency | removed; equality is a vendored copy that compares `Set` members by content |
+
+Behavior that changed silently (review it if you rely on the old behavior):
+
+- `touched` is no longer emitted during `create()`, for writes that were rejected, or for non-field properties. It now bubbles from nested models and collections.
+- One throwing listener no longer stops the others: all run, then the first error is rethrown (several: `error.errors`).
+- Listeners registered on a parent class fire for subclass instances.
+- `value: []` / `value: {}` defaults are copied per instance (they used to be one shared object).
+- `clone()` returns a fully working proxied model and keeps `hidden` values, locks and the `isTouched()` baseline (it used to return a plain object).
+- `toJSON()` honors `toJSON()` methods (`Date`), serializes `Set` as an array and `Map` as an object.
+- `hidden` fields are concealed from `in` and `Object.getOwnPropertyDescriptor`.
+- A rejected first write no longer locks a `readonly` / `fillable: false` field.
+- `@ActiveFactory(undefined)` (usually a circular import) throws `ReferenceError` instead of doing nothing.
+- `CallableModel` no longer extends `Function` through `super()`.
+- The published package contains `dist`, `src`, `AGENTS.md`, `CHANGELOG.md`; `LICENSE.txt` is filled in (MIT).
+
+**Русский**
+
+Удалённый или изменённый API (код перестанет компилироваться или начнёт бросать исключение):
+
+| 3.5.0 | 4.0.0 |
+|---|---|
+| `model.emitter.on(...)`, `Model.emitter` | `model.on(...)` / `model.once(...)`; на уровне класса `Model.on(...)` / `Model.once(...)` для всех инстансов |
+| `form.startTracking()` | `form = Form.create(saved, { tracked: true })`; чтобы сбросить эталон, создайте модель заново |
+| `Model.create([...])` возвращал пустую модель | бросает `TypeError`; используйте `Model.createFromCollection([...])` |
+| `createFromCollection*` пропускал любые «ложные» элементы (`0`, `''`, `false`) | пропускает только `null` / `undefined` |
+| `createFromCollection*` возвращал `T[]` | возвращает `InstanceType<T>[]` (более строгая типизация) |
+| `fast-deep-equal` был зависимостью | удалён; сравнение — встроенная копия, которая сравнивает элементы `Set` по содержимому |
+
+Поведение, изменившееся без ошибок компиляции (проверьте, если опирались на старое):
+
+- `touched` больше не вызывается во время `create()`, при отклонённой записи и для свойств, не являющихся полями. Теперь он всплывает из вложенных моделей и коллекций.
+- Исключение в одном слушателе не останавливает остальных: выполняются все, затем пробрасывается первая ошибка (несколько — в `error.errors`).
+- Слушатели, добавленные на родительском классе, срабатывают и для инстансов подклассов.
+- Значения по умолчанию `value: []` / `value: {}` копируются для каждого инстанса (раньше это был один общий объект).
+- `clone()` возвращает полностью рабочую модель-прокси и сохраняет `hidden`-значения, блокировки и эталон `isTouched()` (раньше возвращал обычный объект).
+- `toJSON()` учитывает методы `toJSON()` (`Date`), сериализует `Set` массивом, а `Map` объектом.
+- `hidden`-поля скрыты от оператора `in` и `Object.getOwnPropertyDescriptor`.
+- Отклонённая первая запись больше не блокирует поле `readonly` / `fillable: false`.
+- `@ActiveFactory(undefined)` (обычно циклический импорт) бросает `ReferenceError`, а не молча ничего не делает.
+- `CallableModel` больше не наследует `Function` через `super()`.
+- В npm-пакет входят `dist`, `src`, `AGENTS.md`, `CHANGELOG.md`; `LICENSE.txt` заполнен (MIT).
 
 ### Added
 - Value objects `Decimal` (BigInt-based, explicit rounding), `Money` (currency-aware, `allocate()`), `LocalDate` (no time zone), `markImmutable()`. `coerce` / `type` accept a class with a static `from()`, `min` / `max` accept values with `compareTo()`.
