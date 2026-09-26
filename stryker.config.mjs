@@ -14,6 +14,7 @@ export default {
   incrementalFile: 'reports/stryker-incremental.json',
   thresholds: { high: 95, low: 90, break: 90 },
   ignoreStatic: true,
+  ignorePatterns: ['graphify-out', '.claude', 'docs', 'reports', 'dist'],
   timeoutMS: 10000,
   concurrency: 4,
 }
