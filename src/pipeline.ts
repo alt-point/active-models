@@ -47,7 +47,13 @@ export class ValidationError extends Error {
   }
 }
 
-export type CoerceTo = 'string' | 'number' | 'integer' | 'boolean' | 'date'
+/** A value class such as `Decimal`, `Money` or `LocalDate`: `from(input)` builds an instance or throws */
+export type Coercible = { readonly name: string, from (value: unknown): unknown }
+
+export type CoerceTo = 'string' | 'number' | 'integer' | 'boolean' | 'date' | Coercible
+
+/** A number, a Date, or a value object with `compareTo` (Decimal, Money, LocalDate) */
+export type Bound = number | Date | { compareTo (other: any): number }
 
 export type ValueType = 'string' | 'number' | 'integer' | 'boolean' | 'date' | 'array' | 'object'
 
@@ -55,9 +61,9 @@ export type Transform = (value: unknown, context: { model: ActiveModel, prop: st
 
 export type FieldRules = {
   required?: boolean
-  type?: ValueType
-  min?: number | Date
-  max?: number | Date
+  type?: ValueType | Coercible
+  min?: Bound
+  max?: Bound
   minLength?: number
   maxLength?: number
   pattern?: RegExp
@@ -72,6 +78,8 @@ export type PipelineConfig = {
   rules: FieldRules
   transitions?: Transitions
 }
+
+const isCoercible = (kind: unknown): kind is Coercible => typeof kind === 'function'
 
 const isNil = (value: unknown): value is null | undefined => value === null || value === undefined
 
@@ -113,6 +121,16 @@ export const coerceValue = (kind: CoerceTo, value: unknown): { ok: true, value: 
   if (isNil(value)) {
     return { ok: true, value }
   }
+  if (isCoercible(kind)) {
+    if (value instanceof (kind as unknown as new (...args: never[]) => object)) {
+      return { ok: true, value }
+    }
+    try {
+      return { ok: true, value: kind.from(value) }
+    } catch {
+      return { ok: false }
+    }
+  }
   switch (kind) {
     case 'string':
       return typeof value === 'object' && !(value instanceof Date)
@@ -141,7 +159,10 @@ export const coerceValue = (kind: CoerceTo, value: unknown): { ok: true, value: 
   }
 }
 
-const isType = (type: ValueType, value: unknown): boolean => {
+const isType = (type: ValueType | Coercible, value: unknown): boolean => {
+  if (isCoercible(type)) {
+    return value instanceof (type as unknown as new (...args: never[]) => object)
+  }
   switch (type) {
     case 'string': return typeof value === 'string'
     case 'number': return typeof value === 'number' && !Number.isNaN(value)
@@ -156,8 +177,27 @@ const isType = (type: ValueType, value: unknown): boolean => {
 const describeValue = (value: unknown): string =>
   typeof value === 'string' ? JSON.stringify(value) : String(value)
 
-/** Numbers and dates compare by their numeric value */
-const comparable = (value: unknown): number => (value instanceof Date ? value.getTime() : (value as number))
+const isComparable = (value: unknown): value is { compareTo (other: unknown): number } =>
+  typeof value === 'object' && value !== null && typeof (value as { compareTo?: unknown }).compareTo === 'function'
+
+/** -1/0/1 for `value` against `bound` (NaN when they cannot be compared, e.g. two currencies, which fails both bounds); numbers and dates by numeric value, value objects by `compareTo` */
+const compare = (value: unknown, bound: Bound): number => {
+  if (isComparable(value)) {
+    try {
+      return value.compareTo(bound)
+    } catch {
+      return Number.NaN
+    }
+  }
+  const left = value instanceof Date ? value.getTime() : (value as number)
+  const right = bound instanceof Date ? bound.getTime() : (bound as number)
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+export const describeKind = (kind: CoerceTo | ValueType): string => (isCoercible(kind) ? kind.name : kind)
+
+const describeBound = (bound: Bound): string =>
+  bound instanceof Date ? describeValue(bound.toISOString()) : describeValue(typeof bound === 'object' ? String(bound) : bound)
 
 const lengthOf = (value: unknown): number | undefined =>
   typeof value === 'string' || Array.isArray(value) ? value.length : undefined
@@ -179,14 +219,14 @@ export const ruleIssues = (rules: FieldRules, value: unknown, path: string, coer
 
   const type = rules.type ?? coerce
   if (type && !isType(type, value)) {
-    add('type', `"${path}" must be a ${type}, got ${describeValue(value)}`)
+    add('type', `"${path}" must be a ${describeKind(type)}, got ${describeValue(value)}`)
     return issues
   }
-  if (rules.min !== undefined && comparable(value) < comparable(rules.min)) {
-    add('min', `"${path}" must be at least ${describeValue(rules.min instanceof Date ? rules.min.toISOString() : rules.min)}`)
+  if (rules.min !== undefined && !(compare(value, rules.min) >= 0)) {
+    add('min', `"${path}" must be at least ${describeBound(rules.min)}`)
   }
-  if (rules.max !== undefined && comparable(value) > comparable(rules.max)) {
-    add('max', `"${path}" must be at most ${describeValue(rules.max instanceof Date ? rules.max.toISOString() : rules.max)}`)
+  if (rules.max !== undefined && !(compare(value, rules.max) <= 0)) {
+    add('max', `"${path}" must be at most ${describeBound(rules.max)}`)
   }
   const length = lengthOf(value)
   if (length !== undefined && rules.minLength !== undefined && length < rules.minLength) {

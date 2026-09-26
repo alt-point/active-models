@@ -2,7 +2,7 @@ import { type ActiveModel } from './ActiveModel'
 import { type ActiveCollection } from './ActiveCollection'
 import { type ActiveMap } from './ActiveMap'
 import { type ActiveSet } from './ActiveSet'
-import type { CoerceTo, Transform, Transitions, ValueType } from './pipeline'
+import type { Bound, CoerceTo, Coercible, Transform, Transitions, ValueType } from './pipeline'
 
 export type ConstructorType = abstract new (...args: any[]) => any
 export type ActiveModelSource = undefined | object | null
@@ -185,16 +185,16 @@ export type ActiveFieldDescriptor<_T = unknown> = {
   lowercase?: boolean
   /** Upper-case a string. */
   uppercase?: boolean
-  /** Convert the written value (`'42'` to `42`, `'true'` to `true`, a date string to a `Date`); an impossible conversion is refused. */
+  /** Convert the written value (`'42'` to `42`, `'true'` to `true`, a date string to a `Date`, or with a class such as `Decimal`/`Money`/`LocalDate` to an instance of it); an impossible conversion is refused. */
   coerce?: CoerceTo
   /** The value must not be `null`, `undefined` or `''`. Also checked by `validate()`, which catches a field that was never set. */
   required?: boolean
   /** Runtime type of the value (`coerce` implies one). */
-  type?: ValueType
-  /** Smallest allowed number or date. */
-  min?: number | Date
-  /** Largest allowed number or date. */
-  max?: number | Date
+  type?: ValueType | Coercible
+  /** Smallest allowed number, date or value object (`Decimal`, `Money`, `LocalDate`). */
+  min?: Bound
+  /** Largest allowed number, date or value object. */
+  max?: Bound
   /** Fewest characters / items. */
   minLength?: number
   /** Most characters / items. */

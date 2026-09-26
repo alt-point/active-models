@@ -17,6 +17,7 @@ import {
 import cloneDeep from 'lodash-es/cloneDeep'
 import cloneDeepWith from 'lodash-es/cloneDeepWith'
 import { deepEqual } from './equal'
+import { isImmutable } from './scalars/immutable'
 import { copyTrackingState, isSanitized, markSanitized, runRestoring, unmarkSanitized, useMeta } from './meta'
 import {
   abortGroup,
@@ -47,6 +48,7 @@ import {
   ValidationError,
   canTransition as canTransitionFn,
   coerceValue,
+  describeKind,
   nextStates,
   ruleIssues,
   runTransforms,
@@ -662,7 +664,7 @@ export class ActiveModel {
       throw new ValidationError([{
         path: String(prop),
         code: 'coerce',
-        message: `"${String(prop)}" cannot be converted to ${config.coerce}, got ${JSON.stringify(normalized)}`,
+        message: `"${String(prop)}" cannot be converted to ${describeKind(config.coerce)}, got ${JSON.stringify(normalized)}`,
         value: normalized,
       }])
     }
@@ -1163,6 +1165,9 @@ export class ActiveModel {
     _key: number | string | undefined,
     parent: unknown
   ): unknown {
+    if (isImmutable(value)) {
+      return value
+    }
     if ((value instanceof ActiveModel || isCollection(value)) && Boolean(parent)) {
       return value.clone()
     }

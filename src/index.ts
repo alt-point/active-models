@@ -28,3 +28,8 @@ export {
 export { Enum } from './Enum'
 export * from './types'
 export type { ModelProperties, RecursivePartialActiveModel } from './utils'
+
+export { Decimal, type DecimalInput, type RoundingMode } from './scalars/Decimal'
+export { Money, minorUnits } from './scalars/Money'
+export { LocalDate } from './scalars/LocalDate'
+export type { Coercible, Bound } from './pipeline'
