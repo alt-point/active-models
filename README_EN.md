@@ -15,7 +15,7 @@ into other shapes.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
 [![docs](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/deploy-docs.yml?branch=master&label=docs&logo=vitepress&logoColor=white)](https://alt-point.github.io/active-models/en/)
-[![tests](https://img.shields.io/badge/tests-172%20passing-brightgreen)](docs/en/testing.md)
+[![tests](https://img.shields.io/badge/tests-449%20passing-brightgreen)](docs/en/testing.md)
 [![coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](docs/en/testing.md)
 [![mutation score](https://img.shields.io/badge/mutation%20score-94%25-brightgreen?logo=stryker&logoColor=white)](docs/en/testing.md#mutation-testing)
 [![semver](https://img.shields.io/badge/semver-2.0.0-blue)](CHANGELOG.md)
@@ -119,6 +119,7 @@ User.on(EventType.created, ({ target }) => audit('user created', (target as User
 <details>
 <summary><b>Mapping and utilities</b></summary>
 
+- `Decimal` / `Money` / `LocalDate` + `coerce: Money` — exact money, decimals and timezone-free dates;
 - `ActiveCollection` / `Model.collection()` / `@ActiveField({ collection })` — an array that holds nothing but the model; sorting and binary search;
 - `Model.mapTo(Target, handler)` / `model.mapTo(Target)` — several projections of one model;
 - `CallableModel` — objects you can call like functions (no `unsafe-eval`, CSP-safe).
@@ -156,6 +157,8 @@ class Notify extends CallableModel {
 | [Model mapping](docs/en/mapping.md) | `mapTo()`: compared to class-transformer and AutoMapper |
 | [Invariants, transactions, undo](docs/en/integrity.md) | `transaction()` with rollback, `changes()`/`revert()`, `undo()`/`redo()` |
 | [Validation and normalization](docs/en/validation.md) | rules, `validate()`, `coerce`, `trim`, state transitions, strict mode |
+| [Scalars](docs/en/scalars.md) | `Decimal`, `Money` (with `allocate()`), `LocalDate`, custom value classes |
+| [Comparison with native code](docs/en/comparison.md) | eight tasks: the ActiveModel solution and the same by hand, in tabs |
 | [ActiveCollection / Map / Set](docs/en/collections.md) | containers of the declared model only: sorting, binary search, unique keys |
 | [Node.js example](docs/en/node-example.md) | a server on plain `node:http` |
 | [Known limitations](docs/en/limitations.md) | what doesn't work as you'd expect — and what to do |
@@ -176,7 +179,7 @@ Before working with models, read node_modules/@alt-point/active-models/AGENTS.md
 
 ## Quality
 
-**172** unit tests · **99 %** coverage · **94 %** mutation score (Stryker, gate at 90 %) · performance budgets
+**449** unit tests · **99 %** coverage · **94 %** mutation score (Stryker, gate at 90 %) · performance budgets
 and memory-leak checks · ESLint · strict [SemVer](CHANGELOG.md#versioning-policy).
 
 ```bash

@@ -15,7 +15,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
 [![docs](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/deploy-docs.yml?branch=master&label=docs&logo=vitepress&logoColor=white)](https://alt-point.github.io/active-models/)
-[![tests](https://img.shields.io/badge/tests-172%20passing-brightgreen)](docs/testing.md)
+[![tests](https://img.shields.io/badge/tests-449%20passing-brightgreen)](docs/testing.md)
 [![coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](docs/testing.md)
 [![mutation score](https://img.shields.io/badge/mutation%20score-94%25-brightgreen?logo=stryker&logoColor=white)](docs/testing.md#мутационное-тестирование)
 [![semver](https://img.shields.io/badge/semver-2.0.0-blue)](CHANGELOG.md)
@@ -119,6 +119,7 @@ User.on(EventType.created, ({ target }) => audit('user created', (target as User
 <details>
 <summary><b>Маппинг и утилиты</b></summary>
 
+- `Decimal` / `Money` / `LocalDate` + `coerce: Money` — точные деньги, десятичные числа и даты без часового пояса;
 - `ActiveCollection` / `Model.collection()` / `@ActiveField({ collection })` — массив, в который нельзя положить ничего, кроме модели; сортировка и бинарный поиск;
 - `Model.mapTo(Target, handler)` / `model.mapTo(Target)` — несколько проекций одной модели;
 - `CallableModel` — объекты, которые можно вызывать как функции (без `unsafe-eval`, CSP-безопасно).
@@ -156,6 +157,8 @@ class Notify extends CallableModel {
 | [Трансформация моделей](docs/mapping.md) | `mapTo()`: сравнение с class-transformer и AutoMapper |
 | [Инварианты, транзакции, undo](docs/integrity.md) | `transaction()` с откатом, `changes()`/`revert()`, `undo()`/`redo()` |
 | [Валидация и нормализация](docs/validation.md) | правила, `validate()`, `coerce`, `trim`, переходы состояний, строгий режим |
+| [Скаляры](docs/scalars.md) | `Decimal`, `Money` (с `allocate()`), `LocalDate`, свои value-классы |
+| [Сравнение с нативным кодом](docs/comparison.md) | восемь задач: решение на ActiveModel и то же вручную, во вкладках |
 | [ActiveCollection / Map / Set](docs/collections.md) | контейнеры только из объявленной модели: сортировка, бинарный поиск, уникальные ключи |
 | [Пример для Node.js](docs/node-example.md) | сервер на чистом `node:http` |
 | [Известные ограничения](docs/limitations.md) | что работает не так, как ожидаешь — и что делать |
@@ -175,7 +178,7 @@ class Notify extends CallableModel {
 
 ## Качество
 
-**172** unit-тест · покрытие **99 %** · **94 %** mutation score (Stryker, порог 90 %) · performance-бюджеты и
+**449** unit-тестов · покрытие **99 %** · **94 %** mutation score (Stryker, порог 90 %) · performance-бюджеты и
 проверки утечек памяти · ESLint · строгий [SemVer](CHANGELOG.md#versioning-policy).
 
 ```bash

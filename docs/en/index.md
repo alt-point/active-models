@@ -34,7 +34,7 @@ features:
     details: mapTo() - several projections of one model (DTO, view-model, payload) in one place, no reflection.
   - icon: 🧪
     title: Battle-tested
-    details: 172 tests, 99% coverage, 94% mutation score, performance budgets and memory-leak checks.
+    details: 449 tests, 99% coverage, 94% mutation score, performance budgets and memory-leak checks.
 ---
 
 ::: tip What's new in 4.0
