@@ -212,6 +212,8 @@ bun add @alt-point/active-models
 - [Model mapping: mapTo()](/en/mapping) — mapping to DTOs/view-models with Vue and React examples, compared to class-transformer/AutoMapper
 - [Invariants, transactions, undo](/en/integrity) — `transaction()` with rollback, `changes()`/`revert()`, `undo()`/`redo()`
 - [Validation and normalization](/en/validation) — `required`, `min`/`max`, `pattern`, `oneOf`, `coerce`, `trim`, `validate()`, state transitions, strict mode
+- [Scalars: Decimal, Money, LocalDate](/en/scalars) — exact money, decimals and timezone-free dates
+- [Comparison with native code](/en/comparison) — eight tasks: the ActiveModel solution and the same by hand
 - [ActiveCollection](/en/collections) — an array that holds nothing but the declared model; sorting and binary search
 - [Known limitations](/en/limitations), [Migrating to 4.0](/en/migration), [For AI agents](/en/agents), [API reference](/en/api/)
 

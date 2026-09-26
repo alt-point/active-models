@@ -108,6 +108,9 @@ user.once(...) / User.once(...)
   `ActiveMap.create(Model, { key })` / `ActiveSet.create(Model, items, { unique })` and the `map: [Model, { key }]` / `set: Model | [Model, opts]`
   field options give the keyed / set flavours with the same rules. Events: `itemsAdded`, `itemsRemoved`, `touched` (bubbles into the parent model). Use its own methods, not
   `Array.prototype.x.call(collection)` (guarded but not atomic).
+- Scalars: `@ActiveField({ coerce: Money | Decimal | LocalDate })` turns strings/numbers/objects into immutable value objects
+  (`Money.of('19.99','USD')`, `'19.99 USD'`; `Decimal.from('0.1').add('0.2')`; `LocalDate.from('2026-09-25')`). Never use `number` for money.
+  `min`/`max` work with any value having `compareTo()` (mixed currencies fail the bound). Custom class: static `from()`, `compareTo`, `toJSON`, `markImmutable(Class)`.
 - `CallableModel` — instances are callable, implement `__call`. `Enum` is deprecated.
 
 ## Migrating 3.x → 4.0

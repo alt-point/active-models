@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ActiveField, ActiveModel, Decimal, LocalDate, Money, ValidationError } from '../src'
+import { ActiveField, ActiveModel, Decimal, LocalDate, Money, ValidationError, markImmutable } from '../src'
 
 const d = (value: string | number) => Decimal.from(value)
 const big = (value: number | string) => BigInt(value)
@@ -392,5 +392,33 @@ describe('scalars as model fields', () => {
     invoice.total = '3 USD' as never
     invoice.undo()
     expect(invoice.total.toString()).toBe('2.00 USD')
+  })
+})
+
+describe('custom scalar', () => {
+  class Percent {
+    private constructor (readonly value: number) { Object.freeze(this) }
+    static from (x: unknown) {
+      const value = Number(x)
+      if (!(value >= 0 && value <= 100)) throw new RangeError('0..100')
+      return new Percent(value)
+    }
+
+    compareTo (other: Percent) { return Math.sign(this.value - other.value) }
+    toJSON () { return this.value }
+  }
+  markImmutable(Percent)
+
+  class Discount extends ActiveModel {
+    @ActiveField({ coerce: Percent, max: Percent.from(50) }) rate?: Percent
+  }
+
+  it('works through coerce, max and clone', () => {
+    const discount = Discount.create({ rate: '20' } as never)
+    expect(discount.rate).toBeInstanceOf(Percent)
+    expect(() => { discount.rate = 150 as never }).toThrow(ValidationError)
+    expect(() => { discount.rate = 60 as never }).toThrow('at most')
+    expect(discount.clone().rate).toBe(discount.rate)
+    expect(JSON.stringify(discount)).toBe('{"rate":20}')
   })
 })

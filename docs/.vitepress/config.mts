@@ -54,6 +54,8 @@ export default withMermaid(defineConfig({
               { text: 'ActiveCollection: типизированный массив', link: '/collections' },
               { text: 'Валидация, нормализация, переходы', link: '/validation' },
               { text: 'Инварианты, транзакции, undo', link: '/integrity' },
+              { text: 'Скаляры: Decimal, Money, LocalDate', link: '/scalars' },
+              { text: 'Сравнение с нативным кодом', link: '/comparison' },
             ],
           },
           {
@@ -108,6 +110,8 @@ export default withMermaid(defineConfig({
               { text: 'ActiveCollection: a typed array', link: '/en/collections' },
               { text: 'Validation, normalization, transitions', link: '/en/validation' },
               { text: 'Invariants, transactions, undo', link: '/en/integrity' },
+              { text: 'Scalars: Decimal, Money, LocalDate', link: '/en/scalars' },
+              { text: 'Comparison with native code', link: '/en/comparison' },
             ],
           },
           {

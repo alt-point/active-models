@@ -213,6 +213,8 @@ bun add @alt-point/active-models
 - [Трансформация моделей: mapTo()](/mapping) — маппинг в DTO/view-модели с примерами на Vue и React, сравнение с class-transformer/AutoMapper
 - [Инварианты, транзакции, undo](/integrity) — `transaction()` с откатом, `changes()`/`revert()`, `undo()`/`redo()`
 - [Валидация и нормализация](/validation) — `required`, `min`/`max`, `pattern`, `oneOf`, `coerce`, `trim`, `validate()`, переходы состояний, строгий режим
+- [Скаляры: Decimal, Money, LocalDate](/scalars) — точные деньги, десятичные числа и даты без часового пояса
+- [Сравнение с нативным кодом](/comparison) — восемь задач: решение на ActiveModel и то же вручную
 - [ActiveCollection](/collections) — массив, в который нельзя положить ничего, кроме объявленной модели; сортировка и бинарный поиск
 - [Известные ограничения](/limitations), [Миграция на 4.0](/migration), [Для AI-агентов](/agents)
 
