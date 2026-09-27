@@ -62,15 +62,31 @@ class Address extends ActiveModel {
 }
 
 class User extends ActiveModel {
-  @ActiveField({ readonly: true })                       id: string = ''
-  @ActiveField({ validator: (_m, prop, v) => { if (!v) throw new TypeError(`${prop} is required`) } })
+  @ActiveField({ readonly: true })
+  id: string = ''
+  
+  @ActiveField({
+    validator: (_m, prop, v) => { 
+      if (!v) throw new TypeError(`${prop} is required`) 
+    }
+  })
   name: string = 'Guest'
-  @ActiveField({ hidden: true })                         passwordHash: string = ''
-  @ActiveField({ factory: Address })                     address?: Address   // вложенная модель
+  
+  @ActiveField({ hidden: true })
+  passwordHash: string = ''
+
+  @ActiveField({ factory: Address })
+  address?: Address   // вложенная модель
 }
 
 // Всегда создавайте модели через фабрику, а не `new User(data)`
-const user = User.create({ id: '1', name: 'Ann', address: { city: 'Berlin' } }, { tracked: true })
+const user = User.create({ 
+  id: '1',
+  name: 'Ann',
+  address: {
+    city: 'Berlin' 
+  } 
+}, { tracked: true })
 
 user.on(EventType.afterSetValue, ({ prop, value }) => console.log(prop, '→', value))
 
@@ -134,9 +150,16 @@ Nuxt.js/Vue.js; реализован без `extends Function`, поэтому �
 import { CallableModel } from '@alt-point/active-models'
 
 class Notify extends CallableModel {
-  __call (message: string) { return this.success(message) }
-  success (message: string) { alert(message) }
-  silent (message: string) { console.log('Silent message:', message) }
+  __call (message: string) { 
+    return this.success(message) 
+  }
+  success (message: string) { 
+    alert(message) 
+  }
+  
+  silent (message: string) { 
+    console.log('Silent message:', message) 
+  }
 }
 
 // plugin: inject('notify', new Notify())  →  this.$notify('Alert!'); this.$notify.silent('...')
