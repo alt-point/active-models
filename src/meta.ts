@@ -1,6 +1,6 @@
 import { ActiveModel } from './ActiveModel'
 import { deepEqual } from './equal'
-import cloneDeep from 'lodash-es/cloneDeep'
+import { cloneDeep } from './clone'
 type State = {
   initialState?: ActiveModel | undefined
   raw?: any

@@ -77,6 +77,7 @@ Behavior that changed silently (review it if you rely on the old behavior):
 - В npm-пакет входят `dist`, `src`, `AGENTS.md`, `CHANGELOG.md`; `LICENSE.txt` заполнен (MIT).
 
 ### Added
+- Zero runtime dependencies: `lodash-es` is replaced by a vendored deep clone (`src/clone.ts`, verified against lodash in the tests); the bundle of `ActiveModel` shrinks by 14 KB.
 - Value objects `Decimal` (BigInt-based, explicit rounding), `Money` (currency-aware, `allocate()`), `LocalDate` (no time zone), `markImmutable()`. `coerce` / `type` accept a class with a static `from()`, `min` / `max` accept values with `compareTo()`.
 - `ActiveMap` (a `Map` keyed by a field of its items) and `ActiveSet` (with an optional unique key), plus the `map` / `set` field options; `unique` option and `getByKey()` / `hasKey()` for `ActiveCollection`.
 - Declarative field rules - `required`, `type`, `min`, `max`, `minLength`, `maxLength`, `pattern`, `oneOf` - with `model.validate()` (reports **all** problems, recurses into nested models and collections), `model.assertValid()`, `create(data, { validate: true })` and a `ValidationError` carrying `issues`.
@@ -109,6 +110,7 @@ Behavior that changed silently (review it if you rely on the old behavior):
 - `files` in `package.json` narrowed to `dist` and `src`; `LICENSE.txt` filled in (was empty).
 
 ### Fixed
+- `deepEqual` (and so `isTouched()` / `changes()`) looped forever when comparing two `DataView`s.
 - `isTouched()` / `changes()` reported a `Set` of models as changed against its own clone: sets are now compared by content. (`fast-deep-equal` is replaced by a small adapted copy, one dependency fewer.)
 - `touched` was emitted during `create()`, and for writes that were then rejected or that hit non-field properties.
 - `touched` never bubbled up from nested models (docs claimed it did); now it does, with de-duplication,

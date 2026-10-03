@@ -96,9 +96,6 @@
     "type": "git",
     "url": "https://github.com/alt-point/active-models"
   },
-  "dependencies": {
-    "lodash-es": "^4.17.21"
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@stryker-mutator/core": "^10.0.0",
@@ -110,6 +107,7 @@
     "@vitest/coverage-v8": "4.1.10",
     "consola": "^3.2.3",
     "eslint": "^10.11.0",
+    "lodash-es": "^4.17.21",
     "mermaid": "^11.16.0",
     "rollup": "^4.16.4",
     "tslib": "^2.6.2",

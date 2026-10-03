@@ -45,8 +45,9 @@ export const deepEqual = (a: any, b: any): boolean => {
     }
 
     if (ArrayBuffer.isView(a) && ArrayBuffer.isView(b)) {
-      const left = a as unknown as ArrayLike<unknown>
-      const right = b as unknown as ArrayLike<unknown>
+      // a DataView has no `length`: compare the bytes it covers
+      const left = a instanceof DataView ? new Uint8Array(a.buffer, a.byteOffset, a.byteLength) : (a as unknown as ArrayLike<unknown>)
+      const right = b instanceof DataView ? new Uint8Array(b.buffer, b.byteOffset, b.byteLength) : (b as unknown as ArrayLike<unknown>)
       if (left.length !== right.length) return false
       for (let i = left.length; i-- !== 0;) {
         if (left[i] !== right[i]) return false

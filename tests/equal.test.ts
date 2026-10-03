@@ -56,3 +56,15 @@ describe('deepEqual', () => {
     expect(deepEqual(new URL('https://a.b/'), new URL('https://a.c/'))).toBe(false)
   })
 })
+
+describe('DataView', () => {
+  it('compares the covered bytes instead of looping forever', () => {
+    const bytes = (...values: number[]) => new DataView(new Uint8Array(values).buffer)
+    expect(deepEqual(bytes(1, 2, 3), bytes(1, 2, 3))).toBe(true)
+    expect(deepEqual(bytes(1, 2, 3), bytes(1, 2, 4))).toBe(false)
+    expect(deepEqual(bytes(1, 2, 3), bytes(1, 2))).toBe(false)
+    const buffer = new Uint8Array([9, 1, 2, 9]).buffer
+    expect(deepEqual(new DataView(buffer, 1, 2), bytes(1, 2))).toBe(true)
+    expect(deepEqual(new DataView(buffer, 0, 2), bytes(1, 2))).toBe(false)
+  })
+})

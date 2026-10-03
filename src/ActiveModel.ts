@@ -14,8 +14,7 @@ import {
   type HandlerMapTo,
   type MapTarget,
 } from './types'
-import cloneDeep from 'lodash-es/cloneDeep'
-import cloneDeepWith from 'lodash-es/cloneDeepWith'
+import { cloneDeep, cloneDeepWith } from './clone'
 import { deepEqual } from './equal'
 import { isImmutable } from './scalars/immutable'
 import { copyTrackingState, isSanitized, markSanitized, runRestoring, unmarkSanitized, useMeta } from './meta'
@@ -1086,7 +1085,7 @@ export class ActiveModel {
     const model = Ctor.wrap(copy)
     copyTrackingState(this, model)
     Ctor.bindNestedModels(copy, model)
-    return model
+    return model as this
   }
 
   /** A copy of a field value that shares nothing with the original (nested models and collections are cloned) */
