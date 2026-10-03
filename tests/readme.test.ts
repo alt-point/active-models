@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { ActiveModel, ActiveField, EventType } from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField } from '../src/decorators'
+import { EventType } from '../src/types'
 
 /** The quick-start example from README.md, verified line by line. */
 describe('README quick start', () => {

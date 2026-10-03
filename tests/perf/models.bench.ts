@@ -1,5 +1,5 @@
 import { bench, describe } from 'vitest'
-import { EventType } from '../../src'
+import { EventType } from '../../src/types'
 import { makeModel, makeData, Order, orderData } from './fixtures'
 
 const M10 = makeModel(10)

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { ActiveModel, ActiveField, ActiveCollection, ActiveMap, ActiveSet, EventType, ValidationError, isCollection } from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField } from '../src/decorators'
+import { EventType } from '../src/types'
+import { ActiveCollection } from '../src/ActiveCollection'
+import { ActiveMap } from '../src/ActiveMap'
+import { ActiveSet } from '../src/ActiveSet'
+import { isCollection } from '../src/collectionRegistry'
+import { ValidationError } from '../src/pipeline'
 
 class User extends ActiveModel {
   @ActiveField() id: number = 0
@@ -19,7 +26,7 @@ const issueOf = (fn: () => unknown) => {
 }
 
 describe('ActiveCollection: unique', () => {
-  const make = () => User.collection([{ id: 1, email: 'a' }, { id: 2, email: 'b' }], { unique: 'email' })
+  const make = () => ActiveCollection.create(User, [{ id: 1, email: 'a' }, { id: 2, email: 'b' }], { unique: 'email' })
 
   it('refuses a duplicate key on every way in, atomically', () => {
     const users = make()
@@ -30,7 +37,7 @@ describe('ActiveCollection: unique', () => {
     expect(() => users.unshift({ id: 6, email: 'b' })).toThrow(ValidationError)
     expect(() => users.splice(0, 0, { id: 7, email: 'b' })).toThrow(ValidationError)
     expect(() => { users[2] = { id: 8, email: 'a' } as any }).toThrow(ValidationError)
-    expect(() => User.collection([{ email: 'x' }, { email: 'x' }], { unique: 'email' })).toThrow(ValidationError)
+    expect(() => ActiveCollection.create(User, [{ email: 'x' }, { email: 'x' }], { unique: 'email' })).toThrow(ValidationError)
     expect(users.map((u) => u.email)).toEqual(['a', 'b'])
   })
 
@@ -67,8 +74,8 @@ describe('ActiveCollection: unique', () => {
     expect(users.getByKey('b')!.id).toBe(2)
     expect(users.getByKey('zzz')).toBeUndefined()
     expect(users.hasKey('a')).toBe(true)
-    expect(() => User.collection().getByKey('a')).toThrow('need a collection created with unique')
-    expect(() => User.collection().hasKey('a')).toThrow(TypeError)
+    expect(() => ActiveCollection.create(User).getByKey('a')).toThrow('need a collection created with unique')
+    expect(() => ActiveCollection.create(User).hasKey('a')).toThrow(TypeError)
   })
 
   it('follows an item whose key changed, and releases keys on removal', () => {
@@ -95,7 +102,7 @@ describe('ActiveCollection: unique', () => {
     const users = make()
     expect(() => users.fill(users[0])).toThrow('A unique ActiveCollection cannot be filled')
     expect(() => users.copyWithin(0, 1)).toThrow(/cannot be rearranged/)
-    const sorted = User.collection([{ id: 2, name: 'B' }, { id: 1, name: 'A' }], { sortBy: 'id', unique: (u) => u.name.toLowerCase() })
+    const sorted = ActiveCollection.create(User, [{ id: 2, name: 'B' }, { id: 1, name: 'A' }], { sortBy: 'id', unique: (u) => u.name.toLowerCase() })
     expect(() => sorted.push({ id: 3, name: 'a' })).toThrow(ValidationError)
     expect(sorted.map((u) => u.id)).toEqual([1, 2])
     expect(sorted.getByKey('b')!.id).toBe(2)
@@ -351,10 +358,10 @@ describe('ActiveSet', () => {
 describe('containers on a model', () => {
   class Team extends ActiveModel {
     @ActiveField() name: string = ''
-    @ActiveField({ map: [User, { key: 'id' }] }) byId!: ActiveMap<User>
-    @ActiveField({ set: User }) members!: ActiveSet<User>
-    @ActiveField({ set: [User, { unique: 'email' }] }) unique!: ActiveSet<User>
-    @ActiveField({ collection: [User, { unique: 'email' }] }) list!: ActiveCollection<User>
+    @ActiveField({ container: ActiveMap.field(User, { key: 'id' }) }) byId!: ActiveMap<User>
+    @ActiveField({ container: ActiveSet.field(User) }) members!: ActiveSet<User>
+    @ActiveField({ container: ActiveSet.field(User, { unique: 'email' }) }) unique!: ActiveSet<User>
+    @ActiveField({ container: ActiveCollection.field(User, { unique: 'email' }) }) list!: ActiveCollection<User>
   }
 
   it('converts arrays (and Maps, objects, Sets), defaults to empty ones, and treats null as empty', () => {
@@ -437,23 +444,23 @@ describe('containers on a model', () => {
   it('validate() recurses into the items of a map and a set', () => {
     class Item extends ActiveModel { @ActiveField({ required: true }) label?: string }
     class Bag extends ActiveModel {
-      @ActiveField({ map: [Item, { key: 'label' }] }) items!: ActiveMap<Item>
+      @ActiveField({ container: ActiveMap.field(Item, { key: 'label' }) }) items!: ActiveMap<Item>
     }
     expect(Bag.create({}).validate().valid).toBe(true)
   })
 
-  it('cannot combine containers or a container with factory on one field', () => {
+  it('cannot combine a container with factory on one field, and refuses a foreign descriptor', () => {
     expect(() => {
       class Bad extends ActiveModel {
-        @ActiveField({ collection: User, set: User }) x?: unknown
+        @ActiveField({ factory: User, container: ActiveMap.field(User, { key: 'id' }) }) x?: unknown
       }
       return Bad
-    }).toThrow('use only one of factory, collection, map or set')
+    }).toThrow('Field "x": use either factory or container, not both')
     expect(() => {
       class Bad extends ActiveModel {
-        @ActiveField({ factory: User, map: [User, { key: 'id' }] }) x?: unknown
+        @ActiveField({ container: User as never }) x?: unknown
       }
       return Bad
-    }).toThrow('use only one of factory, collection, map or set')
+    }).toThrow('Field "x": container must come from ActiveCollection.field(), ActiveMap.field() or ActiveSet.field()')
   })
 })

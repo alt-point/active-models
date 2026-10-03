@@ -2,9 +2,6 @@
   "name": "@alt-point/active-models",
   "version": "4.0.0",
   "description": "Reactive DTO models with Proxy and more useful classes, decorators, Black-jack and hookers",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
   "sideEffects": false,
   "keywords": [
     "DTO",
@@ -23,17 +20,6 @@
     "CHANGELOG.md"
   ],
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
     "./ActiveModel": {
       "source": "./src/ActiveModel.ts",
       "import": {
@@ -43,6 +29,83 @@
       "require": {
         "types": "./dist/ActiveModel.d.ts",
         "default": "./dist/ActiveModel.js"
+      }
+    },
+    "./decorators": {
+      "source": "./src/decorators.ts",
+      "import": {
+        "types": "./dist/decorators.d.mts",
+        "default": "./dist/decorators.mjs"
+      },
+      "require": {
+        "types": "./dist/decorators.d.ts",
+        "default": "./dist/decorators.js"
+      }
+    },
+    "./types": {
+      "source": "./src/types.ts",
+      "import": {
+        "types": "./dist/types.d.mts",
+        "default": "./dist/types.mjs"
+      },
+      "require": {
+        "types": "./dist/types.d.ts",
+        "default": "./dist/types.js"
+      }
+    },
+    "./ActiveCollection": {
+      "source": "./src/ActiveCollection.ts",
+      "import": {
+        "types": "./dist/ActiveCollection.d.mts",
+        "default": "./dist/ActiveCollection.mjs"
+      },
+      "require": {
+        "types": "./dist/ActiveCollection.d.ts",
+        "default": "./dist/ActiveCollection.js"
+      }
+    },
+    "./ActiveMap": {
+      "source": "./src/ActiveMap.ts",
+      "import": {
+        "types": "./dist/ActiveMap.d.mts",
+        "default": "./dist/ActiveMap.mjs"
+      },
+      "require": {
+        "types": "./dist/ActiveMap.d.ts",
+        "default": "./dist/ActiveMap.js"
+      }
+    },
+    "./ActiveSet": {
+      "source": "./src/ActiveSet.ts",
+      "import": {
+        "types": "./dist/ActiveSet.d.mts",
+        "default": "./dist/ActiveSet.mjs"
+      },
+      "require": {
+        "types": "./dist/ActiveSet.d.ts",
+        "default": "./dist/ActiveSet.js"
+      }
+    },
+    "./collectionRegistry": {
+      "source": "./src/collectionRegistry.ts",
+      "import": {
+        "types": "./dist/collectionRegistry.d.mts",
+        "default": "./dist/collectionRegistry.mjs"
+      },
+      "require": {
+        "types": "./dist/collectionRegistry.d.ts",
+        "default": "./dist/collectionRegistry.js"
+      }
+    },
+    "./pipeline": {
+      "source": "./src/pipeline.ts",
+      "import": {
+        "types": "./dist/pipeline.d.mts",
+        "default": "./dist/pipeline.mjs"
+      },
+      "require": {
+        "types": "./dist/pipeline.d.ts",
+        "default": "./dist/pipeline.js"
       }
     },
     "./CallableModel": {
@@ -56,15 +119,70 @@
         "default": "./dist/CallableModel.js"
       }
     },
-    "./decorators": {
-      "source": "./src/decorators.ts",
+    "./Enum": {
+      "source": "./src/Enum.ts",
       "import": {
-        "types": "./dist/decorators.d.mts",
-        "default": "./dist/decorators.mjs"
+        "types": "./dist/Enum.d.mts",
+        "default": "./dist/Enum.mjs"
       },
       "require": {
-        "types": "./dist/decorators.d.ts",
-        "default": "./dist/decorators.js"
+        "types": "./dist/Enum.d.ts",
+        "default": "./dist/Enum.js"
+      }
+    },
+    "./utils": {
+      "source": "./src/utils.ts",
+      "import": {
+        "types": "./dist/utils.d.mts",
+        "default": "./dist/utils.mjs"
+      },
+      "require": {
+        "types": "./dist/utils.d.ts",
+        "default": "./dist/utils.js"
+      }
+    },
+    "./scalars/Decimal": {
+      "source": "./src/scalars/Decimal.ts",
+      "import": {
+        "types": "./dist/scalars/Decimal.d.mts",
+        "default": "./dist/scalars/Decimal.mjs"
+      },
+      "require": {
+        "types": "./dist/scalars/Decimal.d.ts",
+        "default": "./dist/scalars/Decimal.js"
+      }
+    },
+    "./scalars/Money": {
+      "source": "./src/scalars/Money.ts",
+      "import": {
+        "types": "./dist/scalars/Money.d.mts",
+        "default": "./dist/scalars/Money.mjs"
+      },
+      "require": {
+        "types": "./dist/scalars/Money.d.ts",
+        "default": "./dist/scalars/Money.js"
+      }
+    },
+    "./scalars/LocalDate": {
+      "source": "./src/scalars/LocalDate.ts",
+      "import": {
+        "types": "./dist/scalars/LocalDate.d.mts",
+        "default": "./dist/scalars/LocalDate.mjs"
+      },
+      "require": {
+        "types": "./dist/scalars/LocalDate.d.ts",
+        "default": "./dist/scalars/LocalDate.js"
+      }
+    },
+    "./scalars/immutable": {
+      "source": "./src/scalars/immutable.ts",
+      "import": {
+        "types": "./dist/scalars/immutable.d.mts",
+        "default": "./dist/scalars/immutable.mjs"
+      },
+      "require": {
+        "types": "./dist/scalars/immutable.d.ts",
+        "default": "./dist/scalars/immutable.js"
       }
     }
   },
@@ -83,7 +201,8 @@
     "docs:api": "typedoc",
     "test:perf": "vitest run --config vitest.perf.config.ts",
     "bench": "vitest bench --run --config vitest.perf.config.ts",
-    "test:mutation": "stryker run && node scripts/mutation-gate.mjs"
+    "test:mutation": "stryker run && node scripts/mutation-gate.mjs",
+    "test:dist": "node scripts/smoke-dist.mjs"
   },
   "homepage": "https://github.com/alt-point/active-models#readme",
   "author": {
@@ -106,6 +225,7 @@
     "@types/node": "^26.1.1",
     "@vitest/coverage-v8": "4.1.10",
     "consola": "^3.2.3",
+    "esbuild": "^0.27.7",
     "eslint": "^10.11.0",
     "lodash-es": "^4.17.21",
     "mermaid": "^11.16.0",
@@ -120,5 +240,54 @@
     "vitepress": "^1.6.4",
     "vitepress-plugin-mermaid": "^2.0.17",
     "vitest": "^4.1.10"
+  },
+  "typesVersions": {
+    "*": {
+      "ActiveModel": [
+        "dist/ActiveModel.d.ts"
+      ],
+      "decorators": [
+        "dist/decorators.d.ts"
+      ],
+      "types": [
+        "dist/types.d.ts"
+      ],
+      "ActiveCollection": [
+        "dist/ActiveCollection.d.ts"
+      ],
+      "ActiveMap": [
+        "dist/ActiveMap.d.ts"
+      ],
+      "ActiveSet": [
+        "dist/ActiveSet.d.ts"
+      ],
+      "collectionRegistry": [
+        "dist/collectionRegistry.d.ts"
+      ],
+      "pipeline": [
+        "dist/pipeline.d.ts"
+      ],
+      "CallableModel": [
+        "dist/CallableModel.d.ts"
+      ],
+      "Enum": [
+        "dist/Enum.d.ts"
+      ],
+      "utils": [
+        "dist/utils.d.ts"
+      ],
+      "scalars/Decimal": [
+        "dist/scalars/Decimal.d.ts"
+      ],
+      "scalars/Money": [
+        "dist/scalars/Money.d.ts"
+      ],
+      "scalars/LocalDate": [
+        "dist/scalars/LocalDate.d.ts"
+      ],
+      "scalars/immutable": [
+        "dist/scalars/immutable.d.ts"
+      ]
+    }
   }
 }

@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  ActiveField, ActiveMap, ActiveModel, ActiveSet, Decimal, EventType, LocalDate, Money, ValidationError, markImmutable,
-} from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField } from '../src/decorators'
+import { EventType } from '../src/types'
+import { ActiveCollection } from '../src/ActiveCollection'
+import { ActiveMap } from '../src/ActiveMap'
+import { ActiveSet } from '../src/ActiveSet'
+import { ValidationError } from '../src/pipeline'
+import { Decimal } from '../src/scalars/Decimal'
+import { Money } from '../src/scalars/Money'
+import { LocalDate } from '../src/scalars/LocalDate'
+import { markImmutable } from '../src/scalars/immutable'
 import { deepEqual } from '../src/equal'
 
 class Item extends ActiveModel {
@@ -485,9 +493,9 @@ describe('pipeline details', () => {
 describe('decorator options applied inside a test (so the mutants are active)', () => {
   it('map and set field options build containers, with defaults', () => {
     class Holder extends ActiveModel {
-      @ActiveField({ map: [Item, { key: 'id' }] }) byId!: ActiveMap<Item>
-      @ActiveField({ set: [Item, { unique: 'id' }] }) uniq!: ActiveSet<Item>
-      @ActiveField({ collection: [Item, { sortBy: 'id' }] }) list!: Item[]
+      @ActiveField({ container: ActiveMap.field(Item, { key: 'id' }) }) byId!: ActiveMap<Item>
+      @ActiveField({ container: ActiveSet.field(Item, { unique: 'id' }) }) uniq!: ActiveSet<Item>
+      @ActiveField({ container: ActiveCollection.field(Item, { sortBy: 'id' }) }) list!: Item[]
     }
     const holder = Holder.create({})
     expect(holder.byId).toBeInstanceOf(ActiveMap)
@@ -505,7 +513,7 @@ describe('decorator options applied inside a test (so the mutants are active)', 
 
   it('a container field with its own default keeps it', () => {
     class Holder extends ActiveModel {
-      @ActiveField({ map: [Item, { key: 'id' }], value: () => ActiveMap.create(Item, { key: 'id' }, [{ id: 9 }]) }) byId!: ActiveMap<Item>
+      @ActiveField({ container: ActiveMap.field(Item, { key: 'id' }), value: () => ActiveMap.create(Item, { key: 'id' }, [{ id: 9 }]) }) byId!: ActiveMap<Item>
     }
     expect(Holder.create({}).byId.has(9)).toBe(true)
   })
@@ -515,7 +523,7 @@ describe('decorator options applied inside a test (so the mutants are active)', 
     class Plain {}
     expect(() => {
       class A extends ActiveModel {
-        @ActiveField({ map: [Plain as never, { key: 'id' }] }) m?: unknown
+        @ActiveField({ container: ActiveMap.field(Plain as never, { key: 'id' } as never) }) m?: unknown
       }
       return A
     }).toThrow('Model factory for prop "m" must be instanceof ActiveModel!')

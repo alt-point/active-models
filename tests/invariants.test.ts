@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
-import {
-  ActiveModel, ActiveField, ActiveFactory, EventType, GetterMethod, SetterMethod,
-} from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField, ActiveFactory, GetterMethod, SetterMethod } from '../src/decorators'
+import { EventType } from '../src/types'
 
 describe('defaults are per instance', () => {
   class Bag extends ActiveModel {

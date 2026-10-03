@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { ActiveField, ActiveModel, EventType } from '../../src'
+import { ActiveModel } from '../../src/ActiveModel'
+import { ActiveField } from '../../src/decorators'
+import { EventType } from '../../src/types'
 import { makeModel, makeData, Order, orderData, measure } from './fixtures'
 
 /**

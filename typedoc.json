@@ -1,14 +1,36 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["src/index.ts"],
+  "entryPoints": [
+    "src/ActiveModel.ts",
+    "src/decorators.ts",
+    "src/types.ts",
+    "src/ActiveCollection.ts",
+    "src/ActiveMap.ts",
+    "src/ActiveSet.ts",
+    "src/collectionRegistry.ts",
+    "src/pipeline.ts",
+    "src/CallableModel.ts",
+    "src/Enum.ts",
+    "src/utils.ts",
+    "src/scalars/Decimal.ts",
+    "src/scalars/Money.ts",
+    "src/scalars/LocalDate.ts",
+    "src/scalars/immutable.ts"
+  ],
   "tsconfig": "tsconfig.json",
-  "plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
+  "plugin": [
+    "typedoc-plugin-markdown",
+    "typedoc-vitepress-theme"
+  ],
   "out": "docs/en/api",
   "readme": "none",
   "hideBreadcrumbs": true,
   "excludePrivate": true,
   "excludeProtected": true,
   "excludeInternal": true,
-  "sidebar": { "autoConfiguration": true, "format": "vitepress" },
+  "sidebar": {
+    "autoConfiguration": true,
+    "format": "vitepress"
+  },
   "name": "API reference"
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ActiveField, ActiveModel, EventType, InvariantMethod, Money, ValidationError } from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField, InvariantMethod } from '../src/decorators'
+import { EventType } from '../src/types'
+import { ActiveCollection } from '../src/ActiveCollection'
+import { ValidationError } from '../src/pipeline'
+import { Money } from '../src/scalars/Money'
 
 describe('docs/comparison.md examples', () => {
   it('money', () => {
@@ -98,7 +103,7 @@ describe('docs/comparison.md examples', () => {
     class Task extends ActiveModel {
       @ActiveField() id: number = 0
     }
-    const tasks = Task.collection([{ id: 3 }, { id: 1 }], { sortBy: 'id', unique: 'id' })
+    const tasks = ActiveCollection.create(Task, [{ id: 3 }, { id: 1 }], { sortBy: 'id', unique: 'id' })
     tasks.push({ id: 2 })
     expect(tasks.map((t) => t.id)).toEqual([1, 2, 3])
     expect(() => tasks.push({ id: 2 })).toThrow(ValidationError)

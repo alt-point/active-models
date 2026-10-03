@@ -9,7 +9,6 @@ import {
   EventType,
   type ActiveModelHookListener,
   type EventListener,
-  type CollectionOptions,
   type ConstructorType,
   type HandlerMapTo,
   type MapTarget,
@@ -41,7 +40,6 @@ import {
 } from './utils'
 import { useEmitter } from './emitter'
 import { useMapper } from './mapper'
-import { ActiveCollection } from './ActiveCollection'
 import { isCollection } from './collectionRegistry'
 import {
   ValidationError,
@@ -922,35 +920,6 @@ export class ActiveModel {
     opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }
   ): Promise<InstanceType<T>> {
     return this.createLazy(await data, opts)
-  }
-
-  /**
-   * An `ActiveCollection` of this model: an array that accepts instances of this model and nothing
-   * else, optionally kept sorted (`sortBy` / `compare`).
-   * @example
-   * const orders = Order.collection([{ id: 2 }, { id: 1 }], { sortBy: 'id' })
-   */
-  static collection<T extends typeof ActiveModel> (
-    this: T,
-    items: Iterable<unknown> = [],
-    options: CollectionOptions<InstanceType<T>> = {}
-  ): ActiveCollection<InstanceType<T>> {
-    return ActiveCollection.create(this, items, options)
-  }
-
-  /**
-   * Like `createFromCollection`, but returns an `ActiveCollection`: every item goes through
-   * `create()` (with `lazy` / `sanitize` / `tracked`), then into a collection with the given
-   * `sortBy` / `compare` / `order` / `coerce`.
-   */
-  static createCollection<T extends typeof ActiveModel> (
-    this: T,
-    data: Iterable<unknown> = [],
-    options: FactoryOptions & CollectionOptions<InstanceType<T>> = {}
-  ): ActiveCollection<InstanceType<T>> {
-    const { lazy, sanitize, tracked, ...collectionOptions } = options
-    const items = this.createFromCollection(Array.from(data) as any[], { lazy, sanitize, tracked })
-    return ActiveCollection.create(this, items, collectionOptions as CollectionOptions<InstanceType<T>>)
   }
 
   /**

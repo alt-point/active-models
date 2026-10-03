@@ -1,10 +1,11 @@
 import { ActiveModel } from './ActiveModel'
 import { useEmitter } from './emitter'
 import { registerCollection } from './collectionRegistry'
-import { attachItem, detachItem, isNilKey, keyFunction, normalizeItem } from './collectionCore'
+import { attachItem, detachItem, isNilKey, isPlainObject, keyFunction, normalizeItem, wrapContainer } from './collectionCore'
 import {
   EventType,
   type ActiveModelHookListener,
+  type ContainerSpec,
   type EventListener,
   type MapOptions,
 } from './types'
@@ -101,6 +102,34 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
     registerCollection(map)
     map.add(...(items as Iterable<RecursivePartialActiveModel<InstanceType<M>>>))
     return map
+  }
+
+  /**
+   * Describe a map field for `@ActiveField({ container })`: an assigned array, `Map` or object of items becomes an
+   * `ActiveMap` keyed by `options.key`, the default is an empty one.
+   * @example
+   * @ActiveField({ container: ActiveMap.field(User, { key: 'id' }) }) users!: ActiveMap<User>
+   */
+  static field<M extends typeof ActiveModel> (
+    this: typeof ActiveMap,
+    model: M,
+    options: MapOptions<InstanceType<M>>
+  ): ContainerSpec<ActiveMap<InstanceType<M>>> {
+    return {
+      model,
+      wrap: (value) => wrapContainer(
+        'map',
+        model,
+        value,
+        (candidate) => candidate instanceof this && (candidate as ActiveMap).model === model,
+        (items) => this.create(model, options, items),
+        'an array, a Map or an object',
+        (input) => {
+          if (input instanceof Map) return Array.from(input.values())
+          return isPlainObject(input) ? Object.values(input) : undefined
+        }
+      ),
+    }
   }
 
   /** Subscribe to an event on every map of this class. */

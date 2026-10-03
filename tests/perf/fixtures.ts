@@ -1,4 +1,5 @@
-import { ActiveModel, ActiveField } from '../../src'
+import { ActiveModel } from '../../src/ActiveModel'
+import { ActiveField } from '../../src/decorators'
 
 /** A model class with `count` plain fields f0..f{count-1}, built programmatically. */
 export function makeModel (count: number, opts: Parameters<typeof ActiveField>[0] = {}) {

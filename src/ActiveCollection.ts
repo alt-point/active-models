@@ -1,13 +1,15 @@
 import { ActiveModel } from './ActiveModel'
 import { useEmitter } from './emitter'
 import { registerCollection } from './collectionRegistry'
-import { attachItem, detachItem, isNilKey, keyFunction, normalizeItem } from './collectionCore'
+import { attachItem, detachItem, isNilKey, keyFunction, normalizeItem, wrapContainer } from './collectionCore'
 import { ValidationError } from './pipeline'
 import {
   EventType,
   type ActiveModelHookListener,
   type CollectionOptions,
+  type ContainerSpec,
   type EventListener,
+  type FactoryOptions,
 } from './types'
 import type { RecursivePartialActiveModel } from './utils'
 
@@ -414,7 +416,8 @@ const handlers: ProxyHandler<ActiveCollection<any>> = {
  * - Emits `itemsAdded`, `itemsRemoved` and `touched` (also when an item changes), so it bubbles up
  *   into a parent model like a nested model does.
  *
- * Create it with {@link ActiveCollection.create}, `Model.collection()` or the `collection` field option.
+ * Create it with {@link ActiveCollection.create}, {@link ActiveCollection.createFromData} or the `container` field
+ * option (`@ActiveField({ container: ActiveCollection.field(Model, options) })`).
  */
 export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array<T> {
   /** `map()`, `flatMap()`... return plain arrays - only `filter`, `slice` and `concat` keep the collection type */
@@ -470,6 +473,46 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
 
     insert(state, normalizeAll(state, items), 0)
     return self
+  }
+
+  /**
+   * Like `ActiveModel.createFromCollection`, but returns an `ActiveCollection`: every item goes through
+   * `Model.create()` (with `lazy` / `sanitize` / `tracked`), then into a collection with the given
+   * `sortBy` / `compare` / `order` / `unique` / `coerce`.
+   */
+  static createFromData<M extends typeof ActiveModel> (
+    this: typeof ActiveCollection,
+    model: M,
+    data: Iterable<unknown> = [],
+    options: FactoryOptions & CollectionOptions<InstanceType<M>> = {}
+  ): ActiveCollection<InstanceType<M>> {
+    const { lazy, sanitize, tracked, ...collectionOptions } = options
+    const items = model.createFromCollection(Array.from(data) as any[], { lazy, sanitize, tracked })
+    return this.create(model, items, collectionOptions as CollectionOptions<InstanceType<M>>)
+  }
+
+  /**
+   * Describe a collection field for `@ActiveField({ container })`: an assigned array becomes an
+   * `ActiveCollection` of `model`, the default is an empty one.
+   * @example
+   * @ActiveField({ container: ActiveCollection.field(Task, { sortBy: 'id' }) }) tasks!: ActiveCollection<Task>
+   */
+  static field<M extends typeof ActiveModel> (
+    this: typeof ActiveCollection,
+    model: M,
+    options: CollectionOptions<InstanceType<M>> = {}
+  ): ContainerSpec<ActiveCollection<InstanceType<M>>> {
+    return {
+      model,
+      wrap: (value) => wrapContainer(
+        'collection',
+        model,
+        value,
+        (candidate) => candidate instanceof this && (candidate as ActiveCollection).model === model,
+        (items) => this.create(model, items, options),
+        'an array'
+      ),
+    }
   }
 
   /**

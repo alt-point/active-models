@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { ActiveModel, ActiveField, ActiveCollection, EventType } from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField } from '../src/decorators'
+import { EventType } from '../src/types'
+import { ActiveCollection } from '../src/ActiveCollection'
 
 /** Written from surviving mutants of the Stryker run on ActiveCollection: each test pins one detail. */
 
@@ -9,7 +12,7 @@ class Task extends ActiveModel {
   @ActiveField() priority?: number
 }
 const ids = (c: Iterable<Task>) => Array.from(c, (t) => t.id)
-const make = (...list: number[]) => Task.collection(list.map((id) => ({ id })))
+const make = (...list: number[]) => ActiveCollection.create(Task, list.map((id) => ({ id })))
 
 describe('splice shifting', () => {
   it('grows, shrinks and keeps length in the middle and at the ends', () => {
@@ -103,8 +106,8 @@ describe('error messages describe what was refused', () => {
   })
 
   it('a sorted refusal names sortBy or compare', () => {
-    expect(() => { Task.collection([], { sortBy: 'id' }).fill(Task.create({})) }).toThrow('defined by sortBy')
-    expect(() => { Task.collection([], { compare: () => 0 }).copyWithin(0, 0) }).toThrow('defined by compare')
+    expect(() => { ActiveCollection.create(Task, [], { sortBy: 'id' }).fill(Task.create({})) }).toThrow('defined by sortBy')
+    expect(() => { ActiveCollection.create(Task, [], { compare: () => 0 }).copyWithin(0, 0) }).toThrow('defined by compare')
   })
 })
 
@@ -114,7 +117,7 @@ describe('sorting details', () => {
   it('null/undefined keys sort last, keep insertion order, and never move ahead of real keys', () => {
     const list = [{ id: 1 }, { id: 2, priority: 2 }, { id: 3 }, { id: 4, priority: 1 }]
     for (const order of ['asc', 'desc'] as const) {
-      const tasks = Task.collection(list, { sortBy: 'priority', order })
+      const tasks = ActiveCollection.create(Task, list, { sortBy: 'priority', order })
       const expected = order === 'asc' ? ['4:1', '2:2', '1:-', '3:-'] : ['2:2', '4:1', '1:-', '3:-']
       expect(priorities(tasks)).toEqual(expected)
       tasks.push({ id: 5 })
@@ -126,18 +129,18 @@ describe('sorting details', () => {
 
   it('the bulk path (many items) orders exactly like one-by-one inserts, for keys and for compare', () => {
     const many = Array.from({ length: 80 }, (_, i) => ({ id: (i * 37) % 11, title: String(i) }))
-    const byKey = Task.collection(many, { sortBy: 'id' })
-    const oneByOne = Task.collection([], { sortBy: 'id' })
+    const byKey = ActiveCollection.create(Task, many, { sortBy: 'id' })
+    const oneByOne = ActiveCollection.create(Task, [], { sortBy: 'id' })
     for (const item of many) oneByOne.push(item)
     expect(byKey.map((t) => t.title)).toEqual(oneByOne.map((t) => t.title))
 
-    const byCompare = Task.collection(many, { compare: (a, b) => a.id - b.id })
+    const byCompare = ActiveCollection.create(Task, many, { compare: (a, b) => a.id - b.id })
     expect(byCompare.map((t) => t.title)).toEqual(oneByOne.map((t) => t.title))
   })
 
   it('a custom compare is re-evaluated by sort()', () => {
     let direction = 1
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }, { id: 3 }], { compare: (a, b) => direction * (a.id - b.id) })
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }, { id: 3 }], { compare: (a, b) => direction * (a.id - b.id) })
     expect(ids(tasks)).toEqual([1, 2, 3])
     direction = -1
     tasks.sort()
@@ -154,7 +157,7 @@ describe('sorting details', () => {
 
   it('a key change that only ties with a neighbour does not move the item', () => {
     const [a, b, c] = [Task.create({ id: 1 }), Task.create({ id: 2 }), Task.create({ id: 3 })]
-    const tasks = Task.collection([a, b, c], { sortBy: 'id' })
+    const tasks = ActiveCollection.create(Task, [a, b, c], { sortBy: 'id' })
     b.id = 1
     expect(tasks.map((t) => t)).toEqual([a, b, c])
     a.id = 1
@@ -166,7 +169,7 @@ describe('sorting details', () => {
 
   it('an item that violates the order only on one side is still moved', () => {
     const [a, b, c, d] = [1, 2, 3, 4].map((id) => Task.create({ id }))
-    const tasks = Task.collection([a, b, c, d], { sortBy: 'id' })
+    const tasks = ActiveCollection.create(Task, [a, b, c, d], { sortBy: 'id' })
     a.id = 2.5
     expect(ids(tasks)).toEqual([2, 2.5, 3, 4])
     d.id = 2.7
@@ -185,7 +188,7 @@ describe('subscriptions to items', () => {
 
   it('an instance held twice keeps notifying until its last slot is gone', () => {
     const shared = Task.create({ id: 1 })
-    const tasks = Task.collection([shared, shared])
+    const tasks = ActiveCollection.create(Task, [shared, shared])
     const seen = countTouched(tasks)
     shared.title = 'a'
     expect(seen.n).toBe(1)
@@ -227,7 +230,7 @@ describe('subscriptions to items', () => {
 
   it('fill() and copyWithin() re-point subscriptions to the items that are now inside', () => {
     const [a, b, c] = [1, 2, 3].map((id) => Task.create({ id }))
-    const tasks = Task.collection([a, b, c])
+    const tasks = ActiveCollection.create(Task, [a, b, c])
     const seen = countTouched(tasks)
     const replacement = Task.create({ id: 9 })
     tasks.fill(replacement, 0, 2)
@@ -239,7 +242,7 @@ describe('subscriptions to items', () => {
     expect(seen.n).toBe(2)
 
     const [x, y, z] = [1, 2, 3].map((id) => Task.create({ id }))
-    const list = Task.collection([x, y, z])
+    const list = ActiveCollection.create(Task, [x, y, z])
     const moves = countTouched(list)
     list.copyWithin(0, 2)
     expect(list.map((t) => t)).toEqual([z, y, z])
@@ -252,7 +255,7 @@ describe('subscriptions to items', () => {
 
 describe('touched targets', () => {
   it('every operation reports the collection itself as the target', () => {
-    const tasks = Task.collection([{ id: 2 }, { id: 1 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 2 }, { id: 1 }])
     const targets: unknown[] = []
     tasks.on(EventType.touched, ({ target }) => targets.push(target))
 

@@ -43,6 +43,36 @@ export const normalizeItem = <T extends ActiveModel>(
   )
 }
 
+/**
+ * What a `container` field does with an assigned value; shared by `ActiveCollection.field`, `ActiveMap.field`
+ * and `ActiveSet.field`. The same container of the same model stays as it is, `null`/`undefined` becomes an
+ * empty one, an iterable becomes one with those items. `extract` handles input shapes of its own (a `Map`).
+ */
+export const wrapContainer = <C>(
+  label: string,
+  model: typeof ActiveModel,
+  value: unknown,
+  isSame: (value: unknown) => boolean,
+  create: (items: Iterable<unknown>) => C,
+  expects: string,
+  extract?: (value: unknown) => Iterable<unknown> | undefined
+): C => {
+  if (isSame(value)) {
+    return value as C
+  }
+  if (value === null || value === undefined) {
+    return create([])
+  }
+  const items = extract?.(value)
+  if (items) {
+    return create(items)
+  }
+  if (typeof value === 'object' && Symbol.iterator in value) {
+    return create(value as Iterable<unknown>)
+  }
+  throw new TypeError(`A ${label} of ${model.name} expects ${expects}, got ${typeof value}`)
+}
+
 /** A key function from a field name or a function; `undefined` when neither was given */
 export const keyFunction = <T>(option: KeyOf<T> | undefined): ((item: T) => unknown) | undefined => {
   if (typeof option === 'function') {

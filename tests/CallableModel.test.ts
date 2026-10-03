@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CallableModel } from '../src'
+import { CallableModel } from '../src/CallableModel'
 
 describe('CallableModel', () => {
   it('invokes __call when the instance is called as a function', () => {

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { ActiveField, ActiveMap, ActiveModel, ActiveSet, Decimal, LocalDate, Money } from '../../src'
+import { ActiveModel } from '../../src/ActiveModel'
+import { ActiveField } from '../../src/decorators'
+import { ActiveMap } from '../../src/ActiveMap'
+import { ActiveSet } from '../../src/ActiveSet'
+import { Decimal } from '../../src/scalars/Decimal'
+import { Money } from '../../src/scalars/Money'
+import { LocalDate } from '../../src/scalars/LocalDate'
 import { measure } from './fixtures'
 
 /** Budgets for validation, transactions, history and value objects; see budgets.perf.ts for the rules. */

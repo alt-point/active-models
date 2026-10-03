@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ActiveModel, ActiveField, ActiveFactory, EventType, GetterMethod, SetterMethod, isFillable, isHidden, isProtected } from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField, ActiveFactory, GetterMethod, SetterMethod, isFillable, isHidden, isProtected } from '../src/decorators'
+import { EventType } from '../src/types'
 
 describe('@ActiveField() defaults', () => {
   it('is fillable and protected (not deletable) by default', () => {

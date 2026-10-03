@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { ActiveModel, ActiveField, EventType } from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField } from '../src/decorators'
+import { EventType } from '../src/types'
 
 describe('factory variants', () => {
   class Car extends ActiveModel {

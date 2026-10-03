@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { ActiveModel, ActiveField, EventType } from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField } from '../src/decorators'
+import { EventType } from '../src/types'
 
 describe('ActiveModel.create()', () => {
   it('fills provided data into fillable fields', () => {

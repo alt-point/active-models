@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { ActiveField, ActiveModel, Decimal, LocalDate, Money, ValidationError, markImmutable } from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField } from '../src/decorators'
+import { ValidationError } from '../src/pipeline'
+import { Decimal } from '../src/scalars/Decimal'
+import { Money } from '../src/scalars/Money'
+import { LocalDate } from '../src/scalars/LocalDate'
+import { markImmutable } from '../src/scalars/immutable'
 
 const d = (value: string | number) => Decimal.from(value)
 const big = (value: number | string) => BigInt(value)

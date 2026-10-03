@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { ActiveModel, ActiveField, ActiveCollection, EventType, isCollection } from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField } from '../src/decorators'
+import { EventType } from '../src/types'
+import { ActiveCollection } from '../src/ActiveCollection'
+import { isCollection } from '../src/collectionRegistry'
 
 class Task extends ActiveModel {
   @ActiveField() id: number = 0
@@ -14,7 +18,7 @@ const ids = (c: Iterable<Task>) => Array.from(c, (t) => t.id)
 
 describe('ActiveCollection: what it accepts', () => {
   it('holds instances of its model and turns plain objects into instances', () => {
-    const tasks = Task.collection([{ id: 1 }, Task.create({ id: 2 })])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, Task.create({ id: 2 })])
     expect(tasks).toHaveLength(2)
     expect(tasks[0]).toBeInstanceOf(Task)
     expect(tasks[0].id).toBe(1)
@@ -31,32 +35,32 @@ describe('ActiveCollection: what it accepts', () => {
     ['an array', [1]],
     ['an instance of another model', Other.create({})],
   ])('refuses %s through push()', (_label, value) => {
-    const tasks = Task.collection()
+    const tasks = ActiveCollection.create(Task)
     expect(() => tasks.push(value as any)).toThrow(TypeError)
     expect(tasks).toHaveLength(0)
   })
 
   it('names the model and what it got in the error', () => {
-    expect(() => Task.collection().push(5 as any)).toThrow(
+    expect(() => ActiveCollection.create(Task).push(5 as any)).toThrow(
       'ActiveCollection<Task> accepts only Task instances or plain objects, got number'
     )
-    expect(() => Task.collection([], { coerce: false }).push({ id: 1 } as any)).toThrow(
+    expect(() => ActiveCollection.create(Task, [], { coerce: false }).push({ id: 1 } as any)).toThrow(
       'ActiveCollection<Task> accepts only Task instances, got Object'
     )
-    expect(() => Task.collection().push(Other.create({}) as any)).toThrow(/got Other/)
+    expect(() => ActiveCollection.create(Task).push(Other.create({}) as any)).toThrow(/got Other/)
   })
 
   it('coerce:false accepts instances only', () => {
-    const tasks = Task.collection([Task.create({ id: 1 })], { coerce: false })
+    const tasks = ActiveCollection.create(Task, [Task.create({ id: 1 })], { coerce: false })
     expect(tasks).toHaveLength(1)
     expect(() => tasks.push({ id: 2 } as any)).toThrow(TypeError)
   })
 
   it('is atomic: one bad item means nothing is added', () => {
-    const tasks = Task.collection([{ id: 1 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }])
     expect(() => tasks.push({ id: 2 }, 5 as any, { id: 3 })).toThrow(TypeError)
     expect(ids(tasks)).toEqual([1])
-    expect(() => Task.collection([{ id: 1 }, 'bad' as any])).toThrow(TypeError)
+    expect(() => ActiveCollection.create(Task, [{ id: 1 }, 'bad' as any])).toThrow(TypeError)
   })
 
   it('cannot be built for something that is not a model class', () => {
@@ -67,7 +71,7 @@ describe('ActiveCollection: what it accepts', () => {
 
 describe('ActiveCollection: no way around the rule', () => {
   it('index assignment, length and native Array.prototype calls are all guarded', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }])
     expect(() => { (tasks as any)[0] = 5 }).toThrow(TypeError)
     expect(() => { (tasks as any)[2] = 5 }).toThrow(TypeError)
     expect(() => Array.prototype.push.call(tasks, 5)).toThrow(TypeError)
@@ -76,14 +80,14 @@ describe('ActiveCollection: no way around the rule', () => {
   })
 
   it('native Array.prototype mutators can never let a foreign item in (they are just not atomic)', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }])
     expect(() => Array.prototype.unshift.call(tasks, 5)).toThrow(TypeError)
     expect(() => Array.prototype.splice.call(tasks, 0, 0, 5)).toThrow(TypeError)
     expect(Array.from(tasks).every((item) => item instanceof Task)).toBe(true)
   })
 
   it('index assignment replaces with a valid item, or appends at length', () => {
-    const tasks = Task.collection([{ id: 1 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }])
     tasks[0] = Task.create({ id: 9 })
     tasks[1] = { id: 10 } as any
     expect(ids(tasks)).toEqual([9, 10])
@@ -91,7 +95,7 @@ describe('ActiveCollection: no way around the rule', () => {
   })
 
   it('cannot get holes: beyond-length assignment, growing length, delete', () => {
-    const tasks = Task.collection([{ id: 1 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }])
     expect(() => { (tasks as any)[5] = { id: 2 } }).toThrow(RangeError)
     expect(() => { tasks.length = 5 }).toThrow(RangeError)
     expect(() => { delete (tasks as any)[0] }).toThrow(/holes/)
@@ -99,13 +103,13 @@ describe('ActiveCollection: no way around the rule', () => {
   })
 
   it('shrinking length removes items', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }, { id: 3 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }, { id: 3 }])
     tasks.length = 1
     expect(ids(tasks)).toEqual([1])
   })
 
   it('refuses stray string properties but allows symbols', () => {
-    const tasks = Task.collection()
+    const tasks = ActiveCollection.create(Task)
     expect(() => { (tasks as any).extra = 1 }).toThrow(/cannot set property "extra"/)
     expect(() => Object.defineProperty(tasks, 'extra', { value: 1 })).toThrow(/cannot define property "extra"/)
     const key = Symbol('meta')
@@ -114,7 +118,7 @@ describe('ActiveCollection: no way around the rule', () => {
   })
 
   it('has the usual Array behavior for reads', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }])
     expect(tasks.map((t) => t.id)).toEqual([1, 2])
     expect(tasks.map((t) => t.id)).not.toBeInstanceOf(ActiveCollection)
     expect(tasks.find((t) => t.id === 2)).toBe(tasks[1])
@@ -129,7 +133,7 @@ describe('ActiveCollection: no way around the rule', () => {
 
 describe('ActiveCollection: mutators', () => {
   it('push / add / unshift / pop / shift', () => {
-    const tasks = Task.collection()
+    const tasks = ActiveCollection.create(Task)
     expect(tasks.push({ id: 2 }, { id: 3 })).toBe(2)
     expect(tasks.unshift({ id: 1 })).toBe(3)
     expect(tasks.add({ id: 4 })).toBe(tasks)
@@ -137,12 +141,12 @@ describe('ActiveCollection: mutators', () => {
     expect(tasks.pop()!.id).toBe(4)
     expect(tasks.shift()!.id).toBe(1)
     expect(ids(tasks)).toEqual([2, 3])
-    expect(Task.collection().pop()).toBeUndefined()
-    expect(Task.collection().shift()).toBeUndefined()
+    expect(ActiveCollection.create(Task).pop()).toBeUndefined()
+    expect(ActiveCollection.create(Task).shift()).toBeUndefined()
   })
 
   it('splice removes, inserts and returns what it removed - including negative and clamped arguments', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }])
     expect(tasks.splice(1, 2, { id: 9 }).map((t) => t.id)).toEqual([2, 3])
     expect(ids(tasks)).toEqual([1, 9, 4])
     expect(tasks.splice(-1).map((t) => t.id)).toEqual([4])
@@ -154,7 +158,7 @@ describe('ActiveCollection: mutators', () => {
   })
 
   it('remove / clear / replaceAll', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }])
     expect(tasks.remove(tasks[0])).toBe(true)
     expect(tasks.remove(Task.create({ id: 1 }))).toBe(false)
     expect(ids(tasks)).toEqual([2])
@@ -167,7 +171,7 @@ describe('ActiveCollection: mutators', () => {
   })
 
   it('sort / reverse / fill / copyWithin work on an unsorted collection', () => {
-    const tasks = Task.collection([{ id: 3 }, { id: 1 }, { id: 2 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 3 }, { id: 1 }, { id: 2 }])
     tasks.sort((a, b) => a.id - b.id)
     expect(ids(tasks)).toEqual([1, 2, 3])
     tasks.reverse()
@@ -181,7 +185,7 @@ describe('ActiveCollection: mutators', () => {
   })
 
   it('filter / slice / concat return collections of the same kind; map returns a plain array', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }, { id: 3 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }, { id: 3 }])
     const evens = tasks.filter((t) => t.id % 2 === 1)
     expect(evens).toBeInstanceOf(ActiveCollection)
     expect(ids(evens)).toEqual([1, 3])
@@ -196,7 +200,7 @@ describe('ActiveCollection: mutators', () => {
   })
 
   it('clone() deep-copies the items and keeps the options', () => {
-    const tasks = Task.collection([{ id: 2 }, { id: 1 }], { sortBy: 'id', order: 'desc' })
+    const tasks = ActiveCollection.create(Task, [{ id: 2 }, { id: 1 }], { sortBy: 'id', order: 'desc' })
     const copy = tasks.clone()
     expect(ids(copy)).toEqual([2, 1])
     expect(copy[0]).not.toBe(tasks[0])
@@ -209,7 +213,7 @@ describe('ActiveCollection: mutators', () => {
 
 describe('ActiveCollection: sorted', () => {
   it('keeps items in order on every way in, stably', () => {
-    const tasks = Task.collection([{ id: 3 }, { id: 1 }], { sortBy: 'id' })
+    const tasks = ActiveCollection.create(Task, [{ id: 3 }, { id: 1 }], { sortBy: 'id' })
     expect(tasks.sorted).toBe(true)
     tasks.push({ id: 2 }, { id: 0 })
     tasks.unshift({ id: 5 })
@@ -218,48 +222,48 @@ describe('ActiveCollection: sorted', () => {
 
     const a = Task.create({ id: 1, title: 'first' })
     const b = Task.create({ id: 1, title: 'second' })
-    const stable = Task.collection([a], { sortBy: 'id' })
+    const stable = ActiveCollection.create(Task, [a], { sortBy: 'id' })
     stable.push(b)
     expect(stable.map((t) => t.title)).toEqual(['first', 'second'])
   })
 
   it('sortBy accepts a function, order desc, and puts null/undefined last', () => {
-    const byLength = Task.collection([{ title: 'ccc' }, { title: 'a' }, { title: 'bb' }], {
+    const byLength = ActiveCollection.create(Task, [{ title: 'ccc' }, { title: 'a' }, { title: 'bb' }], {
       sortBy: (t: Task) => t.title.length,
     })
     expect(byLength.map((t) => t.title)).toEqual(['a', 'bb', 'ccc'])
 
-    const desc = Task.collection([{ id: 1 }, { id: 3 }, { id: 2 }], { sortBy: 'id', order: 'desc' })
+    const desc = ActiveCollection.create(Task, [{ id: 1 }, { id: 3 }, { id: 2 }], { sortBy: 'id', order: 'desc' })
     expect(ids(desc)).toEqual([3, 2, 1])
 
-    const withNil = Task.collection([{ id: 1 }, { id: 2, priority: 5 }, { id: 3, priority: 1 }], { sortBy: 'priority' })
+    const withNil = ActiveCollection.create(Task, [{ id: 1 }, { id: 2, priority: 5 }, { id: 3, priority: 1 }], { sortBy: 'priority' })
     expect(ids(withNil)).toEqual([3, 2, 1])
-    const withNilDesc = Task.collection([{ id: 1 }, { id: 2, priority: 5 }, { id: 3, priority: 1 }], { sortBy: 'priority', order: 'desc' })
+    const withNilDesc = ActiveCollection.create(Task, [{ id: 1 }, { id: 2, priority: 5 }, { id: 3, priority: 1 }], { sortBy: 'priority', order: 'desc' })
     expect(ids(withNilDesc)).toEqual([2, 3, 1])
   })
 
   it('compare defines a custom order and respects order desc', () => {
     const by = (a: Task, b: Task) => a.title.localeCompare(b.title)
-    const asc = Task.collection([{ title: 'b' }, { title: 'a' }, { title: 'c' }], { compare: by })
+    const asc = ActiveCollection.create(Task, [{ title: 'b' }, { title: 'a' }, { title: 'c' }], { compare: by })
     expect(asc.map((t) => t.title)).toEqual(['a', 'b', 'c'])
-    const desc = Task.collection([{ title: 'b' }, { title: 'a' }], { compare: by, order: 'desc' })
+    const desc = ActiveCollection.create(Task, [{ title: 'b' }, { title: 'a' }], { compare: by, order: 'desc' })
     expect(desc.map((t) => t.title)).toEqual(['b', 'a'])
     desc.push({ title: 'c' })
     expect(desc.map((t) => t.title)).toEqual(['c', 'b', 'a'])
   })
 
   it('refuses what would break the order', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }], { sortBy: 'id' })
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }], { sortBy: 'id' })
     expect(() => { tasks[0] = Task.create({ id: 9 }) }).toThrow(/sorted ActiveCollection cannot be assigned by index/)
     expect(() => tasks.fill(Task.create({ id: 1 }))).toThrow(/cannot be filled/)
     expect(() => tasks.copyWithin(0, 1)).toThrow(/cannot be rearranged/)
     expect(() => tasks.sort((a, b) => b.id - a.id)).toThrow(/another comparator/)
-    expect(() => Task.collection([], { compare: () => 0 }).fill(Task.create({}))).toThrow(/defined by compare/)
+    expect(() => ActiveCollection.create(Task, [], { compare: () => 0 }).fill(Task.create({}))).toThrow(/defined by compare/)
     expect(ids(tasks)).toEqual([1, 2])
   })
 
   it('sort() re-sorts by its own order; reverse() flips the direction and stays sorted', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }, { id: 3 }], { sortBy: 'id' })
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }, { id: 3 }], { sortBy: 'id' })
     tasks.reverse()
     expect(tasks.order).toBe('desc')
     expect(ids(tasks)).toEqual([3, 2, 1])
@@ -272,7 +276,7 @@ describe('ActiveCollection: sorted', () => {
   })
 
   it('moves an item when its sort key changes', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }, { id: 3 }], { sortBy: 'id' })
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }, { id: 3 }], { sortBy: 'id' })
     tasks[0].id = 10
     expect(ids(tasks)).toEqual([2, 3, 10])
     tasks[2].id = 0
@@ -283,13 +287,13 @@ describe('ActiveCollection: sorted', () => {
 
   it('keeps the order when the same instance sits in several slots', () => {
     const shared = Task.create({ id: 5 })
-    const tasks = Task.collection([{ id: 1 }, shared, { id: 9 }, shared], { sortBy: 'id' })
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, shared, { id: 9 }, shared], { sortBy: 'id' })
     shared.id = 0
     expect(ids(tasks)).toEqual([0, 0, 1, 9])
   })
 
   it('bisect, findByKey and range use binary search on the key', () => {
-    const tasks = Task.collection([10, 20, 20, 30, 40].map((id) => ({ id })), { sortBy: 'id' })
+    const tasks = ActiveCollection.create(Task, [10, 20, 20, 30, 40].map((id) => ({ id })), { sortBy: 'id' })
     expect(tasks.bisectLeft(20)).toBe(1)
     expect(tasks.bisectRight(20)).toBe(3)
     expect(tasks.bisectLeft(5)).toBe(0)
@@ -300,20 +304,20 @@ describe('ActiveCollection: sorted', () => {
     expect(tasks.range(20, 30).map((t) => t.id)).toEqual([20, 20, 30])
     expect(tasks.range(21, 29)).toEqual([])
 
-    const desc = Task.collection([10, 20, 30, 40].map((id) => ({ id })), { sortBy: 'id', order: 'desc' })
+    const desc = ActiveCollection.create(Task, [10, 20, 30, 40].map((id) => ({ id })), { sortBy: 'id', order: 'desc' })
     expect(desc.range(20, 30).map((t) => t.id)).toEqual([30, 20])
     expect(desc.findByKey(20)!.id).toBe(20)
   })
 
   it('bisect needs sortBy; an unsorted or compare-only collection refuses', () => {
-    expect(() => Task.collection().bisectLeft(1)).toThrow(/need a collection created with sortBy/)
-    expect(() => Task.collection([], { compare: () => 0 }).range(1, 2)).toThrow(TypeError)
+    expect(() => ActiveCollection.create(Task).bisectLeft(1)).toThrow(/need a collection created with sortBy/)
+    expect(() => ActiveCollection.create(Task, [], { compare: () => 0 }).range(1, 2)).toThrow(TypeError)
   })
 })
 
 describe('ActiveCollection: events', () => {
   it('emits itemsAdded / itemsRemoved / touched with the affected items', () => {
-    const tasks = Task.collection([{ id: 1 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }])
     const log: string[] = []
     tasks.on(EventType.itemsAdded, ({ items, index }) => log.push(`+${(items as Task[]).map((t) => t.id)}@${index}`))
     tasks.on(EventType.itemsRemoved, ({ items, index }) => log.push(`-${(items as Task[]).map((t) => t.id)}@${index}`))
@@ -330,7 +334,7 @@ describe('ActiveCollection: events', () => {
   })
 
   it('emits nothing for an empty push or a no-op removal', () => {
-    const tasks = Task.collection([{ id: 1 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }])
     let events = 0
     tasks.on(EventType.touched, () => { events++ })
     tasks.push()
@@ -340,7 +344,7 @@ describe('ActiveCollection: events', () => {
   })
 
   it('an item changing bubbles up as the collection touched, and unsubscribes when removed', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 2 }])
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }])
     let touched = 0
     tasks.on(EventType.touched, () => { touched++ })
     const [first] = tasks
@@ -353,7 +357,7 @@ describe('ActiveCollection: events', () => {
   })
 
   it('once() and the returned unsubscribe function work; static on() reaches every collection', () => {
-    const tasks = Task.collection()
+    const tasks = ActiveCollection.create(Task)
     let once = 0
     let off = 0
     tasks.once(EventType.itemsAdded, () => { once++ })
@@ -377,8 +381,8 @@ describe('ActiveCollection: events', () => {
 describe('ActiveCollection on a model', () => {
   class Board extends ActiveModel {
     @ActiveField() name: string = ''
-    @ActiveField({ collection: [Task, { sortBy: 'id' }] }) tasks!: ActiveCollection<Task>
-    @ActiveField({ collection: Task }) backlog!: ActiveCollection<Task>
+    @ActiveField({ container: ActiveCollection.field(Task, { sortBy: 'id' }) }) tasks!: ActiveCollection<Task>
+    @ActiveField({ container: ActiveCollection.field(Task) }) backlog!: ActiveCollection<Task>
   }
 
   it('turns an array into a collection, defaults to an empty one, and treats null as empty', () => {
@@ -397,10 +401,10 @@ describe('ActiveCollection on a model', () => {
 
   it('keeps a collection of the same model as is, and rebuilds a foreign one', () => {
     const board = Board.create({})
-    const ready = Task.collection([{ id: 1 }], { sortBy: 'id' })
+    const ready = ActiveCollection.create(Task, [{ id: 1 }], { sortBy: 'id' })
     board.tasks = ready
     expect(board.tasks).toBe(ready)
-    expect(() => { board.tasks = Other.collection([{ id: 1 }]) as any }).toThrow(TypeError)
+    expect(() => { board.tasks = ActiveCollection.create(Other, [{ id: 1 }]) as any }).toThrow(TypeError)
   })
 
   it('a change in the collection or in an item bubbles up as the board touched', () => {
@@ -450,26 +454,26 @@ describe('ActiveCollection on a model', () => {
   it('cannot combine factory and collection on one field', () => {
     expect(() => {
       class Bad extends ActiveModel {
-        @ActiveField({ factory: Task, collection: Task }) x?: unknown
+        @ActiveField({ factory: Task, container: ActiveCollection.field(Task) }) x?: unknown
       }
       return Bad
-    }).toThrow('use either factory or collection')
+    }).toThrow('use either factory or container')
   })
 
   it('an explicit default wins over the empty collection', () => {
-    const seeded = Task.collection([{ id: 1 }])
+    const seeded = ActiveCollection.create(Task, [{ id: 1 }])
     class Seeded extends ActiveModel {
-      @ActiveField({ collection: Task, value: () => seeded }) tasks!: ActiveCollection<Task>
+      @ActiveField({ container: ActiveCollection.field(Task), value: () => seeded }) tasks!: ActiveCollection<Task>
     }
     expect(Seeded.create({}).tasks).toBe(seeded)
   })
 
-  it('Model.createCollection() runs every item through create() with the factory options', () => {
+  it('ActiveCollection.createFromData(Model) runs every item through create() with the factory options', () => {
     const source = [{ id: 2, title: 't' }, null, { id: 1 }]
-    const tasks = Task.createCollection(source, { sortBy: 'id', tracked: true })
+    const tasks = ActiveCollection.createFromData(Task, source, { sortBy: 'id', tracked: true })
     expect(ids(tasks)).toEqual([1, 2])
     expect(tasks[1].isTouched()).toBe(false)
-    expect(Task.createCollection().length).toBe(0)
+    expect(ActiveCollection.createFromData(Task).length).toBe(0)
   })
 })
 
@@ -477,7 +481,7 @@ describe('ActiveCollection: bulk load', () => {
   it('a large batch into a sorted collection ends up sorted, stable, and merged with what was there', () => {
     const existing = Array.from({ length: 5 }, (_, i) => ({ id: i * 10, title: 'old' }))
     const batch = Array.from({ length: 100 }, (_, i) => ({ id: (i * 7) % 50, title: 'new' }))
-    const tasks = Task.collection(existing, { sortBy: 'id' })
+    const tasks = ActiveCollection.create(Task, existing, { sortBy: 'id' })
     tasks.push(...batch)
 
     const all = [...existing, ...batch]
@@ -489,7 +493,7 @@ describe('ActiveCollection: bulk load', () => {
   })
 
   it('reports the sorted position of the first batch item and emits once', () => {
-    const tasks = Task.collection([{ id: 1 }, { id: 100 }], { sortBy: 'id' })
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 100 }], { sortBy: 'id' })
     const events: Array<number | undefined> = []
     tasks.on(EventType.itemsAdded, ({ index }) => events.push(index))
     tasks.push(...Array.from({ length: 40 }, (_, i) => ({ id: 50 + i })))

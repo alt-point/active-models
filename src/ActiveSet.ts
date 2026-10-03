@@ -1,11 +1,12 @@
 import { ActiveModel } from './ActiveModel'
 import { useEmitter } from './emitter'
 import { registerCollection } from './collectionRegistry'
-import { attachItem, detachItem, isNilKey, keyFunction, normalizeItem } from './collectionCore'
+import { attachItem, detachItem, isNilKey, keyFunction, normalizeItem, wrapContainer } from './collectionCore'
 import { ValidationError } from './pipeline'
 import {
   EventType,
   type ActiveModelHookListener,
+  type ContainerSpec,
   type EventListener,
   type SetOptions,
 } from './types'
@@ -95,6 +96,30 @@ export class ActiveSet<T extends ActiveModel = ActiveModel> extends Set<T> {
     registerCollection(set)
     set.addAll(items as Iterable<RecursivePartialActiveModel<InstanceType<M>>>)
     return set
+  }
+
+  /**
+   * Describe a set field for `@ActiveField({ container })`: an assigned array or `Set` becomes an `ActiveSet`
+   * of `model`, the default is an empty one.
+   * @example
+   * @ActiveField({ container: ActiveSet.field(Tag, { unique: 'name' }) }) tags!: ActiveSet<Tag>
+   */
+  static field<M extends typeof ActiveModel> (
+    this: typeof ActiveSet,
+    model: M,
+    options: SetOptions<InstanceType<M>> = {}
+  ): ContainerSpec<ActiveSet<InstanceType<M>>> {
+    return {
+      model,
+      wrap: (value) => wrapContainer(
+        'set',
+        model,
+        value,
+        (candidate) => candidate instanceof this && (candidate as ActiveSet).model === model,
+        (items) => this.create(model, items, options),
+        'an array'
+      ),
+    }
   }
 
   /** Subscribe to an event on every set of this class. */

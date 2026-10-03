@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Enum } from '../src'
+import { Enum } from '../src/Enum'
 
 describe('Enum (deprecated)', () => {
   it('exposes the configured values and default', () => {

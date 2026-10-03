@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { ActiveModel, ActiveField, ActiveCollection, EventType } from '../../src'
+import { ActiveModel } from '../../src/ActiveModel'
+import { ActiveField } from '../../src/decorators'
+import { EventType } from '../../src/types'
+import { ActiveCollection } from '../../src/ActiveCollection'
 import { measure } from './fixtures'
 
 /** Budgets are ~7-10x the numbers measured on a laptop; loosen further with PERF_FACTOR (see budgets.perf.ts). */

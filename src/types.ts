@@ -156,6 +156,18 @@ export type SetOptions<T = any> = {
 }
 
 /**
+ * What `@ActiveField({ container })` needs from a container flavour. It is made by `ActiveCollection.field()`,
+ * `ActiveMap.field()` and `ActiveSet.field()`; the field knows only this shape, so a model never loads a container
+ * class you do not import.
+ */
+export type ContainerSpec<C = unknown> = {
+  /** The model whose instances the container holds */
+  readonly model: typeof ActiveModel
+  /** The container for whatever was assigned: an array/iterable, `null`/`undefined` (an empty one) or an existing one */
+  wrap(value: unknown): C
+}
+
+/**
  * Options of the `@ActiveField()` decorator.
  */
 export type ActiveFieldDescriptor<_T = unknown> = {
@@ -211,14 +223,11 @@ export type ActiveFieldDescriptor<_T = unknown> = {
   /** Wrap a nested object (or every array item) in this `ActiveModel`; `[Model, () => default]` adds a default. */
   factory?: FactoryConfig
   /**
-   * Store an array of `Model` instances as an `ActiveCollection` that accepts nothing else;
-   * `[Model, options]` also configures sorting. Defaults to an empty collection.
+   * Keep the value in a typed container that accepts nothing but one model: `ActiveCollection.field(Model, options)`,
+   * `ActiveMap.field(Model, { key })` or `ActiveSet.field(Model, options)`. An assigned array (or `Map`, object, `Set`)
+   * is converted; the default is an empty container.
    */
-  collection?: typeof ActiveModel | [Model: typeof ActiveModel, options?: CollectionOptions]
-  /** Store instances of `Model` in an `ActiveMap` keyed by `options.key`; accepts an array, a `Map` or an object of items. */
-  map?: [Model: typeof ActiveModel, options: MapOptions]
-  /** Store instances of `Model` in an `ActiveSet`; accepts an array or a `Set`. */
-  set?: typeof ActiveModel | [Model: typeof ActiveModel, options?: SetOptions]
+  container?: ContainerSpec
   /** Field-level hooks, shared by every instance of the class (and subclasses). */
   on?: Partial<Record<PropEvent, ActiveModelHookListener>>
   /** Like `on`, but each hook fires only once. */

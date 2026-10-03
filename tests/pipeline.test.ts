@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { ActiveModel, ActiveField, ActiveCollection, EventType, ValidationError } from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField } from '../src/decorators'
+import { EventType } from '../src/types'
+import { ActiveCollection } from '../src/ActiveCollection'
+import { ValidationError } from '../src/pipeline'
 
 const issuesOf = (fn: () => unknown) => {
   try {
@@ -248,7 +252,7 @@ describe('validate()', () => {
     @ActiveField({ min: 1 }) qty: number = 1
     @ActiveField({ validator: (_m, prop, v) => { if (v === 'bad') throw new Error(`${prop} is bad`) } }) note?: string
     @ActiveField({ factory: Address }) address?: Address
-    @ActiveField({ collection: Address }) history!: ActiveCollection<Address>
+    @ActiveField({ container: ActiveCollection.field(Address) }) history!: ActiveCollection<Address>
     @ActiveField({ factory: [Address, () => []] }) plain: Address[] = []
   }
 

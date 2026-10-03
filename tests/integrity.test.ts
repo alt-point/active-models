@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { ActiveModel, ActiveField, ActiveCollection, EventType, InvariantMethod, ValidationError } from '../src'
+import { ActiveModel } from '../src/ActiveModel'
+import { ActiveField, InvariantMethod } from '../src/decorators'
+import { EventType } from '../src/types'
+import { ActiveCollection } from '../src/ActiveCollection'
+import { ValidationError } from '../src/pipeline'
 
 class Trip extends ActiveModel {
   @ActiveField({ coerce: 'date' }) start?: Date
@@ -52,7 +56,7 @@ describe('invariants', () => {
   it('a nested model reports its invariant under the path of the field that holds it', () => {
     class Booking extends ActiveModel {
       @ActiveField({ factory: Trip }) trip?: Trip
-      @ActiveField({ collection: Trip }) legs!: ActiveCollection<Trip>
+      @ActiveField({ container: ActiveCollection.field(Trip) }) legs!: ActiveCollection<Trip>
     }
     const booking = Booking.create({ trip: { start: day(9), end: day(1) }, legs: [{}, { start: day(9), end: day(1) }] })
     expect(booking.validate().issues.map((i) => i.path)).toEqual(['trip', 'legs[1]'])
@@ -119,7 +123,7 @@ describe('transaction()', () => {
     class Leg extends ActiveModel { @ActiveField() city: string = '' }
     class Route extends ActiveModel {
       @ActiveField({ factory: Leg }) first?: Leg
-      @ActiveField({ collection: Leg }) rest!: ActiveCollection<Leg>
+      @ActiveField({ container: ActiveCollection.field(Leg) }) rest!: ActiveCollection<Leg>
       @ActiveField({ transitions: { open: ['closed'], closed: [] } }) state?: string
     }
     const route = Route.create({ first: { city: 'A' }, rest: [{ city: 'B' }], state: 'open' })
@@ -179,7 +183,7 @@ describe('changes() / revert() / reset()', () => {
     @ActiveField() name: string = 'n'
     @ActiveField({ hidden: true }) secret: string = 's'
     @ActiveField({ readonly: true }) id: string = ''
-    @ActiveField({ collection: Trip }) trips!: ActiveCollection<Trip>
+    @ActiveField({ container: ActiveCollection.field(Trip) }) trips!: ActiveCollection<Trip>
     @ActiveField({ factory: Trip }) main?: Trip
     @ActiveField({ min: 3 }) score: number = 5
   }
