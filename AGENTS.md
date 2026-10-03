@@ -137,6 +137,8 @@ user.once(...) / User.once(...)
 
 ## Migrating 4.x → 5.0
 
+Run `npx @alt-point/active-models migrate <dir>` (dry run; `--write` applies, `--check` for CI): it rewrites root imports into subpath imports
+in ts/tsx/js/jsx/mjs/cjs/vue files and the collection API as below; leftovers are printed as `MANUAL` with file:line.
 No root import (use subpaths); `collection`/`map`/`set` field options → `container: ActiveCollection.field(...)` / `ActiveMap.field(...)` /
 `ActiveSet.field(...)`; `Model.collection()` / `createCollection()` → `ActiveCollection.create()` / `createFromData()`. Details: `docs/en/migration-5.md`.
 

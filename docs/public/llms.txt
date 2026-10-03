@@ -19,4 +19,5 @@ Start with the agent guide: it lists the rules that prevent the most bugs (alway
 - [Imports and tree-shaking](https://alt-point.github.io/active-models/en/imports): subpath per capability, bundle sizes
 - [Known limitations](https://alt-point.github.io/active-models/en/limitations)
 - [Migrating to 4.0](https://alt-point.github.io/active-models/en/migration)
+- [Migrating to 5.0](https://alt-point.github.io/active-models/en/migration-5): subpath imports, container option; codemod `npx @alt-point/active-models migrate <dir>`
 - [Changelog](https://raw.githubusercontent.com/alt-point/active-models/master/CHANGELOG.md)

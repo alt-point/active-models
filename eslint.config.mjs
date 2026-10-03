@@ -25,6 +25,6 @@ export default tseslint.config(
       '@typescript-eslint/no-wrapper-object-types': 'off',
     },
   },
-  { files: ['scripts/**'], languageOptions: { globals: { console: 'readonly', process: 'readonly' } } },
+  { files: ['scripts/**', 'bin/**'], languageOptions: { globals: { console: 'readonly', process: 'readonly' } } },
   { files: ['tests/**'], rules: { '@typescript-eslint/no-unused-expressions': 'off' } },
 )

@@ -52,4 +52,10 @@ describe('package entry points', () => {
       expect(subpaths, internal).not.toContain(`./${internal}`)
     }
   })
+
+  it('ships the migration CLI as a bin', () => {
+    expect(manifest.bin).toEqual({ 'active-models': './bin/active-models.mjs' })
+    expect(existsSync(resolve(root, 'bin/active-models.mjs'))).toBe(true)
+    expect(manifest.files).toContain('bin')
+  })
 })

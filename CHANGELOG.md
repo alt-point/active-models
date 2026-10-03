@@ -43,6 +43,7 @@ Why: `ActiveModel` and `@ActiveField` used to import the collection classes, so 
 Зачем: `ActiveModel` и `@ActiveField` импортировали классы коллекций, и они попадали в каждый бандл. Теперь они подключаются явно.
 
 ### Added
+- `npx @alt-point/active-models migrate <dir>` - a codemod for 4.x -> 5.0 (`bin/`, no dependencies): rewrites root imports into subpath imports and the collection API in `.ts` / `.tsx` / `.js` / `.jsx` / `.mjs` / `.cjs` / `.vue` files; dry run by default, `--write` applies, `--check` for CI; prints what it cannot rewrite with file and line.
 - Tree-shakable packaging: one entry point and `exports` subpath per capability, `typesVersions` for legacy resolution, `sideEffects: false`. The bundle of `ActiveModel` shrinks from 15.7 KB to 8.2 KB gzipped; `ActiveCollection` / `ActiveMap` / `ActiveSet` and the scalars are included only when imported. Guards: `tests/treeshake.test.ts`, `tests/package-entries.test.ts`, `bun run test:dist` (the built package loads by subpath in ESM and CJS and shares one copy of every class).
 - `ActiveCollection.field()`, `ActiveMap.field()`, `ActiveSet.field()` and the `container` field option; `ActiveCollection.createFromData()`.
 - Zero runtime dependencies: `lodash-es` is replaced by a vendored deep clone (`src/clone.ts`, checked against lodash in the tests).

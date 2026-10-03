@@ -1,7 +1,44 @@
 # Migrating from 4.x to 5.0
 
 Version 5.0 splits the package into one entry point per capability and makes the typed containers opt-in, so a
-bundle contains only what it imports. There are four breaking changes.
+bundle contains only what it imports. There are four breaking changes, and a script does most of the edits: see [Automatic migration](#automatic-migration).
+
+## Automatic migration
+
+The package ships a script that walks a directory recursively and rewrites the code for 5.0 in `.ts`, `.tsx`, `.mts`,
+`.cts`, `.js`, `.jsx`, `.mjs`, `.cjs` and `.vue` files (only the `<script>` blocks):
+
+```bash
+npx @alt-point/active-models migrate ./src           # show what would change (writes nothing)
+npx @alt-point/active-models migrate ./src --write   # apply
+```
+
+What it does:
+
+- replaces imports from the package root with subpath imports (`import`, `import type`, `export ... from`,
+  `const { ... } = require(...)`), keeping aliases (`A as B`), `type` modifiers, quotes, semicolons, indentation and line endings;
+- rewrites the `collection` / `map` / `set` options of `@ActiveField({ ... })` into `container: ActiveCollection.field(...)`
+  (`ActiveMap.field`, `ActiveSet.field`) and adds the imports it needs;
+- rewrites `Model.collection(...)` and `Model.createCollection(...)` into `ActiveCollection.create(Model, ...)` and
+  `ActiveCollection.createFromData(Model, ...)`;
+- leaves strings, comments and regular expressions alone, and skips `node_modules`, `dist`, `build`, `.git`, `.nuxt`, `.output`;
+- is idempotent: running it again changes nothing.
+
+What it leaves to you: `import * as X from '@alt-point/active-models'`, dynamic `import()`, `jest.mock(...)`, a shorthand
+`@ActiveField({ collection })` or one with a computed value, `ns.Task.collection()`. Each such place is printed with its file
+and line (`MANUAL`).
+
+| Flag | Effect |
+|---|---|
+| `--write` | apply the changes (without it, only show them) |
+| `--check` | exit code 1 when something would change or needs manual work (for CI) |
+| `--imports-only` | fix imports only; leave `Model.collection()` and the `collection` / `map` / `set` options |
+| `--ext ts,vue` | which extensions to scan |
+| `--ignore a,b` | which directories to skip instead of the default list |
+
+Commit your work before `--write` so the result is easy to review with `git diff`. The script edits only files that import the
+package directly; a file of your own that re-exports `@alt-point/active-models` is processed like any other, and its
+consumers stay as they are.
 
 ## 1. No root import: one subpath per capability
 

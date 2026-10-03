@@ -3,6 +3,9 @@
   "version": "4.0.0",
   "description": "Reactive DTO models with Proxy and more useful classes, decorators, Black-jack and hookers",
   "sideEffects": false,
+  "bin": {
+    "active-models": "./bin/active-models.mjs"
+  },
   "keywords": [
     "DTO",
     "active record",
@@ -15,6 +18,7 @@
   ],
   "files": [
     "dist",
+    "bin",
     "src",
     "AGENTS.md",
     "CHANGELOG.md"

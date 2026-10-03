@@ -15,7 +15,7 @@ into other shapes.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
 [![docs](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/deploy-docs.yml?branch=master&label=docs&logo=vitepress&logoColor=white)](https://alt-point.github.io/active-models/en/)
-[![tests](https://img.shields.io/badge/tests-487%20passing-brightgreen)](docs/en/testing.md)
+[![tests](https://img.shields.io/badge/tests-516%20passing-brightgreen)](docs/en/testing.md)
 [![coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](docs/en/testing.md)
 [![mutation score](https://img.shields.io/badge/mutation%20score-94%25-brightgreen?logo=stryker&logoColor=white)](docs/en/testing.md#mutation-testing)
 [![semver](https://img.shields.io/badge/semver-2.0.0-blue)](CHANGELOG.md)
@@ -184,7 +184,7 @@ Before working with models, read node_modules/@alt-point/active-models/AGENTS.md
 
 ## Quality
 
-**487** unit tests · **99 %** coverage · **94 %** mutation score (Stryker, gate at 90 %) · performance budgets
+**516** unit tests · **99 %** coverage · **94 %** mutation score (Stryker, gate at 90 %) · performance budgets
 and memory-leak checks · ESLint · strict [SemVer](CHANGELOG.md#versioning-policy).
 
 ```bash
