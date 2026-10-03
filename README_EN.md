@@ -52,10 +52,14 @@ bun add @alt-point/active-models      # or: npm i / yarn add / pnpm add
 ```
 
 > Requires `"experimentalDecorators": true` in `tsconfig.json` (legacy TypeScript decorators).
+> There is no root import: every capability is its own subpath (`/ActiveModel`, `/decorators`, `/scalars/Money`, ...) and
+> only what you import is bundled. The list: [Imports and tree-shaking](docs/en/imports.md).
 > Native TC39 decorators support is planned.
 
 ```ts
-import { ActiveModel, ActiveField, EventType } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { EventType } from '@alt-point/active-models/types'
 
 class Address extends ActiveModel {
   @ActiveField() city: string = ''
@@ -120,7 +124,7 @@ User.on(EventType.created, ({ target }) => audit('user created', (target as User
 <summary><b>Mapping and utilities</b></summary>
 
 - `Decimal` / `Money` / `LocalDate` + `coerce: Money` — exact money, decimals and timezone-free dates;
-- `ActiveCollection` / `Model.collection()` / `@ActiveField({ collection })` — an array that holds nothing but the model; sorting and binary search;
+- `ActiveCollection` / `ActiveMap` / `ActiveSet` / `@ActiveField({ container })` — an array that holds nothing but the model; sorting and binary search;
 - `Model.mapTo(Target, handler)` / `model.mapTo(Target)` — several projections of one model;
 - `CallableModel` — objects you can call like functions (no `unsafe-eval`, CSP-safe).
 </details>
@@ -131,7 +135,7 @@ User.on(EventType.created, ({ target }) => audit('user created', (target as User
 plugins; built without `extends Function`, so it works under a strict CSP):
 
 ```ts
-import { CallableModel } from '@alt-point/active-models'
+import { CallableModel } from '@alt-point/active-models/CallableModel'
 
 class Notify extends CallableModel {
   __call (message: string) { return this.success(message) }
@@ -159,6 +163,7 @@ class Notify extends CallableModel {
 | [Validation and normalization](docs/en/validation.md) | rules, `validate()`, `coerce`, `trim`, state transitions, strict mode |
 | [Scalars](docs/en/scalars.md) | `Decimal`, `Money` (with `allocate()`), `LocalDate`, custom value classes |
 | [Comparison with native code](docs/en/comparison.md) | eight tasks: the ActiveModel solution and the same by hand, in tabs |
+| [Imports and tree-shaking](docs/en/imports.md) | a subpath per capability, no root import, bundle sizes |
 | [ActiveCollection / Map / Set](docs/en/collections.md) | containers of the declared model only: sorting, binary search, unique keys |
 | [Node.js example](docs/en/node-example.md) | a server on plain `node:http` |
 | [Known limitations](docs/en/limitations.md) | what doesn't work as you'd expect — and what to do |

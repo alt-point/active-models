@@ -19,6 +19,7 @@ type ActiveFieldDescriptor = {
   attribute?: any
   value?: any
   factory?: typeof ActiveModel | [typeof ActiveModel, () => any]
+  container?: ContainerSpec   // ActiveCollection.field(...) | ActiveMap.field(...) | ActiveSet.field(...)
   on?: Partial<Record<PropEvent, ActiveModelHookListener>>
   once?: Partial<Record<PropEvent, ActiveModelHookListener>>
 }
@@ -354,6 +355,32 @@ Order.create({}).items // [] — свежий массив на каждый и�
 
 `factory` реализован через автоматически сгенерированный `setter` — свой `setter` в опциях декоратора
 при заданном `factory` **игнорируется**.
+
+---
+
+## `container`
+
+Хранит значение в типизированном контейнере, который принимает только одну модель. Описывается через `.field()` самого
+контейнера: `ActiveCollection.field(Model, options)`, `ActiveMap.field(Model, { key })` или
+`ActiveSet.field(Model, options)`.
+
+```ts
+import { ActiveCollection } from '@alt-point/active-models/ActiveCollection'
+
+class Board extends ActiveModel {
+  @ActiveField({ container: ActiveCollection.field(Task, { sortBy: 'id' }) }) tasks!: ActiveCollection<Task>
+}
+
+const board = Board.create({ tasks: [{ id: 2 }, { id: 1 }] })
+board.tasks.map((t) => t.id) // [1, 2] — массив стал отсортированной ActiveCollection
+Board.create({}).tasks.length // 0 — пустой контейнер на каждый инстанс
+```
+
+Присвоенный массив (или `Map`, объект, `Set` — в зависимости от контейнера) конвертируется; `null` / `undefined` даёт
+пустой контейнер; тот же контейнер той же модели остаётся как есть. Опцию нельзя совмещать с `factory`
+(`use either factory or container`); как и `factory`, она заменяет `setter`. Поле видит только описание, поэтому
+`ActiveModel` и `@ActiveField` никогда не загружают класс контейнера, который вы не импортировали — см.
+[Импорты и tree-shaking](/imports). Подробности: [ActiveCollection, ActiveMap, ActiveSet](/collections).
 
 ---
 

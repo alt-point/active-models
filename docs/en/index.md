@@ -56,7 +56,8 @@ declaratively describes each field's behavior — no wrapper classes or manual `
 needed:
 
 ```ts
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 
 class Product extends ActiveModel {
   @ActiveField() name: string = ''
@@ -151,7 +152,7 @@ instance-level events available through `model.on`/`model.once` — or class-lev
 once, through `Model.on`/`Model.once`:
 
 ```ts
-import { EventType } from '@alt-point/active-models'
+import { EventType } from '@alt-point/active-models/types'
 
 class Invoice extends ActiveModel {
   @ActiveField({
@@ -215,6 +216,7 @@ bun add @alt-point/active-models
 - [Scalars: Decimal, Money, LocalDate](/en/scalars) — exact money, decimals and timezone-free dates
 - [Comparison with native code](/en/comparison) — eight tasks: the ActiveModel solution and the same by hand
 - [ActiveCollection](/en/collections) — an array that holds nothing but the declared model; sorting and binary search
+- [Imports and tree-shaking](/en/imports) — a subpath per capability, no root import, bundle sizes
 - [Known limitations](/en/limitations), [Migrating to 4.0](/en/migration), [For AI agents](/en/agents), [API reference](/en/api/)
 
 Русская версия: [/](/)

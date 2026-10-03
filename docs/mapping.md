@@ -16,7 +16,8 @@ CRM; внутренний `Order` не должен светить наружу 
 ## Базовое использование
 
 ```ts
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 
 class Order extends ActiveModel {
   @ActiveField() id: string = ''

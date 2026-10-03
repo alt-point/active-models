@@ -26,7 +26,8 @@
 
 ```typescript
 
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 import { Good } from './models'
 
 enum OrderStatuses { 

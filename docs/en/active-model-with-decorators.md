@@ -34,7 +34,9 @@ Overall, this sums up to 8 places inside our project where we use the same data 
 This can be easily solved by using `ActiveModel`:
 
 ```ts
-import { ActiveModel, Enum, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { Enum } from '@alt-point/active-models/Enum'
 import { Item } from './models'
 
 // We need to have control of Order status, thus we define an enum

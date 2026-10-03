@@ -12,7 +12,8 @@ HTTP API на чистом `node:http`, без Express и без каких-ли
 ```ts
 // models/Task.ts
 import { randomUUID } from 'node:crypto'
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 
 export class Task extends ActiveModel {
   // readonly один сам по себе разрешает установить значение ОДИН РАЗ из data

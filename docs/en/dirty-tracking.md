@@ -17,7 +17,8 @@ A snapshot of the "initial state" is saved at creation time when you pass `track
 only entry point — the snapshot can't be set or reset after the fact, only at creation:
 
 ```ts
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 
 class UserForm extends ActiveModel {
   @ActiveField() name: string = ''
@@ -164,8 +165,8 @@ keys). `shallowRef` is only reactive to a full `.value` replacement and leaves w
 ```ts
 // useDirty.ts
 import { watch, ref, type ShallowRef } from 'vue'
-import type { ActiveModel } from '@alt-point/active-models'
-import { EventType } from '@alt-point/active-models'
+import { type ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { EventType } from '@alt-point/active-models/types'
 
 export function useDirty (model: ShallowRef<ActiveModel>) {
   const dirty = ref(model.value.isTouched() ?? false)
@@ -217,8 +218,8 @@ tearing between renders and without a manual `useEffect` + `useState` combo:
 ```tsx
 // useDirty.ts
 import { useCallback, useSyncExternalStore } from 'react'
-import type { ActiveModel } from '@alt-point/active-models'
-import { EventType } from '@alt-point/active-models'
+import { type ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { EventType } from '@alt-point/active-models/types'
 
 export function useDirty (model: ActiveModel) {
   const subscribe = useCallback(

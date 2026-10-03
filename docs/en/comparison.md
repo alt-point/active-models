@@ -11,7 +11,9 @@ Requirement: a price in USD, addition, 7.5% tax, a split into three payments wit
 ::: code-group
 
 ```ts [ActiveModel]
-import { ActiveModel, ActiveField, Money } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { Money } from '@alt-point/active-models/scalars/Money'
 
 class Order extends ActiveModel {
   @ActiveField({ coerce: Money, min: Money.of(0, 'USD') })
@@ -75,7 +77,9 @@ Requirement: e-mail lowercased and trimmed, age arrives as a string, errors are 
 ::: code-group
 
 ```ts [ActiveModel]
-import { ActiveModel, ActiveField, ValidationError } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { ValidationError } from '@alt-point/active-models/pipeline'
 
 class Signup extends ActiveModel {
   @ActiveField({ trim: true, lowercase: true, required: true, pattern: /^[^@\s]+@[^@\s]+$/ })
@@ -295,7 +299,7 @@ trip = updateTrip(trip, (d) => {
 ::: code-group
 
 ```ts [ActiveModel]
-const tasks = Task.collection([{ id: 3 }, { id: 1 }], { sortBy: 'id', unique: 'id' })
+const tasks = ActiveCollection.create(Task, [{ id: 3 }, { id: 1 }], { sortBy: 'id', unique: 'id' })
 tasks.push({ id: 2 })          // [1, 2, 3], inserted in place
 tasks.push({ id: 2 })          // ValidationError (unique)
 tasks[0].id = 10               // the item moved: [2, 3, 10]
@@ -392,7 +396,7 @@ function moveTo (next: string) {
 ::: code-group
 
 ```ts [ActiveModel]
-import { EventType } from '@alt-point/active-models'
+import { EventType } from '@alt-point/active-models/types'
 
 User.on(EventType.afterSetValue, ({ prop, value, oldValue }) => audit(prop, oldValue, value))   // all instances of the class
 const user = User.create({ name: 'Ann' })

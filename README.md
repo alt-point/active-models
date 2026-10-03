@@ -52,10 +52,14 @@ bun add @alt-point/active-models      # или: npm i / yarn add / pnpm add
 ```
 
 > Нужен `"experimentalDecorators": true` в `tsconfig.json` (декораторы TypeScript «legacy»).
+> Корневого импорта нет: каждая возможность — свой подпуть (`/ActiveModel`, `/decorators`, `/scalars/Money`, ...), в бандл
+> попадает только импортированное. Список — [Импорты и tree-shaking](docs/imports.md).
 > Поддержка нативных TC39-декораторов запланирована.
 
 ```ts
-import { ActiveModel, ActiveField, EventType } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { EventType } from '@alt-point/active-models/types'
 
 class Address extends ActiveModel {
   @ActiveField() city: string = ''
@@ -136,7 +140,7 @@ User.on(EventType.created, ({ target }) => audit('user created', (target as User
 <summary><b>Маппинг и утилиты</b></summary>
 
 - `Decimal` / `Money` / `LocalDate` + `coerce: Money` — точные деньги, десятичные числа и даты без часового пояса;
-- `ActiveCollection` / `Model.collection()` / `@ActiveField({ collection })` — массив, в который нельзя положить ничего, кроме модели; сортировка и бинарный поиск;
+- `ActiveCollection` / `ActiveMap` / `ActiveSet` / `@ActiveField({ container })` — массив, в который нельзя положить ничего, кроме модели; сортировка и бинарный поиск;
 - `Model.mapTo(Target, handler)` / `model.mapTo(Target)` — несколько проекций одной модели;
 - `CallableModel` — объекты, которые можно вызывать как функции (без `unsafe-eval`, CSP-безопасно).
 </details>
@@ -147,7 +151,7 @@ User.on(EventType.created, ({ target }) => audit('user created', (target as User
 Nuxt.js/Vue.js; реализован без `extends Function`, поэтому работает под строгим CSP):
 
 ```ts
-import { CallableModel } from '@alt-point/active-models'
+import { CallableModel } from '@alt-point/active-models/CallableModel'
 
 class Notify extends CallableModel {
   __call (message: string) { 
@@ -182,6 +186,7 @@ class Notify extends CallableModel {
 | [Валидация и нормализация](docs/validation.md) | правила, `validate()`, `coerce`, `trim`, переходы состояний, строгий режим |
 | [Скаляры](docs/scalars.md) | `Decimal`, `Money` (с `allocate()`), `LocalDate`, свои value-классы |
 | [Сравнение с нативным кодом](docs/comparison.md) | восемь задач: решение на ActiveModel и то же вручную, во вкладках |
+| [Импорты и tree-shaking](docs/imports.md) | подпуть на каждую возможность, без корневого импорта, размеры бандлов |
 | [ActiveCollection / Map / Set](docs/collections.md) | контейнеры только из объявленной модели: сортировка, бинарный поиск, уникальные ключи |
 | [Пример для Node.js](docs/node-example.md) | сервер на чистом `node:http` |
 | [Известные ограничения](docs/limitations.md) | что работает не так, как ожидаешь — и что делать |

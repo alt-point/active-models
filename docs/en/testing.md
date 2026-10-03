@@ -7,6 +7,7 @@
 | `bun run test:perf` | performance budgets, scaling and memory checks |
 | `bun run bench` | benchmarks (`vitest bench`) for tracking numbers over time |
 | `bun run test:mutation` | mutation testing with Stryker |
+| `bun run test:dist` | smoke test of the built package (after `bun run build`): subpaths in ESM and CommonJS, one copy of every class |
 | `bun run lint` / `typecheck` | ESLint (+ `@stylistic`) / `tsc --noEmit` |
 
 ## Why tests use a custom transform
@@ -50,3 +51,13 @@ bun run test:mutation        # HTML report: reports/mutation/index.html
 The score is gated (`break: 90`) in `stryker.config.mjs`, and `scripts/mutation-gate.mjs` also enforces a per-file minimum (overall score is currently ≈ 94%); runs are incremental
 (`reports/stryker-incremental.json`), so only changed code is re-mutated. In CI it runs weekly and on demand
 (`quality.yml`), not on every PR - it takes minutes.
+
+## Packaging and tree-shaking
+
+- `tests/treeshake.test.ts` bundles every entry point (esbuild, minified) and checks that no unwanted module (containers,
+  scalars, the model) ends up in the bundle and that the size stays within its budget.
+- `tests/package-entries.test.ts` keeps `tsup.config.ts`, `exports` and `typesVersions` in agreement: there is no root
+  entry and no `src/index.ts`, internals are not exported, there are no runtime dependencies.
+- `bun run test:dist` loads the built package by subpath in ESM and CommonJS and checks that `instanceof`, events and
+  registries work across entry points. CI and publishing run it after `bun run build`.
+- `tests/clone.test.ts` checks the library's own deep clone against lodash on a set of structures.

@@ -11,25 +11,27 @@ other model.
 ## Creating one
 
 ```ts
-import { ActiveModel, ActiveField, ActiveCollection } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { ActiveCollection } from '@alt-point/active-models/ActiveCollection'
 
 class Task extends ActiveModel {
   @ActiveField() id: number = 0
   @ActiveField() title: string = ''
 }
 
-const a = Task.collection([{ id: 2 }, { id: 1 }])                        // from a model
-const b = ActiveCollection.create(Task, [{ id: 2 }], { sortBy: 'id' })   // explicit
-const c = Task.createCollection(apiRows, { sortBy: 'id', tracked: true }) // each item goes through create()
+const a = ActiveCollection.create(Task, [{ id: 2 }, { id: 1 }])                        // items as they are
+const b = ActiveCollection.create(Task, [{ id: 2 }], { sortBy: 'id' })                // sorted
+const c = ActiveCollection.createFromData(Task, apiRows, { sortBy: 'id', tracked: true }) // each item goes through create()
 ```
 
-`Model.collection(items, options)` wraps items as they are; `Model.createCollection(data, options)` first runs
+`ActiveCollection.create(Model, items, options)` wraps items as they are; `ActiveCollection.createFromData(Model, data, options)` first runs
 each item through `create()` (so `sanitize`, `lazy` and `tracked` apply, `null` items are skipped).
 
 ## The rule: nothing but the declared model
 
 ```ts
-const tasks = Task.collection()
+const tasks = ActiveCollection.create(Task)
 tasks.push({ id: 1 })          // OK: a plain object becomes a Task
 tasks.push(Task.create({}))    // OK
 tasks.push(5)                  // TypeError: ActiveCollection<Task> accepts only Task instances or plain objects, got number
@@ -49,7 +51,7 @@ tasks[0] = 'x'                 // TypeError - index assignment is guarded too
 ## Sorted collections
 
 ```ts
-const tasks = Task.collection([{ id: 3 }, { id: 1 }], { sortBy: 'id' })
+const tasks = ActiveCollection.create(Task, [{ id: 3 }, { id: 1 }], { sortBy: 'id' })
 tasks.push({ id: 2 })          // inserted at its place: [1, 2, 3]
 tasks.unshift({ id: 0 })       // "at the start" is meaningless here: [0, 1, 2, 3]
 tasks[1].id = 10               // the item moves: [0, 2, 3, 10]
@@ -93,8 +95,8 @@ first affected item.
 ```ts
 class Board extends ActiveModel {
   @ActiveField() name: string = ''
-  @ActiveField({ collection: [Task, { sortBy: 'id' }] }) tasks!: ActiveCollection<Task>
-  @ActiveField({ collection: Task }) backlog!: ActiveCollection<Task>
+  @ActiveField({ container: ActiveCollection.field(Task, { sortBy: 'id' }) }) tasks!: ActiveCollection<Task>
+  @ActiveField({ container: ActiveCollection.field(Task) }) backlog!: ActiveCollection<Task>
 }
 
 const board = Board.create({ tasks: [{ id: 2 }, { id: 1 }] })  // becomes a sorted collection
@@ -104,7 +106,7 @@ board.tasks.push({ id: 3 })                                    // bubbles up as 
 
 Assigning an array converts it; `null`/`undefined` gives an empty collection; a collection of the same model is
 kept as is; anything else throws. `toJSON()` / `JSON.stringify` give plain arrays, `clone()` clones every item, and
-`isTouched()` sees changes to the collection. `collection` can't be combined with `factory` on one field.
+`isTouched()` sees changes to the collection. The `container` option can't be combined with `factory` on one field.
 
 ## Methods
 
@@ -116,7 +118,7 @@ collections of the same kind**; `map`, `flatMap` return plain arrays. Reads (`[i
 ## Unique keys
 
 ```ts
-const users = User.collection(rows, { unique: 'email' })      // or unique: (u) => u.email.toLowerCase()
+const users = ActiveCollection.create(User, rows, { unique: 'email' })      // or unique: (u) => u.email.toLowerCase()
 users.push({ id: 9, email: 'a@x.io' })    // ValidationError code 'unique': Duplicate key "a@x.io" in ActiveCollection<User>
 users.getByKey('a@x.io')                  // O(1) lookup
 users.hasKey('b@x.io')
@@ -157,13 +159,13 @@ members.getByKey('a@x.io'); members.hasKey('b@x.io')
 
 ```ts
 class Team extends ActiveModel {
-  @ActiveField({ map: [User, { key: 'id' }] }) byId!: ActiveMap<User>
-  @ActiveField({ set: [User, { unique: 'email' }] }) members!: ActiveSet<User>
-  @ActiveField({ collection: [User, { unique: 'email' }] }) list!: ActiveCollection<User>
+  @ActiveField({ container: ActiveMap.field(User, { key: 'id' }) }) byId!: ActiveMap<User>
+  @ActiveField({ container: ActiveSet.field(User, { unique: 'email' }) }) members!: ActiveSet<User>
+  @ActiveField({ container: ActiveCollection.field(User, { unique: 'email' }) }) list!: ActiveCollection<User>
 }
 ```
 
-`map` accepts an array, a `Map` or an object of items; `set` accepts an array or a `Set`; both default to empty. Like the
+`ActiveMap.field()` accepts an array, a `Map` or an object of items; `ActiveSet.field()` accepts an array or a `Set`; both default to empty. Like the
 collection they bubble every change up as the model's `touched`, serialize to plain data, clone deeply and are covered by
 `isTouched()`, `changes()` and `revert()`. One container option per field.
 

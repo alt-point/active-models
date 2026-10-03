@@ -8,7 +8,8 @@ the difference between the ways to create a model, serialization, and mapping to
 ## Validators
 
 ```ts
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 
 class Product extends ActiveModel {
   @ActiveField({
@@ -77,7 +78,9 @@ through `on`/`once`, available in three independent variants:
    (see [Model lifecycle](/en/model-lifecycle)).
 
 ```ts
-import { ActiveModel, ActiveField, EventType } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { EventType } from '@alt-point/active-models/types'
 
 class Order extends ActiveModel {
   @ActiveField({
@@ -366,7 +369,8 @@ Lets you define a conversion rule from a model to another structure (a backend D
 once, and reuse it on any instance.
 
 ```ts
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 
 class Order extends ActiveModel {
   @ActiveField() id: string = ''

@@ -34,6 +34,8 @@ Removed or changed API (your code stops compiling or throws):
 | `createFromCollection*` skipped any falsy item (`0`, `''`, `false`) | skips only `null` / `undefined` |
 | `createFromCollection*` returned `T[]` | returns `InstanceType<T>[]` (stricter typing) |
 | `fast-deep-equal` was a dependency | removed; equality is a vendored copy that compares `Set` members by content |
+| `import { ActiveModel, ActiveField, EventType, ... } from '@alt-point/active-models'` | **no root entry**: import from subpaths - `/ActiveModel`, `/decorators`, `/types`, `/pipeline`, `/CallableModel`, `/Enum`, `/utils`, `/ActiveCollection`, `/ActiveMap`, `/ActiveSet`, `/scalars/*` (see [Imports](docs/en/imports.md)) |
+| `lodash-es` was a dependency | removed; the package has no runtime dependencies |
 
 Behavior that changed silently (review it if you rely on the old behavior):
 
@@ -61,6 +63,8 @@ Behavior that changed silently (review it if you rely on the old behavior):
 | `createFromCollection*` пропускал любые «ложные» элементы (`0`, `''`, `false`) | пропускает только `null` / `undefined` |
 | `createFromCollection*` возвращал `T[]` | возвращает `InstanceType<T>[]` (более строгая типизация) |
 | `fast-deep-equal` был зависимостью | удалён; сравнение — встроенная копия, которая сравнивает элементы `Set` по содержимому |
+| `import { ActiveModel, ActiveField, EventType, ... } from '@alt-point/active-models'` | **корневого входа нет**: импорт из подпутей — `/ActiveModel`, `/decorators`, `/types`, `/pipeline`, `/CallableModel`, `/Enum`, `/utils`, `/ActiveCollection`, `/ActiveMap`, `/ActiveSet`, `/scalars/*` (см. [Импорты](docs/imports.md)) |
+| `lodash-es` был зависимостью | удалён; в пакете нет зависимостей в рантайме |
 
 Поведение, изменившееся без ошибок компиляции (проверьте, если опирались на старое):
 
@@ -77,9 +81,10 @@ Behavior that changed silently (review it if you rely on the old behavior):
 - В npm-пакет входят `dist`, `src`, `AGENTS.md`, `CHANGELOG.md`; `LICENSE.txt` заполнен (MIT).
 
 ### Added
+- Tree-shakable packaging: one entry point and `exports` subpath per capability, `typesVersions` for legacy resolution, `sideEffects: false`. `ActiveModel` (8 KB gzipped, was 15.7 KB) and `@ActiveField` no longer load `ActiveCollection` / `ActiveMap` / `ActiveSet`; the containers are described with `ActiveCollection.field()`, `ActiveMap.field()`, `ActiveSet.field()` and the `container` field option, created with `ActiveCollection.create()` / `ActiveCollection.createFromData()`. Guards: `tests/treeshake.test.ts`, `tests/package-entries.test.ts`, `bun run test:dist`.
 - Zero runtime dependencies: `lodash-es` is replaced by a vendored deep clone (`src/clone.ts`, verified against lodash in the tests); the bundle of `ActiveModel` shrinks by 14 KB.
 - Value objects `Decimal` (BigInt-based, explicit rounding), `Money` (currency-aware, `allocate()`), `LocalDate` (no time zone), `markImmutable()`. `coerce` / `type` accept a class with a static `from()`, `min` / `max` accept values with `compareTo()`.
-- `ActiveMap` (a `Map` keyed by a field of its items) and `ActiveSet` (with an optional unique key), plus the `map` / `set` field options; `unique` option and `getByKey()` / `hasKey()` for `ActiveCollection`.
+- `ActiveMap` (a `Map` keyed by a field of its items) and `ActiveSet` (with an optional unique key), plus `ActiveMap.field()` / `ActiveSet.field()` for the `container` field option; `unique` option and `getByKey()` / `hasKey()` for `ActiveCollection`.
 - Declarative field rules - `required`, `type`, `min`, `max`, `minLength`, `maxLength`, `pattern`, `oneOf` - with `model.validate()` (reports **all** problems, recurses into nested models and collections), `model.assertValid()`, `create(data, { validate: true })` and a `ValidationError` carrying `issues`.
 - Normalizers (`trim`, `lowercase`, `uppercase`, `transform`) and type coercion (`coerce: 'number' | 'integer' | 'boolean' | 'date' | 'string'`).
 - State machines: `transitions` on a field, `model.canTransition()`, `model.allowedTransitions()`.
@@ -87,7 +92,7 @@ Behavior that changed silently (review it if you rely on the old behavior):
 - Model-level invariants (`@InvariantMethod`, `Model.defineInvariant`), checked by `validate()`; `model.transaction(fn)` (all-or-nothing, async supported) and `fill(data, { atomic: true })`.
 - `model.changes()`, `dirtyFields()`, `isDirty()`, `revert(prop?)`, `reset()` - per-field diff and restore for models created with `tracked: true`.
 - `create(data, { history: true })` with `undo()`, `redo()`, `canUndo()`, `canRedo()`, `clearHistory()`.
-- `ActiveCollection` - an array that accepts only instances of one model, optionally kept sorted (`sortBy` / `compare` / `order`), with binary search (`bisectLeft`, `bisectRight`, `findByKey`, `range`), `itemsAdded` / `itemsRemoved` / `touched` events that bubble into a parent model. Created via `Model.collection()`, `Model.createCollection()`, `ActiveCollection.create()` or the `collection` field option.
+- `ActiveCollection` - an array that accepts only instances of one model, optionally kept sorted (`sortBy` / `compare` / `order`), with binary search (`bisectLeft`, `bisectRight`, `findByKey`, `range`), `itemsAdded` / `itemsRemoved` / `touched` events that bubble into a parent model. Created via `ActiveCollection.create()`, `ActiveCollection.createFromData()` or the `container` field option.
 - `model.getRaw()` - the deep-frozen source data of a model created with `tracked: true` (`undefined` otherwise).
 - `Model.on()` / `Model.once()` - class-level subscriptions for every instance, subclasses included.
 - `created` / `touched` events carry `{ target }`; typed `EventPayloads` / `EventListener`.

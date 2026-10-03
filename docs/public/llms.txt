@@ -2,7 +2,7 @@
 
 > Reactive, self-validating DTO models built on Proxy and legacy TypeScript decorators (ActiveModel + @ActiveField). Fields support validators, setters/getters, readonly/hidden/protected/fillable, nested factories, events, dirty tracking and mapping.
 
-Start with the agent guide: it lists the rules that prevent the most bugs (always `Model.create()`, never `new Model()`).
+Start with the agent guide: it lists the rules that prevent the most bugs (always `Model.create()`, never `new Model()`). There is no root import: every capability comes from its own subpath, e.g. `@alt-point/active-models/ActiveModel`, `/decorators`, `/types`, `/scalars/Money`.
 
 - [Agent guide (AGENTS.md)](https://raw.githubusercontent.com/alt-point/active-models/master/AGENTS.md): API cheat sheet, rules, events, migration
 - [Decorators example](https://alt-point.github.io/active-models/en/active-model-with-decorators): basic workflow
@@ -16,6 +16,7 @@ Start with the agent guide: it lists the rules that prevent the most bugs (alway
 - [Validation](https://alt-point.github.io/active-models/en/validation): rules, coercion, normalizers, validate(), transitions, strict mode
 - [Scalars](https://alt-point.github.io/active-models/en/scalars): Decimal, Money, LocalDate, custom value classes
 - [Comparison with native code](https://alt-point.github.io/active-models/en/comparison): eight tasks, ActiveModel vs hand-written
+- [Imports and tree-shaking](https://alt-point.github.io/active-models/en/imports): subpath per capability, bundle sizes
 - [Known limitations](https://alt-point.github.io/active-models/en/limitations)
 - [Migrating to 4.0](https://alt-point.github.io/active-models/en/migration)
 - [Changelog](https://raw.githubusercontent.com/alt-point/active-models/master/CHANGELOG.md)

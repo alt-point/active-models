@@ -56,7 +56,8 @@ features:
 Object.defineProperty:
 
 ```ts
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 
 class Product extends ActiveModel {
   @ActiveField() name: string = ''
@@ -152,7 +153,7 @@ order.status = 'not-a-real-status' // выбросит Error: Invalid status: no
 через `Model.on`/`Model.once`:
 
 ```ts
-import { EventType } from '@alt-point/active-models'
+import { EventType } from '@alt-point/active-models/types'
 
 class Invoice extends ActiveModel {
   @ActiveField({
@@ -216,6 +217,7 @@ bun add @alt-point/active-models
 - [Скаляры: Decimal, Money, LocalDate](/scalars) — точные деньги, десятичные числа и даты без часового пояса
 - [Сравнение с нативным кодом](/comparison) — восемь задач: решение на ActiveModel и то же вручную
 - [ActiveCollection](/collections) — массив, в который нельзя положить ничего, кроме объявленной модели; сортировка и бинарный поиск
+- [Импорты и tree-shaking](/imports) — подпуть на каждую возможность, без корневого импорта, размеры бандлов
 - [Известные ограничения](/limitations), [Миграция на 4.0](/migration), [Для AI-агентов](/agents)
 
 English version: [/en/](/en/)

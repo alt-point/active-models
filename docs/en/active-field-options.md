@@ -19,6 +19,7 @@ type ActiveFieldDescriptor = {
   attribute?: any
   value?: any
   factory?: typeof ActiveModel | [typeof ActiveModel, () => any]
+  container?: ContainerSpec   // ActiveCollection.field(...) | ActiveMap.field(...) | ActiveSet.field(...)
   on?: Partial<Record<PropEvent, ActiveModelHookListener>>
   once?: Partial<Record<PropEvent, ActiveModelHookListener>>
 }
@@ -350,6 +351,32 @@ Order.create({}).items // [] - a fresh array per instance
 
 `factory` is implemented via an auto-generated `setter` - a `setter` given in the decorator options is
 **ignored** when `factory` is also given.
+
+---
+
+## `container`
+
+Keeps the value in a typed container that accepts nothing but one model. Describe it with the container's own
+`.field()`: `ActiveCollection.field(Model, options)`, `ActiveMap.field(Model, { key })` or
+`ActiveSet.field(Model, options)`.
+
+```ts
+import { ActiveCollection } from '@alt-point/active-models/ActiveCollection'
+
+class Board extends ActiveModel {
+  @ActiveField({ container: ActiveCollection.field(Task, { sortBy: 'id' }) }) tasks!: ActiveCollection<Task>
+}
+
+const board = Board.create({ tasks: [{ id: 2 }, { id: 1 }] })
+board.tasks.map((t) => t.id) // [1, 2] - an array became a sorted ActiveCollection
+Board.create({}).tasks.length // 0 - an empty container per instance
+```
+
+An assigned array (or `Map`, object, `Set`, depending on the container) is converted; `null` / `undefined` gives an
+empty container; the same container of the same model stays as it is. The option cannot be combined with `factory`
+(`use either factory or container`) and replaces a `setter` in the same way `factory` does. Because the field only
+sees the description, `ActiveModel` and `@ActiveField` never load a container class you did not import - see
+[Imports and tree-shaking](/en/imports). Details: [ActiveCollection, ActiveMap, ActiveSet](/en/collections).
 
 ---
 

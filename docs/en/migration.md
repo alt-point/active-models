@@ -1,7 +1,7 @@
 # Migrating from 3.x to 4.0
 
 Version 4.0 closes public surfaces that allowed bypassing model invariants, and fixes a number of bugs.
-There are four breaking changes.
+There are five breaking changes.
 
 ## 1. `model.emitter` removed → `on` / `once`
 
@@ -43,6 +43,35 @@ A model built via `new Model(data)` can't be tracked (`isTouched()` returns `und
 ## 4. `createFromCollection` skips only `null` / `undefined`
 
 Any falsy value (`0`, `''`, `false`) used to be dropped. Now only `null`/`undefined` are.
+
+## 5. No root import: one subpath per capability
+
+`import { ... } from '@alt-point/active-models'` no longer resolves. Import each capability from its own subpath;
+the full list is in [Imports and tree-shaking](/en/imports).
+
+```ts
+// before
+import { ActiveModel, ActiveField, EventType, ValidationError } from '@alt-point/active-models'
+
+// after
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { EventType } from '@alt-point/active-models/types'
+import { ValidationError } from '@alt-point/active-models/pipeline'
+```
+
+| Was exported from the root | Subpath |
+|---|---|
+| `ActiveModel` | `/ActiveModel` |
+| `ActiveField`, `ActiveFactory`, `GetterMethod`, `SetterMethod`, `InvariantMethod` | `/decorators` |
+| `EventType` and every option / payload type | `/types` |
+| `ValidationError`, `FieldRules`, ... | `/pipeline` |
+| `CallableModel` | `/CallableModel` |
+| `Enum` | `/Enum` |
+| `ModelProperties`, `RecursivePartialActiveModel` | `/utils` |
+
+The sub-paths `/ActiveModel`, `/CallableModel` and `/decorators` already existed in 3.x. Only what you import is bundled;
+the library has no runtime dependencies any more (`lodash-es` is gone).
 
 ## Behavior changes (non-breaking)
 

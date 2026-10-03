@@ -44,6 +44,7 @@ export default withMermaid(defineConfig({
               { text: 'Жизненный цикл модели', link: '/model-lifecycle' },
               { text: 'Продвинутые возможности', link: '/active-model-advanced' },
               { text: 'Пример для Node.js-сервера', link: '/node-example' },
+              { text: 'Импорты и tree-shaking', link: '/imports' },
             ],
           },
           {
@@ -100,6 +101,7 @@ export default withMermaid(defineConfig({
               { text: 'Model lifecycle', link: '/en/model-lifecycle' },
               { text: 'Advanced features', link: '/en/active-model-advanced' },
               { text: 'Node.js server example', link: '/en/node-example' },
+              { text: 'Imports and tree-shaking', link: '/en/imports' },
             ],
           },
           {

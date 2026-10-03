@@ -8,7 +8,8 @@
 ## Валидаторы
 
 ```ts
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 
 class Product extends ActiveModel {
   @ActiveField({
@@ -79,7 +80,9 @@ Task.create({ title: 123 as any }) // бросает — значение реа
    (см. [Жизненный цикл модели](/model-lifecycle)).
 
 ```ts
-import { ActiveModel, ActiveField, EventType } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { EventType } from '@alt-point/active-models/types'
 
 class Order extends ActiveModel {
   @ActiveField({
@@ -372,7 +375,8 @@ console.log(user.passwordHash) // "a1b2c3" — hidden скрывает толь�
 и т.п.) и переиспользовать его на любом инстансе.
 
 ```ts
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 
 class Order extends ActiveModel {
   @ActiveField() id: string = ''

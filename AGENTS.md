@@ -11,7 +11,9 @@ extends `ActiveModel`; each field is declared with `@ActiveField(options)`.
 Requires `"experimentalDecorators": true` in tsconfig (legacy decorators, not TC39 stage-3).
 
 ```ts
-import { ActiveModel, ActiveField, EventType } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { EventType } from '@alt-point/active-models/types'
 
 class User extends ActiveModel {
   @ActiveField({ readonly: true }) id: string = ''
@@ -25,6 +27,25 @@ const user = User.create({ id: '1', name: 'Ann' })   // ALWAYS create via the fa
 user.name = 'Bob'
 JSON.stringify(user)                                  // hidden fields are excluded
 ```
+
+## Imports: one subpath per capability, no root entry
+
+`import ... from '@alt-point/active-models'` does **not** resolve (no barrel). Import each capability from its own subpath, so a
+bundler only includes what you use (`ActiveModel` alone is ~8 KB gzipped; collections, maps, sets and scalars cost nothing until imported).
+
+| Subpath | Exports |
+|---|---|
+| `/ActiveModel` | `ActiveModel`, type `InvariantCheck` |
+| `/decorators` | `ActiveField`, `ActiveFactory`, `GetterMethod`, `SetterMethod`, `InvariantMethod`, `isHidden`, `isFillable`, `isProtected` |
+| `/types` | `EventType` and every option / payload type (`FactoryOptions`, `CollectionOptions`, `ActiveFieldDescriptor`, `EventListener`, ...) |
+| `/pipeline` | `ValidationError`; types `ValidationIssue`, `ValidationResult`, `ValidationCode`, `FieldRules`, `Transform`, `Transitions`, `CoerceTo`, `ValueType`, `Coercible`, `Bound` |
+| `/ActiveCollection`, `/ActiveMap`, `/ActiveSet` | the class of the same name (`ActiveCollection` also exports type `CollectionInput`) |
+| `/collectionRegistry` | `isCollection` |
+| `/scalars/Decimal`, `/scalars/Money`, `/scalars/LocalDate`, `/scalars/immutable` | `Decimal` (+ `DecimalInput`, `RoundingMode`); `Money`, `minorUnits`; `LocalDate`; `markImmutable` |
+| `/CallableModel`, `/Enum`, `/utils` | `CallableModel`; `Enum` (deprecated); types `ModelProperties`, `RecursivePartialActiveModel` |
+
+Containers are opt-in: a model, `@ActiveField` and the rest never load `ActiveCollection` / `ActiveMap` / `ActiveSet`. To use a typed container
+in a field, import it and describe the field with it: `@ActiveField({ container: ActiveCollection.field(Task, { sortBy: 'id' }) })`.
 
 ## Rules that prevent the most bugs
 
@@ -99,14 +120,15 @@ user.once(...) / User.once(...)
   frozen source data exactly as passed to that `create()` (pre-defaults, pre-strip), `undefined` if untracked.
 - Mapping: `Model.mapTo(Target, (m, ...args) => ...)`, `model.mapTo(Target, lazy = true, ...args)`,
   `hasMapping(Target)`. `lazy` (default) falls back to `clone()`; `lazy: false` throws.
-- Collections: `Model.collection(items, { sortBy, compare, order, coerce })` /
-  `Model.createCollection(data, opts)` / `@ActiveField({ collection: Model | [Model, options] })` give an
-  `ActiveCollection`: an array that accepts only instances of that model (plain objects are coerced unless
+- Collections: `ActiveCollection.create(Model, items, { sortBy, compare, order, coerce })` /
+  `ActiveCollection.createFromData(Model, data, opts)` (every item through `Model.create()`) /
+  `@ActiveField({ container: ActiveCollection.field(Model, options) })` give an `ActiveCollection`: an array that accepts only instances of that model (plain objects are coerced unless
   `coerce: false`; anything else throws), never has holes, and — with `sortBy`/`compare` — stays sorted
   (`push` inserts in place, items move when their key changes, `bisectLeft/Right`, `findByKey`, `range`).
   `unique: 'field' | fn` rejects duplicate keys atomically (`ValidationError` code `unique`; `getByKey`/`hasKey`).
-  `ActiveMap.create(Model, { key })` / `ActiveSet.create(Model, items, { unique })` and the `map: [Model, { key }]` / `set: Model | [Model, opts]`
-  field options give the keyed / set flavours with the same rules. Events: `itemsAdded`, `itemsRemoved`, `touched` (bubbles into the parent model). Use its own methods, not
+  `ActiveMap.create(Model, { key })` / `ActiveSet.create(Model, items, { unique })` and the `container: ActiveMap.field(Model, { key })` /
+  `container: ActiveSet.field(Model, opts)` field options give the keyed / set flavours with the same rules (`.field()`, not `.of()` —
+  `ActiveCollection` extends `Array`, whose static `of` is taken). Events: `itemsAdded`, `itemsRemoved`, `touched` (bubbles into the parent model). Use its own methods, not
   `Array.prototype.x.call(collection)` (guarded but not atomic).
 - Scalars: `@ActiveField({ coerce: Money | Decimal | LocalDate })` turns strings/numbers/objects into immutable value objects
   (`Money.of('19.99','USD')`, `'19.99 USD'`; `Decimal.from('0.1').add('0.2')`; `LocalDate.from('2026-09-25')`). Never use `number` for money.
@@ -127,11 +149,17 @@ bun run test:coverage                                    # thresholds enforced
 bun run test:perf                                        # performance budgets
 bun run test:mutation                                    # Stryker mutation testing
 bun run build                                            # tsup -> dist/
+bun run test:dist                                        # smoke test of the built package (after build)
 bun run docs:dev                                         # VitePress
 ```
 
 - Tests use a custom esbuild transform (`vitest.config.ts`) so they compile decorators exactly like the
   published build; don't replace it with SWC/oxc — class-field/Proxy timing differs.
+- Every public capability is a tsup entry and a `package.json` `exports` subpath (+ `typesVersions`); there is no `src/index.ts`. Adding one means
+  touching `tsup.config.ts`, `exports`, `typesVersions` (`tests/package-entries.test.ts` fails otherwise) and `typedoc.json`. Internals
+  (`meta`, `emitter`, `history`, `equal`, `clone`, `collectionCore`, `mapper`) must stay unexported. Zero runtime dependencies is enforced.
+- `bun run test:dist` checks the built package (ESM + CJS load by subpath and share one copy of every class); `tests/treeshake.test.ts`
+  bundles each entry and fails if it pulls in code it should not, or grows past its size budget.
 - Style: no semicolons, single quotes, `space-before-function-paren` (enforced by ESLint).
 - Add a test for every behavior change and update `docs/` (RU) + `docs/en/` (EN) + `CHANGELOG.md`.
 - Versioning is strict SemVer (rules at the top of `CHANGELOG.md`): breaking → MAJOR, feature → MINOR,

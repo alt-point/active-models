@@ -11,25 +11,27 @@ API, `null`, экземпляр другого класса, а список, к
 ## Создание
 
 ```ts
-import { ActiveModel, ActiveField, ActiveCollection } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { ActiveCollection } from '@alt-point/active-models/ActiveCollection'
 
 class Task extends ActiveModel {
   @ActiveField() id: number = 0
   @ActiveField() title: string = ''
 }
 
-const a = Task.collection([{ id: 2 }, { id: 1 }])                         // от модели
-const b = ActiveCollection.create(Task, [{ id: 2 }], { sortBy: 'id' })    // явно
-const c = Task.createCollection(apiRows, { sortBy: 'id', tracked: true }) // каждый элемент проходит через create()
+const a = ActiveCollection.create(Task, [{ id: 2 }, { id: 1 }])                         // элементы как есть
+const b = ActiveCollection.create(Task, [{ id: 2 }], { sortBy: 'id' })                // с сортировкой
+const c = ActiveCollection.createFromData(Task, apiRows, { sortBy: 'id', tracked: true }) // каждый элемент проходит через create()
 ```
 
-`Model.collection(items, options)` оборачивает элементы как есть; `Model.createCollection(data, options)` сначала
+`ActiveCollection.create(Model, items, options)` оборачивает элементы как есть; `ActiveCollection.createFromData(Model, data, options)` сначала
 пропускает каждый элемент через `create()` (действуют `sanitize`, `lazy`, `tracked`; `null` пропускаются).
 
 ## Правило: только объявленная модель
 
 ```ts
-const tasks = Task.collection()
+const tasks = ActiveCollection.create(Task)
 tasks.push({ id: 1 })          // OK: обычный объект превращается в Task
 tasks.push(Task.create({}))    // OK
 tasks.push(5)                  // TypeError: ActiveCollection<Task> accepts only Task instances or plain objects, got number
@@ -49,7 +51,7 @@ tasks[0] = 'x'                 // TypeError — присваивание по и
 ## Отсортированные коллекции
 
 ```ts
-const tasks = Task.collection([{ id: 3 }, { id: 1 }], { sortBy: 'id' })
+const tasks = ActiveCollection.create(Task, [{ id: 3 }, { id: 1 }], { sortBy: 'id' })
 tasks.push({ id: 2 })          // встаёт на своё место: [1, 2, 3]
 tasks.unshift({ id: 0 })       // «в начало» здесь не имеет смысла: [0, 1, 2, 3]
 tasks[1].id = 10               // элемент переезжает: [0, 2, 3, 10]
@@ -92,8 +94,8 @@ ActiveCollection.on(EventType.itemsAdded, cb)        // все коллекци�
 ```ts
 class Board extends ActiveModel {
   @ActiveField() name: string = ''
-  @ActiveField({ collection: [Task, { sortBy: 'id' }] }) tasks!: ActiveCollection<Task>
-  @ActiveField({ collection: Task }) backlog!: ActiveCollection<Task>
+  @ActiveField({ container: ActiveCollection.field(Task, { sortBy: 'id' }) }) tasks!: ActiveCollection<Task>
+  @ActiveField({ container: ActiveCollection.field(Task) }) backlog!: ActiveCollection<Task>
 }
 
 const board = Board.create({ tasks: [{ id: 2 }, { id: 1 }] })  // станет отсортированной коллекцией
@@ -103,7 +105,7 @@ board.tasks.push({ id: 3 })                                    // всплыва
 
 Присвоенный массив конвертируется; `null`/`undefined` даёт пустую коллекцию; коллекция той же модели остаётся как
 есть; всё остальное — исключение. `toJSON()` / `JSON.stringify` отдают обычные массивы, `clone()` клонирует каждый
-элемент, а `isTouched()` видит изменения коллекции. `collection` нельзя совмещать с `factory` в одном поле.
+элемент, а `isTouched()` видит изменения коллекции. Опцию `container` нельзя совмещать с `factory` в одном поле.
 
 ## Методы
 
@@ -115,7 +117,7 @@ board.tasks.push({ id: 3 })                                    // всплыва
 ## Уникальные ключи
 
 ```ts
-const users = User.collection(rows, { unique: 'email' })      // или unique: (u) => u.email.toLowerCase()
+const users = ActiveCollection.create(User, rows, { unique: 'email' })      // или unique: (u) => u.email.toLowerCase()
 users.push({ id: 9, email: 'a@x.io' })    // ValidationError, код 'unique': Duplicate key "a@x.io" in ActiveCollection<User>
 users.getByKey('a@x.io')                  // поиск за O(1)
 users.hasKey('b@x.io')
@@ -156,13 +158,13 @@ members.getByKey('a@x.io'); members.hasKey('b@x.io')
 
 ```ts
 class Team extends ActiveModel {
-  @ActiveField({ map: [User, { key: 'id' }] }) byId!: ActiveMap<User>
-  @ActiveField({ set: [User, { unique: 'email' }] }) members!: ActiveSet<User>
-  @ActiveField({ collection: [User, { unique: 'email' }] }) list!: ActiveCollection<User>
+  @ActiveField({ container: ActiveMap.field(User, { key: 'id' }) }) byId!: ActiveMap<User>
+  @ActiveField({ container: ActiveSet.field(User, { unique: 'email' }) }) members!: ActiveSet<User>
+  @ActiveField({ container: ActiveCollection.field(User, { unique: 'email' }) }) list!: ActiveCollection<User>
 }
 ```
 
-`map` принимает массив, `Map` или объект с элементами; `set` — массив или `Set`; по умолчанию оба пустые. Как и коллекция,
+`ActiveMap.field()` принимает массив, `Map` или объект с элементами; `ActiveSet.field()` — массив или `Set`; по умолчанию оба пустые. Как и коллекция,
 они всплывают любым изменением как `touched` модели, сериализуются в обычные данные, глубоко клонируются и учитываются в
 `isTouched()`, `changes()` и `revert()`. Одна опция-контейнер на поле.
 

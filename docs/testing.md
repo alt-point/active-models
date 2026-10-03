@@ -7,6 +7,7 @@
 | `bun run test:perf` | бюджеты производительности, проверки масштабирования и памяти |
 | `bun run bench` | бенчмарки (`vitest bench`) для отслеживания цифр во времени |
 | `bun run test:mutation` | мутационное тестирование (Stryker) |
+| `bun run test:dist` | проверка собранного пакета (после `bun run build`): подпути в ESM и CommonJS, один экземпляр каждого класса |
 | `bun run lint` / `typecheck` | ESLint (+ `@stylistic`) / `tsc --noEmit` |
 
 ## Почему тесты используют собственный transform
@@ -51,3 +52,13 @@ bun run test:mutation        # HTML-отчёт: reports/mutation/index.html
 Порог счёта (`break: 90`) задан в `stryker.config.mjs`, а `scripts/mutation-gate.mjs` дополнительно проверяет минимум для каждого файла (сейчас общий счёт ≈ 94%); прогоны инкрементальные
 (`reports/stryker-incremental.json`) — заново мутируется только изменённый код. В CI запускается раз в
 неделю и по требованию (`quality.yml`), а не на каждый PR — занимает минуты.
+
+## Упаковка и tree-shaking
+
+- `tests/treeshake.test.ts` собирает каждую точку входа (esbuild, минификация) и проверяет, что в бандл не попал лишний
+  модуль (контейнеры, скаляры, модель) и что размер не вышел за бюджет.
+- `tests/package-entries.test.ts` держит в согласии `tsup.config.ts`, `exports` и `typesVersions`: корневого входа и
+  `src/index.ts` нет, внутренности не экспортируются, зависимостей в рантайме нет.
+- `bun run test:dist` загружает собранный пакет по подпутям в ESM и CommonJS и проверяет, что `instanceof`, события и
+  реестры работают между точками входа. CI и публикация запускают его после `bun run build`.
+- `tests/clone.test.ts` сверяет собственное глубокое клонирование с lodash на наборе структур.

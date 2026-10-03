@@ -12,7 +12,8 @@ server and the client can't spoof them even by sending its own values in the req
 ```ts
 // models/Task.ts
 import { randomUUID } from 'node:crypto'
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 
 export class Task extends ActiveModel {
   // readonly by itself allows a value to be set ONCE from data (via create()

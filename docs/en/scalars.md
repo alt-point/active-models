@@ -4,7 +4,11 @@ Immutable values for data that `number` and `Date` store imprecisely. Attach the
 `coerce: Class`: input strings, numbers and objects become an instance, and JSON receives a string with no loss of precision.
 
 ```ts
-import { ActiveModel, ActiveField, Decimal, Money, LocalDate } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { Decimal } from '@alt-point/active-models/scalars/Decimal'
+import { Money } from '@alt-point/active-models/scalars/Money'
+import { LocalDate } from '@alt-point/active-models/scalars/LocalDate'
 
 class Invoice extends ActiveModel {
   @ActiveField({ coerce: Money, min: Money.of(1, 'USD') }) total: Money = Money.of(1, 'USD')
@@ -88,7 +92,7 @@ Any class with `static from(value)`, `compareTo` (for `min`/`max`) and `toJSON` 
 the value, mark the class as immutable:
 
 ```ts
-import { markImmutable } from '@alt-point/active-models'
+import { markImmutable } from '@alt-point/active-models/scalars/immutable'
 
 class Percent {
   private constructor (readonly value: number) { Object.freeze(this) }

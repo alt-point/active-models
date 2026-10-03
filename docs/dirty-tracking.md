@@ -18,7 +18,8 @@
 Это единственная точка входа — снэпшот нельзя установить или сбросить постфактум, только при создании:
 
 ```ts
-import { ActiveModel, ActiveField } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
 
 class UserForm extends ActiveModel {
   @ActiveField() name: string = ''
@@ -166,8 +167,8 @@ Composition API: `isTouched()` — обычный метод, не реакти�
 ```ts
 // useDirty.ts
 import { watch, ref, type ShallowRef } from 'vue'
-import type { ActiveModel } from '@alt-point/active-models'
-import { EventType } from '@alt-point/active-models'
+import { type ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { EventType } from '@alt-point/active-models/types'
 
 export function useDirty (model: ShallowRef<ActiveModel>) {
   const dirty = ref(model.value.isTouched() ?? false)
@@ -219,8 +220,8 @@ async function onSave () {
 ```tsx
 // useDirty.ts
 import { useCallback, useSyncExternalStore } from 'react'
-import type { ActiveModel } from '@alt-point/active-models'
-import { EventType } from '@alt-point/active-models'
+import { type ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { EventType } from '@alt-point/active-models/types'
 
 export function useDirty (model: ActiveModel) {
   const subscribe = useCallback(

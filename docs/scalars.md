@@ -4,7 +4,11 @@
 `coerce: Class`: входные строки, числа и объекты превращаются в экземпляр, JSON получает строку без потери точности.
 
 ```ts
-import { ActiveModel, ActiveField, Decimal, Money, LocalDate } from '@alt-point/active-models'
+import { ActiveModel } from '@alt-point/active-models/ActiveModel'
+import { ActiveField } from '@alt-point/active-models/decorators'
+import { Decimal } from '@alt-point/active-models/scalars/Decimal'
+import { Money } from '@alt-point/active-models/scalars/Money'
+import { LocalDate } from '@alt-point/active-models/scalars/LocalDate'
 
 class Invoice extends ActiveModel {
   @ActiveField({ coerce: Money, min: Money.of(1, 'USD') }) total: Money = Money.of(1, 'USD')
@@ -88,7 +92,7 @@ Money.of('10', 'USD').add(Money.of('1', 'EUR'))          // TypeError: Currency 
 значение, пометьте класс неизменяемым:
 
 ```ts
-import { markImmutable } from '@alt-point/active-models'
+import { markImmutable } from '@alt-point/active-models/scalars/immutable'
 
 class Percent {
   private constructor (readonly value: number) { Object.freeze(this) }
