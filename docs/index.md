@@ -44,6 +44,12 @@ features:
 [CHANGELOG](https://github.com/alt-point/active-models/blob/master/CHANGELOG.md).
 :::
 
+::: tip Что нового в 5.0
+Корневого импорта нет — импортируйте из подпутей, например `@alt-point/active-models/ActiveModel`. Коллекции
+подключаются явно: `container: ActiveCollection.field(...)`. Runtime-зависимостей нет. Автоматическая миграция:
+`npx @alt-point/active-models migrate ./src`. Подробно: [миграция на 5.0](/migration-5).
+:::
+
 ## Какие проблемы решает библиотека
 
 ### Реактивные модели данных с контролируемыми свойствами

@@ -32,7 +32,7 @@ export default withMermaid(defineConfig({
           { text: 'Главная', link: '/' },
           { text: 'Пример с decorators', link: '/active-model-with-decorators' },
           { text: 'Жизненный цикл', link: '/model-lifecycle' },
-          { text: 'v4.0.0', link: 'https://github.com/alt-point/active-models/blob/master/CHANGELOG.md' },
+          { text: 'v5.0.0', link: 'https://github.com/alt-point/active-models/blob/master/CHANGELOG.md' },
           { text: 'GitHub', link: 'https://github.com/alt-point/active-models' },
         ],
         sidebar: [
@@ -90,7 +90,7 @@ export default withMermaid(defineConfig({
           { text: 'Home', link: '/en/' },
           { text: 'Decorators example', link: '/en/active-model-with-decorators' },
           { text: 'Lifecycle', link: '/en/model-lifecycle' },
-          { text: 'v4.0.0', link: 'https://github.com/alt-point/active-models/blob/master/CHANGELOG.md' },
+          { text: 'v5.0.0', link: 'https://github.com/alt-point/active-models/blob/master/CHANGELOG.md' },
           { text: 'GitHub', link: 'https://github.com/alt-point/active-models' },
         ],
         sidebar: [

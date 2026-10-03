@@ -16,7 +16,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 
 ## [Unreleased]
 
-Next release: **5.0.0** (breaking). Migration guide: [docs/en/migration-5.md](docs/en/migration-5.md) ([RU](docs/migration-5.md)).
+## [5.0.0] - 2026-10-03
+
+Migration guide: [docs/en/migration-5.md](docs/en/migration-5.md) ([RU](docs/migration-5.md)).
 
 ### Breaking changes
 

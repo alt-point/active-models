@@ -44,6 +44,12 @@ default copies, and a fixed `clone()`. Details: [migrating to 4.0](/en/migration
 [CHANGELOG](https://github.com/alt-point/active-models/blob/master/CHANGELOG.md).
 :::
 
+::: tip What's new in 5.0
+There is no root import - import from subpaths, e.g. `@alt-point/active-models/ActiveModel`. Collections are opt-in:
+`container: ActiveCollection.field(...)`. No runtime dependencies. Codemod: `npx @alt-point/active-models migrate ./src`.
+Details: [migrating to 5.0](/en/migration-5).
+:::
+
 ## What problems does this library solve
 
 ### Reactive data models with controllable properties
