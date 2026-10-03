@@ -1,7 +1,7 @@
 # Миграция с 3.x на 4.0
 
 Версия 4.0 закрывает публичные поверхности, которые давали обойти инварианты модели, и исправляет ряд
-ошибок. Ломающих изменений пять.
+ошибок. Ломающих изменений четыре.
 
 ## 1. `model.emitter` удалён → `on` / `once`
 
@@ -43,35 +43,6 @@ form = Form.create(await api.save(form.toJSON()), { tracked: true })
 ## 4. `createFromCollection` пропускает только `null` / `undefined`
 
 Раньше выбрасывались любые falsy-значения (`0`, `''`, `false`). Теперь — только `null`/`undefined`.
-
-## 5. Корневого импорта нет: свой подпуть на каждую возможность
-
-`import { ... } from '@alt-point/active-models'` больше не разрешается. Импортируйте каждую возможность из её подпути;
-полный список — в разделе [Импорты и tree-shaking](/imports).
-
-```ts
-// было
-import { ActiveModel, ActiveField, EventType, ValidationError } from '@alt-point/active-models'
-
-// стало
-import { ActiveModel } from '@alt-point/active-models/ActiveModel'
-import { ActiveField } from '@alt-point/active-models/decorators'
-import { EventType } from '@alt-point/active-models/types'
-import { ValidationError } from '@alt-point/active-models/pipeline'
-```
-
-| Что экспортировалось из корня | Подпуть |
-|---|---|
-| `ActiveModel` | `/ActiveModel` |
-| `ActiveField`, `ActiveFactory`, `GetterMethod`, `SetterMethod`, `InvariantMethod` | `/decorators` |
-| `EventType` и все типы опций и событий | `/types` |
-| `ValidationError`, `FieldRules`, ... | `/pipeline` |
-| `CallableModel` | `/CallableModel` |
-| `Enum` | `/Enum` |
-| `ModelProperties`, `RecursivePartialActiveModel` | `/utils` |
-
-Подпути `/ActiveModel`, `/CallableModel` и `/decorators` существовали и в 3.x. В бандл попадает только то, что вы
-импортируете; зависимостей в рантайме больше нет (`lodash-es` удалён).
 
 ## Что изменилось в поведении (не ломающее)
 

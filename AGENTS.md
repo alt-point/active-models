@@ -135,6 +135,11 @@ user.once(...) / User.once(...)
   `min`/`max` work with any value having `compareTo()` (mixed currencies fail the bound). Custom class: static `from()`, `compareTo`, `toJSON`, `markImmutable(Class)`.
 - `CallableModel` — instances are callable, implement `__call`. `Enum` is deprecated.
 
+## Migrating 4.x → 5.0
+
+No root import (use subpaths); `collection`/`map`/`set` field options → `container: ActiveCollection.field(...)` / `ActiveMap.field(...)` /
+`ActiveSet.field(...)`; `Model.collection()` / `createCollection()` → `ActiveCollection.create()` / `createFromData()`. Details: `docs/en/migration-5.md`.
+
 ## Migrating 3.x → 4.0
 
 `model.emitter.on(...)` → `model.on(...)`; `form.startTracking()` → `form = Form.create(saved, { tracked: true })`;

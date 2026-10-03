@@ -217,6 +217,6 @@ bun add @alt-point/active-models
 - [Comparison with native code](/en/comparison) — eight tasks: the ActiveModel solution and the same by hand
 - [ActiveCollection](/en/collections) — an array that holds nothing but the declared model; sorting and binary search
 - [Imports and tree-shaking](/en/imports) — a subpath per capability, no root import, bundle sizes
-- [Known limitations](/en/limitations), [Migrating to 4.0](/en/migration), [For AI agents](/en/agents), [API reference](/en/api/)
+- [Known limitations](/en/limitations), [Migrating to 4.0](/en/migration), [Migrating to 5.0](/en/migration-5), [For AI agents](/en/agents), [API reference](/en/api/)
 
 Русская версия: [/](/)

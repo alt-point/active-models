@@ -1,6 +1,6 @@
 # Imports and tree-shaking
 
-There is no root import: `import { ... } from '@alt-point/active-models'` does not resolve. Every capability is a
+There is no root import (since 5.0; [migration](/en/migration-5)): `import { ... } from '@alt-point/active-models'` does not resolve. Every capability is a
 separate entry point (a subpath), so a bundle contains only what you import. There are no runtime dependencies.
 
 ## Subpaths

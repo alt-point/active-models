@@ -218,6 +218,6 @@ bun add @alt-point/active-models
 - [Сравнение с нативным кодом](/comparison) — восемь задач: решение на ActiveModel и то же вручную
 - [ActiveCollection](/collections) — массив, в который нельзя положить ничего, кроме объявленной модели; сортировка и бинарный поиск
 - [Импорты и tree-shaking](/imports) — подпуть на каждую возможность, без корневого импорта, размеры бандлов
-- [Известные ограничения](/limitations), [Миграция на 4.0](/migration), [Для AI-агентов](/agents)
+- [Известные ограничения](/limitations), [Миграция на 4.0](/migration), [Миграция на 5.0](/migration-5), [Для AI-агентов](/agents)
 
 English version: [/en/](/en/)
