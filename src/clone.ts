@@ -14,6 +14,7 @@ const ownEnumerableKeys = (value: object): Array<string | symbol> =>
   Reflect.ownKeys(value).filter((key) => Object.prototype.propertyIsEnumerable.call(value, key))
 
 const assign = (target: object, key: string | symbol, value: unknown) => {
+  // Stryker disable next-line ConditionalExpression: defining a normal key with defineProperty gives the same property as assigning it
   if (key === '__proto__') {
     Object.defineProperty(target, key, { configurable: true, enumerable: true, value, writable: true })
   } else {
@@ -36,6 +37,7 @@ const cloneNode = (
       return custom
     }
   }
+  // Stryker disable next-line ConditionalExpression: without the `null` test, null falls through to the default case and is returned as is
   if (typeof value !== 'object' || value === null) {
     return value
   }

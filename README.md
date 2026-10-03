@@ -15,7 +15,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
 [![docs](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/deploy-docs.yml?branch=master&label=docs&logo=vitepress&logoColor=white)](https://alt-point.github.io/active-models/)
-[![tests](https://img.shields.io/badge/tests-449%20passing-brightgreen)](docs/testing.md)
+[![tests](https://img.shields.io/badge/tests-487%20passing-brightgreen)](docs/testing.md)
 [![coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](docs/testing.md)
 [![mutation score](https://img.shields.io/badge/mutation%20score-94%25-brightgreen?logo=stryker&logoColor=white)](docs/testing.md#мутационное-тестирование)
 [![semver](https://img.shields.io/badge/semver-2.0.0-blue)](CHANGELOG.md)
@@ -206,7 +206,7 @@ class Notify extends CallableModel {
 
 ## Качество
 
-**449** unit-тестов · покрытие **99 %** · **94 %** mutation score (Stryker, порог 90 %) · performance-бюджеты и
+**487** unit-тестов · покрытие **99 %** · **94 %** mutation score (Stryker, порог 90 %) · performance-бюджеты и
 проверки утечек памяти · ESLint · строгий [SemVer](CHANGELOG.md#versioning-policy).
 
 ```bash

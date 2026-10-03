@@ -151,6 +151,56 @@ describe('cloneDeep', () => {
   })
 })
 
+describe('cloneDeep: details', () => {
+  it('copies regexps, boxed primitives, symbol objects and arguments into new objects', () => {
+    const regexp = /x/g
+    const boxed = [new Boolean(false), new Number(2), new String('s')]
+    const symbolObject = Object(Symbol('tag')) as symbol
+    // eslint-disable-next-line prefer-rest-params
+    const args = (function (..._rest: number[]) { return arguments })(1, 2)
+    const copy = cloneDeep({ regexp, boxed, symbolObject, args })
+    expect(copy.regexp).not.toBe(regexp)
+    expect(copy.regexp.source).toBe('x')
+    boxed.forEach((item, i) => {
+      expect(copy.boxed[i]).not.toBe(item)
+      expect(copy.boxed[i].valueOf()).toBe(item.valueOf())
+      expect(copy.boxed[i]).toBeInstanceOf(item.constructor)
+    })
+    expect(copy.symbolObject).not.toBe(symbolObject)
+    expect(Object.prototype.toString.call(copy.symbolObject)).toBe('[object Symbol]')
+    expect(copy.symbolObject.valueOf()).toBe(symbolObject.valueOf())
+    expect(copy.args).not.toBe(args)
+    expect({ ...copy.args }).toEqual({ 0: 1, 1: 2 })
+  })
+
+  it('keeps circular references through arrays, maps and sets', () => {
+    const list: unknown[] = [1]
+    list.push(list)
+    const listCopy = cloneDeep(list)
+    expect(listCopy[1]).toBe(listCopy)
+    expect(listCopy).not.toBe(list)
+
+    const map = new Map<string, unknown>()
+    map.set('self', map)
+    const mapCopy = cloneDeep(map)
+    expect(mapCopy.get('self')).toBe(mapCopy)
+    expect(mapCopy).not.toBe(map)
+
+    const set = new Set<unknown>()
+    set.add(set)
+    const setCopy = cloneDeep(set)
+    expect(setCopy.has(setCopy)).toBe(true)
+    expect(setCopy.has(set)).toBe(false)
+  })
+
+  it('defines an own "__proto__" key as an ordinary data property', () => {
+    const copy = cloneDeep(JSON.parse('{"__proto__": {"a": 1}}'))
+    expect(Object.getOwnPropertyDescriptor(copy, '__proto__')).toEqual({
+      configurable: true, enumerable: true, writable: true, value: { a: 1 },
+    })
+  })
+})
+
 describe('cloneDeepWith', () => {
   it('calls the customizer for the root without a parent, then for every child with its parent', () => {
     const seen: Array<[unknown, unknown, unknown]> = []

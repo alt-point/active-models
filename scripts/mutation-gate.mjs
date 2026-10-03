@@ -15,6 +15,7 @@ const MIN = {
   'src/pipeline.ts': 90,
   'src/history.ts': 90,
   'src/equal.ts': 90,
+  'src/clone.ts': 90,
   'src/collectionCore.ts': 95,
   'src/ActiveMap.ts': 85,
   'src/ActiveSet.ts': 88,
