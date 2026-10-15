@@ -27,7 +27,7 @@ model.items = [...model.items, 'a'] // эмитится afterSetValue и touched
 
 ## `hidden`-поля и `isTouched()`
 
-Снимок для `isTouched()` строится через тот же `ownKeys`, что и сериализация, поэтому изменение
+`isTouched()` сравнивает только видимые поля — те, что отдаёт `Object.keys()`, — поэтому изменение
 `hidden`-поля не делает модель «изменённой». `clone()` при этом `hidden`-значения **сохраняет**.
 
 ## `create(existingModel)` не копирует `hidden`-поля

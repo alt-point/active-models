@@ -29,6 +29,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 - `Model.createLazy(data)` - and so a plain object pushed into an `ActiveCollection` / `ActiveMap` / `ActiveSet` or assigned to a `factory` field - modified the caller's object: field defaults were added to it and `fillable: false` keys deleted from it. The lazy path now works on a shallow copy (nested values are still shared, as before).
 - `isCollection()` is `true` for an `ActiveMap` / `ActiveSet` too, but its type predicate narrowed to `ActiveCollection` only; it now narrows to the union of the three.
 
+### Changed
+
+- Performance: the event, lock and child-subscription containers of an instance are allocated on first use, and a tracked model keeps one pristine copy instead of two. Per instance with 10 fields: ~2.7 KB → ~0.8 KB (tracked: ~4.2 KB → ~1.8 KB); `new Model()` 7.4 µs → 2.5 µs; tracked `create()` 27 µs → 21 µs. The perf suite now enforces < 1.5 KB per instance.
+
 ## [5.0.0] - 2026-10-03
 
 Migration guide: [docs/en/migration-5.md](docs/en/migration-5.md) ([RU](docs/migration-5.md)).

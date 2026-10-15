@@ -221,6 +221,16 @@ describe('isTouched()', () => {
     counter = Counter.create({ value: counter.value }, { tracked: true })
     expect(counter.isTouched()).toBe(false)
   })
+
+  it('sees a property added after a tracked create()', () => {
+    class Counter extends ActiveModel {
+      @ActiveField() value: number = 0
+    }
+
+    const counter = Counter.create({ value: 1 }, { tracked: true })
+    Reflect.set(counter, 'extra', 1)
+    expect(counter.isTouched()).toBe(true)
+  })
 })
 
 describe('mapTo() / hasMapping()', () => {

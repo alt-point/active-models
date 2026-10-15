@@ -113,8 +113,8 @@ user.address!.city = 'Munich'
 user.isTouched() // true — хотя менялось поле вложенной модели, а не самого user
 ```
 
-**Поля с `hidden: true` не попадают в сравнение.** `ownKeys` (задействуется при построении снэпшота)
-фильтрует скрытые поля точно так же, как при `Object.keys()`/`JSON.stringify()` — значит их изменение
+**Поля с `hidden: true` не попадают в сравнение.** `isTouched()` сравнивает только поля, которые отдаёт
+`Object.keys()`, а скрытые поля из него исключены так же, как из `JSON.stringify()` — значит их изменение
 `isTouched()` не увидит:
 
 ```ts
@@ -125,7 +125,7 @@ class Session extends ActiveModel {
 
 const session = Session.create({ name: 'x' }, { tracked: true })
 session.csrfToken = 'new-token'
-session.isTouched() // false — csrfToken скрыт от снэпшота
+session.isTouched() // false — csrfToken не участвует в сравнении
 ```
 
 Если поле обязано участвовать в отслеживании изменений, не делайте его `hidden` — используйте `hidden`

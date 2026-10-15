@@ -163,4 +163,14 @@ describe('memory', () => {
     for (let i = 0; i < 20_000; i++) M.create(makeData(5), { tracked: true })
     expect(heap() - before).toBeLessThan(15 * F)
   })
+
+  it.skipIf(!gc)('an instance with 10 fields costs less than 1.5 KB', () => {
+    const M = makeModel(10)
+    const bytes = () => { gc!(); gc!(); return process.memoryUsage().heapUsed }
+    for (let i = 0; i < 1000; i++) M.create(makeData(10))
+    const keep: unknown[] = []
+    const before = bytes()
+    for (let i = 0; i < 10_000; i++) keep.push(M.create(makeData(10)))
+    expect((bytes() - before) / keep.length).toBeLessThan(1536)
+  })
 })

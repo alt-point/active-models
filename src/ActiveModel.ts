@@ -16,7 +16,7 @@ import {
 import { cloneDeep, cloneDeepWith } from './clone'
 import { deepEqual } from './equal'
 import { isImmutable } from './scalars/immutable'
-import { copyTrackingState, isSanitized, markSanitized, runRestoring, unmarkSanitized, useMeta } from './meta'
+import { copyTrackingState, getBaseline, isSanitized, markSanitized, runRestoring, unmarkSanitized, useMeta } from './meta'
 import {
   abortGroup,
   beginGroup,
@@ -89,14 +89,16 @@ const bubbling = new WeakSet<object>()
 
 const makeWrittenTracker = () => {
   const registry = new WeakMap<ActiveModel, Set<string | symbol>>()
-  return (target: ActiveModel): Set<string | symbol> => {
-    let written = registry.get(target)
-    if (!written) {
-      written = new Set()
-      registry.set(target, written)
+  const written = (target: ActiveModel): Set<string | symbol> => {
+    let set = registry.get(target)
+    if (!set) {
+      set = new Set()
+      registry.set(target, set)
     }
-    return written
+    return set
   }
+  written.peek = (target: ActiveModel) => registry.get(target)
+  return written
 }
 
 
@@ -307,10 +309,9 @@ export class ActiveModel {
     if (!activeFields) {
       return
     }
-    const written = getFillableWritten(instance)
     for (const prop of activeFields) {
       if (!this.fieldIsFillable(prop)) {
-        written.add(prop)
+        getFillableWritten(instance).add(prop)
       }
     }
   }
@@ -815,7 +816,6 @@ export class ActiveModel {
     }
 
     const {
-      saveInitialState,
       setInstance,
       saveRaw,
       saveBaseline,
@@ -846,7 +846,6 @@ export class ActiveModel {
       this.fill(model, this.stripNonFillable(this.setDefaultAttributes(data)))
 
       if (opts.tracked) {
-        saveInitialState(model)
         saveBaseline(model.clone())
       }
       if (opts.history) {
@@ -1059,8 +1058,8 @@ export class ActiveModel {
     const Ctor = <typeof ActiveModel>this.constructor
     const source = rawOf.get(this) ?? this
     const copy = cloneDeepWith(source, Ctor.cloneCustomizer.bind(Ctor))
-    for (const p of getReadonlyWritten(source)) getReadonlyWritten(copy).add(p)
-    for (const p of getFillableWritten(source)) getFillableWritten(copy).add(p)
+    getReadonlyWritten.peek(source)?.forEach((p) => getReadonlyWritten(copy).add(p))
+    getFillableWritten.peek(source)?.forEach((p) => getFillableWritten(copy).add(p))
     const model = Ctor.wrap(copy)
     copyTrackingState(this, model)
     Ctor.bindNestedModels(copy, model)
@@ -1098,15 +1097,16 @@ export class ActiveModel {
    */
   protected static bindChildren (target: ActiveModel, prop: string | symbol, receiver: unknown) {
     let byProp = childSubscriptions.get(target)
-    if (!byProp) {
-      byProp = new Map()
-      childSubscriptions.set(target, byProp)
+    if (byProp) {
+      byProp.get(prop)?.forEach((off) => off())
+      // Stryker disable next-line all: the entry is rewritten or unused after the unsubscribe above
+      byProp.delete(prop)
     }
-    byProp.get(prop)?.forEach((off) => off())
-    // Stryker disable next-line all: the entry is rewritten or unused after the unsubscribe above
-    byProp.delete(prop)
 
     const stored = Reflect.get(target, prop)
+    if (typeof stored !== 'object' || stored === null) {
+      return
+    }
     const children: Array<{ on: (event: EventType, cb: () => void) => () => void }> = isCollection(stored)
       ? [stored]
       : (Array.isArray(stored) ? stored : [stored]).filter(
@@ -1115,6 +1115,10 @@ export class ActiveModel {
     // Stryker disable next-line all: early exit, binding an empty list is a no-op
     if (children.length === 0) {
       return
+    }
+    if (!byProp) {
+      byProp = new Map()
+      childSubscriptions.set(target, byProp)
     }
     byProp.set(prop, children.map((child) => child.on(EventType.touched, () => {
       if (bubbling.has(target)) {
@@ -1563,11 +1567,22 @@ export class ActiveModel {
   }
 
   /**
-   *  Return touched state of model
+   * Whether a non-`hidden` field (or the set of own keys) differs from what it was right after creation;
+   * `undefined` for a model that was not created with `{ tracked: true }`.
    */
-  isTouched () {
-    const { isTouched } = useMeta(this)
-    return isTouched()
+  isTouched (): boolean | undefined {
+    const baseline = getBaseline(this)
+    if (!baseline) {
+      return undefined
+    }
+    const raw = rawOf.get(this) ?? this
+    const Ctor = <typeof ActiveModel>raw.constructor
+    const before = rawOf.get(baseline) ?? baseline
+    const keys = Object.keys(raw)
+    if (keys.length !== Object.keys(before).length) {
+      return true
+    }
+    return keys.some((key) => !Ctor.fieldIsHidden(key) && !deepEqual(Reflect.get(raw, key), Reflect.get(before, key)))
   }
 
   constructor (data: ActiveModelSource = {}) {

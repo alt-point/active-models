@@ -5,34 +5,19 @@ type EventsContainer = Map<EventType, ListenersContainer>
 /** Anything that can own listeners: a model class/instance or a collection class/instance. */
 type EmitterTarget = object
 
+/** Filled by `addListener` only: a target that merely emits has no entry (and costs nothing). */
 const Registry = new WeakMap<EmitterTarget, EventsContainer>()
 
-/**
- * Make events container
- */
-const makeContainer = (): EventsContainer => {
-  const map: EventsContainer = new Map()
-  for (const eventName of Object.values(EventType) as EventType[]) {
-    map.set(eventName as EventType, new Set())
-  }
-  return map
-}
+const NONE: ListenersContainer = new Set()
 
-const getOwnContainer = (target: EmitterTarget): EventsContainer => {
-  if (!Registry.has(target)) {
-    Registry.set(target, makeContainer())
-  }
-  return Registry.get(target)!
-}
-
+const ownListeners = (target: EmitterTarget, eventName: EventType): ListenersContainer | undefined =>
+  Registry.get(target)?.get(eventName)
 
 /**
  * Helper for emitter
  * @param target
  */
 export const useEmitter = (target: EmitterTarget) => {
-  const ownEvents = getOwnContainer(target)
-
   // Stryker disable next-line ConditionalExpression: class targets are only ever registered on, never emitted from
   const isInstance = typeof target === 'object'
   const Ctor = isInstance ? target.constructor : undefined
@@ -46,7 +31,7 @@ export const useEmitter = (target: EmitterTarget) => {
     eventName: EventType,
     listener: ActiveModelHookListener
   ) => {
-    ownEvents.get(eventName)!.delete(listener)
+    ownListeners(target, eventName)?.delete(listener)
   }
 
   /**
@@ -64,7 +49,16 @@ export const useEmitter = (target: EmitterTarget) => {
       throw new Error('Listener must be a function!')
     }
 
-    const container = ownEvents.get(eventName)!
+    let events = Registry.get(target)
+    if (!events) {
+      events = new Map()
+      Registry.set(target, events)
+    }
+    let container = events.get(eventName)
+    if (!container) {
+      container = new Set()
+      events.set(eventName, container)
+    }
 
     if (once) {
       const closure: ActiveModelHookListener = (payload) => {
@@ -87,7 +81,7 @@ export const useEmitter = (target: EmitterTarget) => {
    * @param eventName
    */
   const getListeners = (eventName: EventType): Iterable<ActiveModelHookListener> => {
-    const own = ownEvents.get(eventName)!
+    const own = ownListeners(target, eventName) ?? NONE
 
     // Stryker disable next-line all: class targets are only ever registered on, never emitted from
     if (!Ctor) {
@@ -157,4 +151,3 @@ export const useEmitter = (target: EmitterTarget) => {
     emit,
   }
 }
-

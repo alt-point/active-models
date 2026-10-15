@@ -27,7 +27,7 @@ constructor), and `created` arrives asynchronously, via a microtask.
 
 ## `hidden` fields and `isTouched()`
 
-The `isTouched()` snapshot is built through the same `ownKeys` as serialization, so changing a `hidden`
+`isTouched()` compares only the visible fields - the ones `Object.keys()` returns - so changing a `hidden`
 field doesn't make the model "touched". `clone()`, however, **keeps** `hidden` values.
 
 ## `create(existingModel)` doesn't copy `hidden` fields

@@ -112,8 +112,8 @@ user.address!.city = 'Munich'
 user.isTouched() // true — even though the change was on the nested model, not user itself
 ```
 
-**Fields marked `hidden: true` are excluded from the comparison.** `ownKeys` (used while building the
-snapshot) filters hidden fields out exactly like it does for `Object.keys()`/`JSON.stringify()` — so a
+**Fields marked `hidden: true` are excluded from the comparison.** `isTouched()` compares only the fields
+`Object.keys()` returns, and hidden fields are left out of it exactly like they are for `JSON.stringify()` — so a
 change to a hidden field is invisible to `isTouched()`:
 
 ```ts
@@ -124,7 +124,7 @@ class Session extends ActiveModel {
 
 const session = Session.create({ name: 'x' }, { tracked: true })
 session.csrfToken = 'new-token'
-session.isTouched() // false — csrfToken is hidden from the snapshot
+session.isTouched() // false — csrfToken is left out of the comparison
 ```
 
 If a field must participate in change tracking, don't make it `hidden` — reserve `hidden` for data that

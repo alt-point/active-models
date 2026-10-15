@@ -1,10 +1,8 @@
 import { ActiveModel } from './ActiveModel'
-import { deepEqual } from './equal'
 import { cloneDeep } from './clone'
 type State = {
-  initialState?: ActiveModel | undefined
   raw?: any
-  /** A pristine copy of the model taken right after creation: what `changes()` compares to and `revert()` restores from */
+  /** A pristine copy of the model taken right after creation: what `isTouched()` / `changes()` compare to and `revert()` restores from */
   baseline?: ActiveModel
 }
 
@@ -138,26 +136,13 @@ const upsertState = (instance: ActiveModel, data: Partial<State>) => {
 }
 
 /**
- * Save initial state of model
- * @param instance
- * @param initialState
- */
-export const saveInitialState = (
-  instance: ActiveModel,
-  initialState: ActiveModel
-) => {
-  initialState = deepFreeze(cloneDeep(initialState))
-  upsertState(instance, { initialState })
-}
-
-/**
  * Carry the tracking baseline of `from` over to `to` (used by `clone()`).
- * The snapshot is already deep-frozen, so it is safe to share.
+ * The baseline is never written to, so it is safe to share.
  */
 export const copyTrackingState = (from: ActiveModel, to: ActiveModel) => {
   const meta = sharedState.get(from)
-  if (meta?.initialState) {
-    upsertState(to, { initialState: meta.initialState, raw: meta.raw, baseline: meta.baseline })
+  if (meta?.baseline) {
+    upsertState(to, { raw: meta.raw, baseline: meta.baseline })
   }
 }
 
@@ -183,21 +168,6 @@ export const saveBaseline = (instance: ActiveModel, baseline: ActiveModel) => {
 }
 
 export const getBaseline = (instance: ActiveModel) => sharedState.get(instance)?.baseline
-
-/**
- * Checking whatever instance is touched
- * @param instance
- */
-export const isTouched = (instance: ActiveModel) => {
-  const meta = sharedState.get(instance)
-  if (!meta) {
-    return undefined
-  }
-
-  const { initialState } = meta
-
-  return !deepEqual(instance, initialState)
-}
 
 /**
  * Reqursive deep freaze object
@@ -248,12 +218,9 @@ export const useMeta = (instance?: ActiveModel) => {
     runInCreatingContext,
     runRawConstruction,
     consumeRawConstruction,
-    saveInitialState: (initialState: ActiveModel) =>
-      saveInitialState(requiredInstance(inst), initialState),
     saveRaw: (raw: any) => saveRaw(requiredInstance(inst), raw),
     getRaw: () => getRaw(requiredInstance(inst)),
     saveBaseline: (baseline: ActiveModel) => saveBaseline(requiredInstance(inst), baseline),
     getBaseline: () => getBaseline(requiredInstance(inst)),
-    isTouched: () => isTouched(requiredInstance(inst)),
   }
 }
