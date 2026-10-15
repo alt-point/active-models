@@ -82,8 +82,8 @@ note.canUndo(), note.canRedo(), note.clearHistory()
 ```
 
 Every write after creation is a step (100 kept by default). A new write clears the redo steps; a whole `transaction()`
-or atomic `fill()` is **one** step, and a rolled-back one leaves none. Undo/redo bypass rules and transitions and
-aren't recorded themselves.
+or atomic `fill()` is **one** step, and a rolled-back one leaves none - not even inside an enclosing transaction.
+Undo/redo bypass rules and transitions and aren't recorded themselves.
 
 ## Limits
 

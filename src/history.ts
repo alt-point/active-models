@@ -11,7 +11,11 @@ type State = {
   undo: Change[][]
   redo: Change[][]
   /** while set, recorded changes are collected here and become ONE step (see `commitGroup`) */
-  group?: { depth: number, changes: Change[] }
+  group?: {
+    changes: Change[]
+    /** `changes.length` when each open group began, innermost last: an aborted group drops what it recorded */
+    starts: number[]
+  }
 }
 
 const DEFAULT_LIMIT = 100
@@ -51,15 +55,19 @@ export const beginGroup = (raw: object) => {
     return
   }
   if (state.group) {
-    state.group.depth++
+    state.group.starts.push(state.group.changes.length)
   } else {
-    state.group = { depth: 1, changes: [] }
+    state.group = { changes: [], starts: [0] }
   }
 }
 
 export const commitGroup = (raw: object) => {
   const state = histories.get(raw)
-  if (!state?.group || --state.group.depth > 0) {
+  if (!state?.group) {
+    return
+  }
+  state.group.starts.pop()
+  if (state.group.starts.length > 0) {
     return
   }
   const { changes } = state.group
@@ -69,12 +77,16 @@ export const commitGroup = (raw: object) => {
   }
 }
 
+/** The innermost open group rolled back: its changes are dropped, an enclosing group keeps its own */
 export const abortGroup = (raw: object) => {
   const state = histories.get(raw)
-  if (!state?.group || --state.group.depth > 0) {
+  if (!state?.group) {
     return
   }
-  state.group = undefined
+  state.group.changes.length = state.group.starts.pop()!
+  if (state.group.starts.length === 0) {
+    state.group = undefined
+  }
 }
 
 export const canUndo = (raw: object): boolean => (histories.get(raw)?.undo.length ?? 0) > 0

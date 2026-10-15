@@ -329,6 +329,19 @@ describe('undo() / redo()', () => {
     expect(plain.text).toBe('x')
   })
 
+  it('a rolled-back nested transaction leaves nothing in the enclosing step', () => {
+    const note = make()
+    note.transaction((n) => {
+      n.text = 'b'
+      expect(() => n.transaction((inner) => { inner.stars = 5; throw new Error('inner') })).toThrow('inner')
+    })
+    expect([note.text, note.stars]).toEqual(['b', 0])
+    expect(note.undo()).toBe(true)
+    expect([note.text, note.stars]).toEqual(['a', 0])
+    expect(note.redo()).toBe(true)
+    expect([note.text, note.stars]).toEqual(['b', 0])
+  })
+
   it('keeps at most `limit` steps', () => {
     const note = make({ limit: 2 })
     for (const text of ['b', 'c', 'd']) note.text = text

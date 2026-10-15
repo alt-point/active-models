@@ -25,6 +25,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 - `validate()` / `assertValid()` / `create(data, { validate: true })` skipped the items of an `ActiveMap` field: the map iterates `[key, item]` pairs, so no item was recognised as a model.
 - `ActiveMap.create(Model, options, items)` (and so `clone()` and the `container` field) spread the items into `add(...items)`, so a map of more than ~100 000 items threw `RangeError: Maximum call stack size exceeded`.
 - `ActiveMap.add(a, b, ...)` and the initial items of `ActiveMap.create()` emitted `itemsAdded` and `touched` once per item; like `ActiveCollection` and `ActiveSet`, the whole batch is now reported by one `itemsAdded` (with all `items` / `keys`) and one `touched`. A key repeated in one call keeps the last item; the others are no longer stored and reported removed.
+- With `history` enabled, a nested `transaction()` (or atomic `fill()`) that rolled back left its writes in the undo step of the enclosing transaction, so `redo()` re-applied them.
 
 ## [5.0.0] - 2026-10-03
 
