@@ -57,16 +57,63 @@ const onItemTouched = <T extends ActiveModel>(state: State<T>, item: T) => {
   emit(state, EventType.touched, { target: state.self })
 }
 
+/** Put `item` under `key`, reporting a displaced item but not the new one; `false` when it is already there */
+const store = <T extends ActiveModel>(state: State<T>, key: unknown, item: T): boolean => {
+  const existing = MapProto.get.call(state.self, key) as T | undefined
+  if (existing === item) {
+    return false
+  }
+  if (existing !== undefined) {
+    state.itemKey.delete(existing)
+    detach(state, existing)
+    emit(state, EventType.itemsRemoved, { target: state.self, items: [existing], keys: [key] })
+  }
+  MapProto.set.call(state.self, key, item)
+  state.itemKey.set(item, key)
+  attach(state, item)
+  return true
+}
+
+/** `add()` for any iterable: nothing is stored if an item is refused, the batch is reported once */
+const addAll = <T extends ActiveModel>(map: ActiveMap<T>, items: Iterable<T | RecursivePartialActiveModel<T>>) => {
+  const state = stateOf<T>(map)
+  if (!state) {
+    throw new TypeError('Not an ActiveMap: create it with ActiveMap.create()')
+  }
+  // a key repeated in one call: the last item wins, the others are never stored
+  const byKey = new Map<unknown, T>()
+  for (const candidate of items) {
+    const item = normalizeItem<T>(state.model, state.coerce, 'ActiveMap', candidate)
+    const key = state.keyOf(item)
+    if (isNilKey(key)) {
+      throw new TypeError(`ActiveMap<${state.model.name}> needs a key for every item, got ${key}`)
+    }
+    byKey.set(key, item)
+  }
+  const added: T[] = []
+  const keys: unknown[] = []
+  for (const [key, item] of byKey) {
+    if (store(state, key, item)) {
+      added.push(item)
+      keys.push(key)
+    }
+  }
+  if (added.length > 0) {
+    emit(state, EventType.itemsAdded, { target: map, items: added, keys })
+    emit(state, EventType.touched, { target: map })
+  }
+}
+
 /**
  * A `Map` of one model's instances, keyed by a value taken from each item - and nothing else can get in.
  *
  * - `set(key, item)` accepts an instance of the model (or, with `coerce`, plain data) whose own key equals `key`;
  *   `add(...items)` derives the key for you. Anything else throws.
  * - When an item's key field changes, the entry follows it to the new key.
- * - Emits `itemsAdded`, `itemsRemoved` (with `keys`) and `touched` (also when an item changes), so it bubbles
- *   into a parent model like a nested model does.
+ * - Emits `itemsAdded` (once per `add()` call, listing the whole batch), `itemsRemoved` (with `keys`) and
+ *   `touched` (also when an item changes), so it bubbles into a parent model like a nested model does.
  *
- * Create it with {@link ActiveMap.create}, or the `map` field option. Like `ActiveCollection`, it guards its own
+ * Create it with {@link ActiveMap.create}, or the `container: ActiveMap.field()` field option. Like `ActiveCollection`, it guards its own
  * methods; `Map.prototype.set.call(map, ...)` bypasses them.
  */
 export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map<K, T> {
@@ -100,12 +147,8 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
       attached: new Map(),
     })
     registerCollection(map)
-    // no argument spread: an iterable of any length
-    for (const item of items as Iterable<RecursivePartialActiveModel<InstanceType<M>>>) {
-      map.add(item)
-    }
+    addAll(map, items as Iterable<RecursivePartialActiveModel<InstanceType<M>>>)
     return map
-
   }
 
   /**
@@ -161,19 +204,12 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
     return useEmitter(this).addListener(event, cb as ActiveModelHookListener, true)
   }
 
-  /** Store an item under its key (replacing whatever held it). Nothing is stored if any item is refused. */
+  /**
+   * Store each item under its key (replacing whatever held it). Nothing is stored if any item is refused;
+   * the whole batch is reported by one `itemsAdded` and one `touched`.
+   */
   add (...items: Array<T | RecursivePartialActiveModel<T>>): this {
-    const state = stateOf<T>(this)
-    if (!state) {
-      throw new TypeError('Not an ActiveMap: create it with ActiveMap.create()')
-    }
-    const accepted = items.map((item) => normalizeItem<T>(state.model, state.coerce, 'ActiveMap', item))
-    const keyed = accepted.map((item) => ({ item, key: state.keyOf(item) }))
-    const missing = keyed.find(({ key }) => isNilKey(key))
-    if (missing) {
-      throw new TypeError(`ActiveMap<${state.model.name}> needs a key for every item, got ${missing.key}`)
-    }
-    keyed.forEach(({ item, key }) => this.store(state, key as K, item))
+    addAll(this, items)
     return this
   }
 
@@ -190,7 +226,10 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
     if (!Object.is(own, key)) {
       throw new TypeError(`ActiveMap<${state.model.name}> key mismatch: stored under ${JSON.stringify(key)} but the item's key is ${JSON.stringify(own)}`)
     }
-    this.store(state, key, item)
+    if (store(state, key, item)) {
+      emit(state, EventType.itemsAdded, { target: this, items: [item], keys: [key] })
+      emit(state, EventType.touched, { target: this })
+    }
     return this
   }
 
@@ -247,22 +286,5 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
       json[String(key)] = item.toJSON() as object
     }
     return json
-  }
-
-  private store (state: State<T>, key: K, item: T) {
-    const existing = MapProto.get.call(this, key) as T | undefined
-    if (existing === item) {
-      return
-    }
-    if (existing !== undefined) {
-      state.itemKey.delete(existing)
-      detach(state, existing)
-      emit(state, EventType.itemsRemoved, { target: this, items: [existing], keys: [key] })
-    }
-    MapProto.set.call(this, key, item)
-    state.itemKey.set(item, key)
-    attach(state, item)
-    emit(state, EventType.itemsAdded, { target: this, items: [item], keys: [key] })
-    emit(state, EventType.touched, { target: this })
   }
 }

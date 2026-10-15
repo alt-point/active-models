@@ -144,7 +144,8 @@ users.delete(1); users.clear()
 It is a real `Map` (`instanceof Map`, `size`, `keys()`, `for...of`...), but holds only instances of the model, with the
 same coercion rule as the collection. Setting a key that exists replaces the item and reports both; when an item's key
 field changes the entry moves to the new key (displacing whatever held it). Events: `itemsAdded`, `itemsRemoved`
-(payload has `keys`) and `touched`. `toJSON()` is an object keyed by the key.
+(payload has `keys`) and `touched`; `add(...)` and the initial items report the whole batch in one `itemsAdded` and one
+`touched` (a key repeated in the batch keeps its last item). `toJSON()` is an object keyed by the key.
 
 ## `ActiveSet`: identity plus an optional unique key
 

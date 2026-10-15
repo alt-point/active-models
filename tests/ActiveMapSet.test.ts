@@ -248,8 +248,22 @@ describe('ActiveMap', () => {
     const many = Array.from({ length: 150_000 }, () => one)
     expect(ActiveMap.create(User, { key: 'id' }, many).size).toBe(1)
   })
-})
 
+  it('add() reports the whole batch in one itemsAdded and one touched; a repeated key keeps the last item', () => {
+    const users = ActiveMap.create(User, { key: 'id' }, [])
+    const events: string[] = []
+    users.on(EventType.itemsAdded, ({ items, keys }) => events.push(`+${(items as User[]).map((u) => u.name)}@${keys}`))
+    users.on(EventType.itemsRemoved, ({ items, keys }) => events.push(`-${(items as User[]).map((u) => u.name)}@${keys}`))
+    users.on(EventType.touched, () => events.push('touched'))
+    users.add({ id: 1, name: 'a' }, { id: 2, name: 'b' }, { id: 1, name: 'c' })
+    expect(events).toEqual(['+c,b@1,2', 'touched'])
+    users.add({ id: 2, name: 'd' }, users.get(1)!)
+    expect(events).toEqual(['+c,b@1,2', 'touched', '-b@2', '+d@2', 'touched'])
+    users.add(...Array.from({ length: 1000 }, (_, i) => ({ id: 10 + i })))
+    expect(events).toHaveLength(7)
+    expect(users.size).toBe(1002)
+  })
+})
 
 describe('ActiveSet', () => {
   const make = (items: unknown[] = [{ id: 1 }, { id: 2 }], options = {}) => ActiveSet.create(User, items, options)
@@ -461,7 +475,6 @@ describe('containers on a model', () => {
     const bag = Bag.create({ items: [{ id: 1, label: 'a' }, { id: 2 }], extras: [{ id: 3 }] })
     expect(bag.validate().issues.map((issue) => issue.path)).toEqual(['items[1].label', 'extras[0].label'])
   })
-
 
   it('cannot combine a container with factory on one field, and refuses a foreign descriptor', () => {
     expect(() => {
