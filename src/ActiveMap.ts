@@ -100,8 +100,12 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
       attached: new Map(),
     })
     registerCollection(map)
-    map.add(...(items as Iterable<RecursivePartialActiveModel<InstanceType<M>>>))
+    // no argument spread: an iterable of any length
+    for (const item of items as Iterable<RecursivePartialActiveModel<InstanceType<M>>>) {
+      map.add(item)
+    }
     return map
+
   }
 
   /**

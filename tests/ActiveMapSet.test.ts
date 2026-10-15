@@ -242,7 +242,14 @@ describe('ActiveMap', () => {
     expect(users.get(1)!.name).toBe('a')
     expect(JSON.parse(JSON.stringify(users))).toEqual({ 1: { id: 1, name: 'a' }, 2: { id: 2, name: 'b' } })
   })
+
+  it('create() takes any number of items (no argument spread)', () => {
+    const one = User.create({ id: 1 })
+    const many = Array.from({ length: 150_000 }, () => one)
+    expect(ActiveMap.create(User, { key: 'id' }, many).size).toBe(1)
+  })
 })
+
 
 describe('ActiveSet', () => {
   const make = (items: unknown[] = [{ id: 1 }, { id: 2 }], options = {}) => ActiveSet.create(User, items, options)
