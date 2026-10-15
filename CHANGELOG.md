@@ -28,11 +28,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 - With `history` enabled, a nested `transaction()` (or atomic `fill()`) that rolled back left its writes in the undo step of the enclosing transaction, so `redo()` re-applied them.
 - `Model.createLazy(data)` - and so a plain object pushed into an `ActiveCollection` / `ActiveMap` / `ActiveSet` or assigned to a `factory` field - modified the caller's object: field defaults were added to it and `fillable: false` keys deleted from it. The lazy path now works on a shallow copy (nested values are still shared, as before).
 - `isCollection()` is `true` for an `ActiveMap` / `ActiveSet` too, but its type predicate narrowed to `ActiveCollection` only; it now narrows to the union of the three.
+- `Object.keys()` and `Reflect.ownKeys()` of a model made non-extensible with `Object.preventExtensions()` no longer throw: its `hidden` fields are listed, as the Proxy invariants require, while `toJSON()` still leaves them out.
 
 ### Changed
 
 - Performance: the event, lock and child-subscription containers of an instance are allocated on first use, and a tracked model keeps one pristine copy instead of two. Per instance with 10 fields: ~2.7 KB → ~0.8 KB (tracked: ~4.2 KB → ~1.8 KB); `new Model()` 7.4 µs → 2.5 µs; tracked `create()` 27 µs → 21 µs. The perf suite now enforces < 1.5 KB per instance.
 - Performance: `isTouched()`, `changes()`, `dirtyFields()`, `isDirty()` and `revert()` compare nested models through their raw objects instead of their proxies, and `isDirty(field)` compares that one field only. Tracked model with a 2000-row collection: `isTouched()` 5.1 ms → 0.49 ms, `isDirty('rows')` 5.3 ms → 0.44 ms, `changes()` 5.1 ms → 0.43 ms (budgets < 1 ms / < 0.6 ms).
+- Performance: a model whose class has no `hidden` fields and no getters is created without the `has`, `getOwnPropertyDescriptor` and `ownKeys` traps (a field hidden or a getter defined after an instance exists is not reflected on that instance), `Reflect.ownKeys()` builds its list in one pass, and `toJSON()` reads the raw instance instead of going through the proxy. Model with 10 fields: `Object.keys()` 2.6 µs → 0.75 µs, `toJSON()` 4.1 µs → 0.64 µs, `JSON.stringify()` 4.5 µs → 0.97 µs; `new Model()` 2.1 µs → 1.8 µs. Budgets: `Object.keys()` < 1.5 µs, `toJSON()` < 2 µs, `JSON.stringify()` < 2.5 µs.
 
 ## [5.0.0] - 2026-10-03
 

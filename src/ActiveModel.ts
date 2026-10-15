@@ -328,6 +328,13 @@ export class ActiveModel {
     return this[SC.__hidden__]?.has(prop) ?? false
   }
 
+  /** The own enumerable string keys of a raw instance without its `hidden` fields: what `Object.keys(model)` reports */
+  protected static visibleKeys (raw: ActiveModel): string[] {
+    const hidden = this[SC.__hidden__]
+    const keys = Object.keys(raw)
+    return hidden ? keys.filter((key) => !hidden.has(key)) : keys
+  }
+
   protected static fieldIsFillable (
     prop: string | keyof InstanceType<typeof this> | symbol
   ): boolean {
@@ -699,34 +706,21 @@ export class ActiveModel {
       }
     }
 
-    return Array.isArray(instance)
-      ? instance.map((i) => this.toJSON(i))
-      : Object.keys(instance).reduce(
-        (a: { [key: string]: unknown }, b: string) => {
-          // getters receive the raw instance, exactly like on a regular read
-          const source = rawOf.get(instance) ?? instance
-          // @ts-ignore
-          const value =
-            // Stryker disable next-line OptionalChaining: plain objects have no getter() - covered by the plain-structure toJSON test
-            (<typeof ActiveModel>instance.constructor)?.getter?.(
-              source as ActiveModel,
-              b
-            ) ?? Reflect.get(source, b)
-          if (!isPOJOSSafetyValue(value)) {
-            return a
-          }
-          a[b] = value
-          if (
-            // Stryker disable next-line ConditionalExpression,LogicalOperator: recursing into null/primitives returns them unchanged
-            (typeof a[b] === 'object' && a[b] !== null) ||
-            Array.isArray(a[b])
-          ) {
-            a[b] = this.toJSON(a[b] as object)
-          }
-          return a
-        },
-        {}
-      )
+    if (Array.isArray(instance)) {
+      return instance.map((i) => this.toJSON(i))
+    }
+    // a model is read through its raw instance: getters still apply, the proxy's per-key traps don't run
+    const Ctor = instance instanceof ActiveModel ? <typeof ActiveModel>instance.constructor : undefined
+    const source = rawOf.get(instance) ?? instance
+    const json: Record<string, unknown> = {}
+    for (const key of Ctor ? Ctor.visibleKeys(source as ActiveModel) : Object.keys(instance)) {
+      const value = Ctor ? Ctor.getter(source as ActiveModel, key) : Reflect.get(source, key)
+      if (isPOJOSSafetyValue(value)) {
+        // Stryker disable next-line ConditionalExpression,LogicalOperator: recursing into null/primitives returns them unchanged
+        json[key] = typeof value === 'object' && value !== null ? this.toJSON(value as object) : value
+      }
+    }
+    return json
   }
 
   /**
@@ -1087,9 +1081,8 @@ export class ActiveModel {
     if (Ctor !== b.constructor) {
       return false
     }
-    const visible = (raw: ActiveModel) => Object.keys(raw).filter((key) => !Ctor.fieldIsHidden(key))
-    const keys = visible(a)
-    return keys.length === visible(b).length && keys.every((key) =>
+    const keys = Ctor.visibleKeys(a)
+    return keys.length === Ctor.visibleKeys(b).length && keys.every((key) =>
       Object.prototype.hasOwnProperty.call(b, key) && deepEqual(Reflect.get(a, key), Reflect.get(b, key), ActiveModel.sameContent)
     )
   }
@@ -1214,6 +1207,27 @@ export class ActiveModel {
       }
       const descriptor = Reflect.getOwnPropertyDescriptor(target, prop)
       return descriptor === undefined || descriptor.configurable === true
+    }
+
+    // shortcut: the traps that hide fields or list getters cost a call per key in Object.keys() / spread / `in`, so a
+    // class with nothing to hide and no getters gets none; a field hidden with addToHidden() or a getter defined with
+    // defineGetter() after an instance exists is not reflected on that instance
+    const Ctor = <typeof ActiveModel>instance.constructor
+    const conceals = Boolean(Ctor[SC.__hidden__]?.size)
+    const listsGetters = Boolean(Ctor[SC.__getters__]?.size)
+    const listKeys = (target: ActiveModel): Array<string | symbol> => {
+      const keys = Reflect.ownKeys(target)
+      // a non-extensible target must be reported exactly (Proxy invariant)
+      if (!Object.isExtensible(target)) {
+        return keys
+      }
+      for (const getter of Ctor[SC.__getters__]?.keys() ?? []) {
+        if (!keys.includes(getter)) {
+          keys.push(getter)
+        }
+      }
+      const hidden = Ctor[SC.__hidden__]
+      return hidden ? keys.filter((key) => !hidden.has(key)) : keys
     }
 
     const proxy = new Proxy(instance, {
@@ -1375,21 +1389,14 @@ export class ActiveModel {
         }
         return Reflect.defineProperty(target, prop, descriptor)
       },
-      has (target, prop: string | symbol) {
-        return !isHiddenAndConcealable(target, prop) && Reflect.has(target, prop)
-      },
-      getOwnPropertyDescriptor (target, prop) {
-        return isHiddenAndConcealable(target, prop)
-          ? undefined
-          : Reflect.getOwnPropertyDescriptor(target, prop)
-      },
-      ownKeys (target) {
-        const Ctor = <typeof ActiveModel>target.constructor
-        const getters = Ctor.getGetters() as Array<string | symbol>
-        return Array.from(
-          new Set(Reflect.ownKeys(target).concat(getters))
-        ).filter((property) => !Ctor.fieldIsHidden(property as string))
-      },
+      // an `undefined` trap is no trap: the operation goes straight to the target
+      has: conceals
+        ? (target, prop) => !isHiddenAndConcealable(target, prop) && Reflect.has(target, prop)
+        : undefined,
+      getOwnPropertyDescriptor: conceals
+        ? (target, prop) => (isHiddenAndConcealable(target, prop) ? undefined : Reflect.getOwnPropertyDescriptor(target, prop))
+        : undefined,
+      ownKeys: conceals || listsGetters ? listKeys : undefined,
     }) as RType
     rawOf.set(proxy, instance)
     proxyOf.set(instance, proxy)

@@ -298,6 +298,21 @@ describe('hidden fields and reflection', () => {
     expect(secret.token).toBe('t')
   })
 
+  it('are concealed on a subclass too; a non-extensible model lists them but still leaves them out of toJSON()', () => {
+    class Child extends Secret {
+      @ActiveField() extra: number = 0
+    }
+
+    const child = Child.create({})
+    expect('token' in child).toBe(false)
+    expect(Object.keys(child)).toEqual(['name', 'extra'])
+
+    Object.preventExtensions(child)
+    expect('token' in child).toBe(true)
+    expect(Object.keys(child)).toEqual(['name', 'token', 'extra'])
+    expect(JSON.parse(JSON.stringify(child))).toEqual({ name: '', extra: 0 })
+  })
+
   it('stay usable after makeFreeze() (proxy invariants are respected)', () => {
     const frozen = Secret.create({}).makeFreeze()
     expect(frozen.token).toBe('t')

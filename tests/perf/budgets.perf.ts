@@ -53,9 +53,16 @@ describe('absolute budgets (median ns/op)', () => {
 
   it('toJSON() of 10 fields / of an order with 50 lines', () => {
     const m = M10.create(d10)
-    expect(measure(() => m.toJSON(), 5000)).toBeLessThan(us(30))
+    expect(measure(() => m.toJSON(), 5000)).toBeLessThan(us(2))
     const order = Order.create(orderData(50))
     expect(measure(() => order.toJSON(), 500)).toBeLessThan(us(400))
+  })
+
+  it('Object.keys() and JSON.stringify() of 10 fields', () => {
+    const m = M10.create(d10)
+    // ~2x the laptop numbers: Object.keys() of any Proxy costs 0.7 µs, so a looser budget would miss a trap creeping back
+    expect(measure(() => Object.keys(m), 20_000)).toBeLessThan(us(1.5))
+    expect(measure(() => JSON.stringify(m), 20_000)).toBeLessThan(us(2.5))
   })
 
   it('clone() of an order with 50 lines', () => {
