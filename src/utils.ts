@@ -1,4 +1,5 @@
 import { ActiveModel } from './ActiveModel'
+import type { StaticContainers as Containers } from './types'
 
 export function getValue<T> (data?: T | (() => T) | undefined) {
   if (typeof data === 'function') {
@@ -94,18 +95,8 @@ export type RecursivePartial<T> = {
   [P in keyof T]?: T[P] extends Record<any, any> ? RecursivePartial<T[P]> : T[P]
 }
 
-export type StaticContainers =
-  | '__getters__'
-  | '__setters__'
-  | '__attributes__'
-  | '__validators__'
-  | '__fillable__'
-  | '__protected__'
-  | '__readonly__'
-  | '__hidden__'
-  | '__activeFields__'
-  | '__pipeline__'
-  | '__invariants__'
+/** The static container names as a string union; the list itself is the `StaticContainers` enum in `types.ts` */
+export type StaticContainers = `${Containers}`
 export type BaseMethods =
   | 'clone'
   | 'fill'
