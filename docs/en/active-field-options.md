@@ -44,7 +44,9 @@ delete (user as any).name // throws: Property "name" is protected!
 ## `value` / `attribute`
 
 The field's default value. `value` is just an alias for `attribute` - there is no semantic difference
-(`options.attribute || options.value`, whichever is set, is used).
+(`attribute` wins when both are set). `0`, `false`, `''` and `null` are defaults too; only `undefined`
+means "no default".
+
 
 Applied via `Model.create(data)` (and `new Model(data)` - but see the warning in
 [active-model-advanced.md](active-model-advanced.md#new-model-data-vs-model-create-data-vs-fill-data))

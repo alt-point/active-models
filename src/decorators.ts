@@ -238,9 +238,13 @@ export function ActiveField<_T extends ActiveModel> (
       Ctor.addToReadonly(prop)
     }
 
-    if (options.attribute || options.value) {
-      Ctor.defineAttribute(prop, options.attribute || options.value)
+    // presence, not truthiness: 0, false, '' and null are defaults too
+    const defaultValue = options.attribute !== undefined ? options.attribute : options.value
+    const hasOwnDefault = defaultValue !== undefined
+    if (hasOwnDefault) {
+      Ctor.defineAttribute(prop, defaultValue)
     }
+
 
     if (options.factory && options.container) {
       throw new Error(`Field "${prop}": use either factory or container, not both`)
@@ -253,8 +257,8 @@ export function ActiveField<_T extends ActiveModel> (
     // Stryker disable next-line BooleanLiteral: reserved parameter, currently unused
     factoryDecorator(target, prop, options.factory, false)
 
-    const hasOwnDefault = Boolean(options.attribute || options.value)
     if (options.container) containerDecorator(target, prop, options.container, hasOwnDefault)
+
 
     if (options.getter) {
       Ctor.defineGetter(prop, options.getter)

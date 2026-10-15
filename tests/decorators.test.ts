@@ -21,7 +21,22 @@ describe('@ActiveField() defaults', () => {
 
     expect(User.create({}).name).toBe('Guest')
   })
+
+  it('applies the falsy defaults 0, false, "" and null', () => {
+    class Stats extends ActiveModel {
+      @ActiveField({ value: 0 }) count?: number
+      @ActiveField({ value: false }) active?: boolean
+      @ActiveField({ attribute: '' }) note?: string
+      @ActiveField(null) parent?: string | null
+      @ActiveField(0) zero?: number
+    }
+
+    const stats = Stats.create({})
+    expect([stats.count, stats.active, stats.note, stats.parent, stats.zero]).toEqual([0, false, '', null, 0])
+    expect(Stats.create({ count: 5, active: true }).count).toBe(5)
+  })
 })
+
 
 describe('hidden', () => {
   it('excludes the field from enumeration and serialization but not direct access', () => {

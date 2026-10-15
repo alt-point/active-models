@@ -44,7 +44,9 @@ delete (user as any).name // бросит: Property "name" is protected!
 ## `value` / `attribute`
 
 Значение по умолчанию для поля. `value` — просто алиас для `attribute`, семантической разницы нет
-(`options.attribute || options.value` — если задано хоть одно, используется оно).
+(если заданы оба, берётся `attribute`). `0`, `false`, `''` и `null` — полноценные дефолты; «дефолта нет»
+означает только `undefined`.
+
 
 Применяется через `Model.create(data)` (и `new Model(data)` — но см. предупреждение в
 [active-model-advanced.md](active-model-advanced.md#new-model-data-vs-model-create-data-vs-fill-data)), когда
