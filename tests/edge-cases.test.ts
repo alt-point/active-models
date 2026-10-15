@@ -323,7 +323,26 @@ describe('create() input validation', () => {
     }
     expect(() => Item.create([{ id: '1' }] as any)).toThrow(/createFromCollection/)
   })
+
+  it('accepts data with a circular reference instead of looping forever', () => {
+    class Item extends ActiveModel {
+      @ActiveField() id: string = ''
+      @ActiveField() meta: any = null
+    }
+    const meta: any = { tags: ['a'] }
+    meta.self = meta
+    const item = Item.create({ id: '1', meta }, { tracked: true })
+    expect(item.id).toBe('1')
+    expect(item.meta.self).toBe(item.meta)
+    expect(item.meta.tags).toEqual(['a'])
+    const raw = item.getRaw()!.meta as any
+
+    expect(raw.self).toBe(raw)
+    expect(Object.isFrozen(raw.tags)).toBe(true)
+  })
+
 })
+
 
 describe('toJSON() special values', () => {
   it('serializes Set as an array and Map as an object, at any depth', () => {

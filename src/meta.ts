@@ -205,16 +205,19 @@ export const isTouched = (instance: ActiveModel) => {
  */
 function deepFreeze (value: any) {
   // functions are left alone: they are the caller's own objects, not snapshot data
-  if (!value || typeof value !== 'object') {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
     return value
   }
 
+  // frozen before its children so that a circular reference stops at the `isFrozen` check above
+  Object.freeze(value)
   for (const name of Reflect.ownKeys(value)) {
     deepFreeze(value[name])
   }
 
-  return Object.freeze(value)
+  return value
 }
+
 
 /**
  * checks for mandatory availability instance

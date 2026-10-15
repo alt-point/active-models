@@ -37,19 +37,22 @@ export function traverse (root: any, action: (data: {}) => void) {
   if (!root) return
 
   const nodes = [] as Array<{}>
+  const seen = new WeakSet<object>()
   let current: undefined | { [k: string | number]: any } = root
 
   while (current) {
-    action(current)
-
-    Object.keys(current).forEach((key) => {
-      if (isComplexValue(current![key])) {
-        nodes.push(current![key])
-      }
-    })
-
+    if (!seen.has(current)) {
+      seen.add(current)
+      action(current)
+      Object.keys(current).forEach((key) => {
+        if (isComplexValue(current![key])) {
+          nodes.push(current![key])
+        }
+      })
+    }
     current = nodes.pop()
   }
+
 }
 
 /**

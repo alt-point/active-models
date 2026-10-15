@@ -16,7 +16,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 
 ## [Unreleased]
 
+### Fixed
+
+- `Model.create(data)` looped forever when `data` contained a circular reference: the sanitizer's object walk had no cycle guard.
+
 ## [5.0.0] - 2026-10-03
+
 
 Migration guide: [docs/en/migration-5.md](docs/en/migration-5.md) ([RU](docs/migration-5.md)).
 
