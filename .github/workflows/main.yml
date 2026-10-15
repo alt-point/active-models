@@ -26,6 +26,6 @@ jobs:
         run: bun run build
       - name: Check the built package (ESM + CJS, one copy of every class)
         run: bun run test:dist
-      - run: npm publish --access public --force
+      - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
