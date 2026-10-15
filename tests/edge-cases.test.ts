@@ -340,9 +340,7 @@ describe('create() input validation', () => {
     expect(raw.self).toBe(raw)
     expect(Object.isFrozen(raw.tags)).toBe(true)
   })
-
 })
-
 
 describe('toJSON() special values', () => {
   it('serializes Set as an array and Map as an object, at any depth', () => {

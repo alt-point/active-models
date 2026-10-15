@@ -76,7 +76,6 @@ Order.create(data, { validate: true })                // throws instead of retur
 
 It recurses into nested models, collections (an `ActiveMap` / `ActiveSet` item by its iteration index) and arrays of models
 (with paths like `history[1].city`), survives reference
-
 cycles, and runs `validator`s only for values that are set (as they do on write). Codes: `required`, `type`, `coerce`,
 `min`, `max`, `minLength`, `maxLength`, `pattern`, `oneOf`, `transition`, `validator`.
 

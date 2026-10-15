@@ -218,7 +218,6 @@ function deepFreeze (value: any) {
   return value
 }
 
-
 /**
  * checks for mandatory availability instance
  * @param instance

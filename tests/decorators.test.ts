@@ -37,7 +37,6 @@ describe('@ActiveField() defaults', () => {
   })
 })
 
-
 describe('hidden', () => {
   it('excludes the field from enumeration and serialization but not direct access', () => {
     class User extends ActiveModel {
@@ -294,7 +293,6 @@ describe('factory', () => {
     expect(User.create({ address: undefined }).address).toBeUndefined()
   })
 })
-
 
 describe('on / once hooks', () => {
   it('decorator-level on{} fires per property, shared across all instances of the class', () => {

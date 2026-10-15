@@ -556,7 +556,6 @@ describe('decorator options applied inside a test (so the mutants are active)', 
     const t = T.create({})
     expect(t.n).toBe(5)
     expect(t.z).toBeNull()
-
   })
 
   it('a setter option works on its own', () => {

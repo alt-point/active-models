@@ -52,7 +52,6 @@ export function traverse (root: any, action: (data: {}) => void) {
     }
     current = nodes.pop()
   }
-
 }
 
 /**

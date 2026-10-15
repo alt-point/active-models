@@ -91,7 +91,6 @@ const validateModelType = (Model: typeof ActiveModel, prop: string) => {
 }
 
 const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryConfig) => {
-
   if (!factory) {
     return
   }
@@ -125,7 +124,6 @@ const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryCo
     const value = Array.isArray(v) ? Model.createFromCollectionLazy(v) : Model.createLazy(v)
     return Reflect.set(m, p, value, r)
   })
-
 }
 
 const containerDecorator = (
@@ -188,7 +186,6 @@ export function ActiveFactory (
   /** Unused; kept so that existing two-argument calls still type-check. */
   _isOptional?: boolean
 ) {
-
   return function (target: ActiveModel, prop: string): void {
     const Ctor = <typeof ActiveModel>target.constructor
 
@@ -198,7 +195,6 @@ export function ActiveFactory (
     Ctor.addToFillable(prop)
 
     factoryDecorator(target, prop, factory)
-
   }
 }
 
@@ -245,7 +241,6 @@ export function ActiveField<_T extends ActiveModel> (
       Ctor.defineAttribute(prop, defaultValue)
     }
 
-
     if (options.factory && options.container) {
       throw new Error(`Field "${prop}": use either factory or container, not both`)
     }
@@ -256,9 +251,7 @@ export function ActiveField<_T extends ActiveModel> (
 
     factoryDecorator(target, prop, options.factory)
 
-
     if (options.container) containerDecorator(target, prop, options.container, hasOwnDefault)
-
 
     if (options.getter) {
       Ctor.defineGetter(prop, options.getter)

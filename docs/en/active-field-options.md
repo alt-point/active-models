@@ -47,7 +47,6 @@ The field's default value. `value` is just an alias for `attribute` - there is n
 (`attribute` wins when both are set). `0`, `false`, `''` and `null` are defaults too; only `undefined`
 means "no default".
 
-
 Applied via `Model.create(data)` (and `new Model(data)` - but see the warning in
 [active-model-advanced.md](active-model-advanced.md#new-model-data-vs-model-create-data-vs-fill-data))
 when the field is **absent** from the data passed in. If the field is present in the data, the data wins.
@@ -324,7 +323,6 @@ Wraps an incoming value in an instance of another `ActiveModel` class - handy fo
 is an array, each item is wrapped via `Model.createFromCollectionLazy(value)` instead (the form adapts
 automatically to whatever actually arrived). `null` and `undefined` are stored as they are - no empty
 model is built for them.
-
 
 ```ts
 class Address extends ActiveModel {

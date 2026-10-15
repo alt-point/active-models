@@ -258,7 +258,6 @@ new User({ name: 'Alice' }).name // "Alice" — the workaround restores the data
 - With `force: true` — fills **any** key from `data`, including undeclared ones — use with care, this
   can add arbitrary properties to the model outside its schema. The keys `__proto__` and `constructor`
   are never written (neither by `fill()` nor by assignment), so parsed JSON can't swap the prototype.
-
 - A field marked `fillable: false` still **won't** be overwritten by `fill()`, even with `force: true` —
   `force` only lifts the "is this a known field" check, not the `fillable` check inside the proxy setter
   itself. `readonly` follows a subtler rule — see the [`readonly`](#readonly) section below.

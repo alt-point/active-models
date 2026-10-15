@@ -47,7 +47,6 @@ delete (user as any).name // бросит: Property "name" is protected!
 (если заданы оба, берётся `attribute`). `0`, `false`, `''` и `null` — полноценные дефолты; «дефолта нет»
 означает только `undefined`.
 
-
 Применяется через `Model.create(data)` (и `new Model(data)` — но см. предупреждение в
 [active-model-advanced.md](active-model-advanced.md#new-model-data-vs-model-create-data-vs-fill-data)), когда
 поле **отсутствует** в переданных данных. Если поле в данных есть — данные побеждают.
@@ -328,7 +327,6 @@ own-property на инстансе — а `Object.keys()`/`JSON.stringify()` п�
 массив, каждый элемент оборачивается через `Model.createFromCollectionLazy(value)` (форма автоматически
 подстраивается под то, что реально пришло). `null` и `undefined` сохраняются как есть — пустая модель
 для них не создаётся.
-
 
 ```ts
 class Address extends ActiveModel {

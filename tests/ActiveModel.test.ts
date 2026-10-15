@@ -104,7 +104,6 @@ describe('fill()', () => {
     expect(Object.prototype.hasOwnProperty.call(user, 'constructor')).toBe(false)
   })
 
-
   it('runs the beforeFill static hook before filling', () => {
     const calls: unknown[] = []
     class User extends ActiveModel {

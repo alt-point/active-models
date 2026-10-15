@@ -77,7 +77,6 @@ const frozenModels = new WeakSet<object>()
 /** Keys that would swap the prototype or the class of an instance (e.g. from parsed JSON): never written. */
 const unsafeKeys = new Set<string | symbol>(['__proto__', 'constructor'])
 
-
 /**
  * Per parent instance: prop -> unsubscribe functions of the `touched`
  * listeners it holds on its nested models. Lets a replaced child stop
@@ -163,7 +162,6 @@ const collectIssues = (model: ActiveModel, prefix: string, issues: ValidationIss
       items = Array.from(value instanceof Map ? (value as Map<unknown, unknown>).values() : (value as Iterable<unknown>))
     }
     items.forEach((item, index) => {
-
       if (item instanceof ActiveModel) {
         collectIssues(rawOf.get(item) ?? item, isList ? `${path}[${index}]` : path, issues, seen)
       }
@@ -1031,7 +1029,6 @@ export class ActiveModel {
       if ((!ownFields.has(prop) && !force) || unsafeKeys.has(prop)) {
         continue
       }
-
       Reflect.set(model, prop, Reflect.get(data, prop))
     }
     return model
@@ -1204,7 +1201,6 @@ export class ActiveModel {
             return true
           }
           if (Ctor.strict && !restoring && typeof prop === 'string' && !(prop in target)) {
-
             throw new TypeError(`Unknown property "${prop}" on ${Ctor.name}: declare it with @ActiveField() (strict model)`)
           }
           return Reflect.set(target, prop, value, receiver)
