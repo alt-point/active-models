@@ -68,3 +68,17 @@ describe('DataView', () => {
     expect(deepEqual(new DataView(buffer, 0, 2), bytes(1, 2))).toBe(false)
   })
 })
+
+describe('customizer', () => {
+  const byId = (a: object, b: object) =>
+    'id' in a && 'id' in b ? (a as { id: unknown }).id === (b as { id: unknown }).id : undefined
+
+  it('is asked about every pair of objects - inside arrays, Maps, Sets and keys - and skipped when it has no verdict', () => {
+    expect(deepEqual({ list: [{ id: 1, x: 1 }] }, { list: [{ id: 1, x: 2 }] }, byId)).toBe(true)
+    expect(deepEqual({ list: [{ id: 1 }] }, { list: [{ id: 2 }] }, byId)).toBe(false)
+    expect(deepEqual(new Map([[1, { id: 1, x: 1 }]]), new Map([[1, { id: 1, x: 2 }]]), byId)).toBe(true)
+    expect(deepEqual(new Set([{ id: 1, x: 1 }]), new Set([{ id: 1, x: 2 }]), byId)).toBe(true)
+    expect(deepEqual({ a: 1 }, { a: 2 }, byId)).toBe(false)
+    expect(deepEqual({ a: { id: 1 } }, { a: { id: 1 }, b: 2 }, byId)).toBe(false)
+  })
+})

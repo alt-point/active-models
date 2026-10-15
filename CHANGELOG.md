@@ -32,6 +32,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 ### Changed
 
 - Performance: the event, lock and child-subscription containers of an instance are allocated on first use, and a tracked model keeps one pristine copy instead of two. Per instance with 10 fields: ~2.7 KB → ~0.8 KB (tracked: ~4.2 KB → ~1.8 KB); `new Model()` 7.4 µs → 2.5 µs; tracked `create()` 27 µs → 21 µs. The perf suite now enforces < 1.5 KB per instance.
+- Performance: `isTouched()`, `changes()`, `dirtyFields()`, `isDirty()` and `revert()` compare nested models through their raw objects instead of their proxies, and `isDirty(field)` compares that one field only. Tracked model with a 2000-row collection: `isTouched()` 5.1 ms → 0.49 ms, `isDirty('rows')` 5.3 ms → 0.44 ms, `changes()` 5.1 ms → 0.43 ms (budgets < 1 ms / < 0.6 ms).
 
 ## [5.0.0] - 2026-10-03
 

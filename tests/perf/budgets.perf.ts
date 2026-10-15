@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { ActiveModel } from '../../src/ActiveModel'
 import { ActiveField } from '../../src/decorators'
 import { EventType } from '../../src/types'
-import { makeModel, makeData, Order, orderData, measure } from './fixtures'
+import { ActiveCollection } from '../../src/ActiveCollection'
+import { Line, makeModel, makeData, Order, orderData, measure } from './fixtures'
 
 /**
  * Budgets are deliberately loose (5-8x the numbers measured on a laptop) so a slow CI runner
@@ -11,6 +12,11 @@ import { makeModel, makeData, Order, orderData, measure } from './fixtures'
  */
 const F = Number(process.env.PERF_FACTOR ?? 1)
 const us = (n: number) => n * 1000 * F
+
+class Doc extends ActiveModel {
+  @ActiveField() title: string = ''
+  @ActiveField({ container: ActiveCollection.field(Line) }) lines!: ActiveCollection<Line>
+}
 
 describe('absolute budgets (median ns/op)', () => {
   const M10 = makeModel(10)
@@ -61,6 +67,12 @@ describe('absolute budgets (median ns/op)', () => {
     const t = M10.create(d10, { tracked: true }) as any
     t.f0 = 999
     expect(measure(() => t.isTouched(), 5000)).toBeLessThan(us(30))
+  })
+
+  it('isTouched() / isDirty() of a tracked model with a 2000-row collection', () => {
+    const doc = Doc.create({ title: 't', lines: Array.from({ length: 2000 }, (_, i) => ({ sku: `s${i}`, qty: i })) }, { tracked: true })
+    expect(measure(() => doc.isTouched(), 50, 5)).toBeLessThan(us(1000))
+    expect(measure(() => doc.isDirty('lines'), 50, 5)).toBeLessThan(us(600))
   })
 
   it('createFromCollection() of 1000 items', () => {

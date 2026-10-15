@@ -1071,6 +1071,36 @@ export class ActiveModel {
     return cloneDeepWith({ value }, this.cloneCustomizer.bind(this)).value
   }
 
+  /**
+   * `deepEqual` hook of `isTouched()`, `changes()` and `revert()`: two models are compared as their raw
+   * objects (no proxy trap runs) and without their `hidden` fields; any other pair is left to `deepEqual`.
+   */
+  protected static sameContent (a: object, b: object): boolean | undefined {
+    const rawA = rawOf.get(a)
+    const rawB = rawOf.get(b)
+    return rawA && rawB ? ActiveModel.sameFields(rawA, rawB) : undefined
+  }
+
+  /** Whether two raw instances are of one class and hold equal values under every own key that is not `hidden` */
+  protected static sameFields (a: ActiveModel, b: ActiveModel): boolean {
+    const Ctor = <typeof ActiveModel>a.constructor
+    if (Ctor !== b.constructor) {
+      return false
+    }
+    const visible = (raw: ActiveModel) => Object.keys(raw).filter((key) => !Ctor.fieldIsHidden(key))
+    const keys = visible(a)
+    return keys.length === visible(b).length && keys.every((key) =>
+      Object.prototype.hasOwnProperty.call(b, key) && deepEqual(Reflect.get(a, key), Reflect.get(b, key), ActiveModel.sameContent)
+    )
+  }
+
+  /** The declared fields of `model` whose value differs from its baseline (see `changes()`) */
+  protected static dirtyProps (model: ActiveModel): Array<string | symbol> {
+    const raw = rawOf.get(model) ?? model
+    const baseline = baselineOf(model)
+    return this.fieldNames().filter((prop) => !deepEqual(Reflect.get(baseline, prop), Reflect.get(raw, prop), this.sameContent))
+  }
+
   /** Every declared field of `raw` with a private copy of its value - what `transaction()` rolls back to */
   protected static snapshot (raw: ActiveModel): Map<string | symbol, unknown> {
     const taken = new Map<string | symbol, unknown>()
@@ -1084,7 +1114,7 @@ export class ActiveModel {
   protected static restore (raw: ActiveModel, model: ActiveModel, snapshot: Map<string | symbol, unknown>): void {
     runRestoring(() => {
       for (const [prop, value] of snapshot) {
-        if (!deepEqual(Reflect.get(raw, prop), value)) {
+        if (!deepEqual(Reflect.get(raw, prop), value, this.sameContent)) {
           Reflect.set(model, prop, value)
         }
       }
@@ -1473,24 +1503,24 @@ export class ActiveModel {
     const Ctor = <typeof ActiveModel>raw.constructor
     const baseline = baselineOf(this)
     const changed: Record<string, { from: unknown, to: unknown }> = {}
-    for (const prop of Ctor.fieldNames()) {
-      const before = Reflect.get(baseline, prop)
-      const now = Reflect.get(raw, prop)
-      if (!deepEqual(before, now)) {
-        changed[String(prop)] = { from: Ctor.cloneValue(before), to: now }
-      }
+    for (const prop of Ctor.dirtyProps(this)) {
+      changed[String(prop)] = { from: Ctor.cloneValue(Reflect.get(baseline, prop)), to: Reflect.get(raw, prop) }
     }
     return changed
   }
 
   /** Names of the fields that differ from their initial value (see `changes()`) */
   dirtyFields (): string[] {
-    return Object.keys(this.changes())
+    const raw = rawOf.get(this) ?? this
+    return (<typeof ActiveModel>raw.constructor).dirtyProps(this).map(String)
   }
 
-  /** Whether one field differs from its initial value (see `changes()`) */
+  /** Whether one field differs from its initial value (see `changes()`); only that field is compared */
   isDirty (prop: string): boolean {
-    return prop in this.changes()
+    const raw = rawOf.get(this) ?? this
+    const Ctor = <typeof ActiveModel>raw.constructor
+    const baseline = baselineOf(this)
+    return Ctor.isActiveField(prop) && !deepEqual(Reflect.get(baseline, prop), Reflect.get(raw, prop), Ctor.sameContent)
   }
 
   /**
@@ -1505,11 +1535,11 @@ export class ActiveModel {
     if (prop !== undefined && !Ctor.isActiveField(prop)) {
       throw new TypeError(`"${prop}" is not a field of ${Ctor.name}`)
     }
-    const props = prop === undefined ? this.dirtyFields() : [prop]
+    const props = prop === undefined ? Ctor.dirtyProps(this) : [prop]
     runRestoring(() => {
       for (const name of props) {
         const before = Reflect.get(baseline, name)
-        if (!deepEqual(before, Reflect.get(raw, name))) {
+        if (!deepEqual(before, Reflect.get(raw, name), Ctor.sameContent)) {
           Reflect.set(this, name, Ctor.cloneValue(before))
         }
       }
@@ -1575,14 +1605,7 @@ export class ActiveModel {
     if (!baseline) {
       return undefined
     }
-    const raw = rawOf.get(this) ?? this
-    const Ctor = <typeof ActiveModel>raw.constructor
-    const before = rawOf.get(baseline) ?? baseline
-    const keys = Object.keys(raw)
-    if (keys.length !== Object.keys(before).length) {
-      return true
-    }
-    return keys.some((key) => !Ctor.fieldIsHidden(key) && !deepEqual(Reflect.get(raw, key), Reflect.get(before, key)))
+    return !ActiveModel.sameFields(rawOf.get(this) ?? this, rawOf.get(baseline) ?? baseline)
   }
 
   constructor (data: ActiveModelSource = {}) {

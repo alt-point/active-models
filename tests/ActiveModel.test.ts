@@ -231,6 +231,27 @@ describe('isTouched()', () => {
     Reflect.set(counter, 'extra', 1)
     expect(counter.isTouched()).toBe(true)
   })
+
+  it('ignores hidden fields of nested models too, but sees their visible changes', () => {
+    class Session extends ActiveModel {
+      @ActiveField() name: string = ''
+      @ActiveField({ hidden: true }) token: string = ''
+    }
+    class Account extends ActiveModel {
+      @ActiveField({ factory: Session }) session?: Session
+    }
+
+    const account = Account.create({ session: { name: 'a', token: 't' } }, { tracked: true })
+    account.session!.token = 'changed'
+    expect(account.isTouched()).toBe(false)
+    expect(account.changes()).toEqual({})
+    expect(account.isDirty('session')).toBe(false)
+
+    account.session!.name = 'b'
+    expect(account.isTouched()).toBe(true)
+    expect(account.isDirty('session')).toBe(true)
+    expect(account.isDirty('nope')).toBe(false)
+  })
 })
 
 describe('mapTo() / hasMapping()', () => {
