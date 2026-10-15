@@ -340,6 +340,21 @@ describe('create() input validation', () => {
     expect(raw.self).toBe(raw)
     expect(Object.isFrozen(raw.tags)).toBe(true)
   })
+
+  it('createLazy() and a factory field leave the caller\'s object as it was', () => {
+    class Line extends ActiveModel {
+      @ActiveField({ value: 'n/a' }) label?: string
+      @ActiveField({ fillable: false }) total: number = 0
+    }
+    class Order extends ActiveModel {
+      @ActiveField({ factory: Line }) line?: Line
+    }
+    const data = { total: 5, note: 'x' }
+    const line = Line.createLazy(data)
+    Order.create({}).line = data as any
+    expect([line.label, line.total]).toEqual(['n/a', 0])
+    expect(data).toEqual({ total: 5, note: 'x' })
+  })
 })
 
 describe('toJSON() special values', () => {

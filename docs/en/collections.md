@@ -39,8 +39,8 @@ tasks.push(Other.create({}))   // TypeError: ... got Other
 tasks[0] = 'x'                 // TypeError - index assignment is guarded too
 ```
 
-- Plain objects are turned into instances with `Model.createLazy()`. Pass `{ coerce: false }` to accept
-  **instances only**.
+- Plain objects are turned into instances with `Model.createLazy()`: the object is not deep-cloned (nested values are
+  shared with the item), but it is not modified either. Pass `{ coerce: false }` to accept **instances only**.
 - Every way in is checked: `push`, `unshift`, `splice`, `fill`, `concat`, index assignment, `replaceAll`,
   even the native `Array.prototype.push.call(tasks, x)`.
 - The collection **can't have holes**: `tasks[10] = x` beyond the end, growing `length`, and `delete tasks[0]`

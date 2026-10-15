@@ -826,6 +826,9 @@ export class ActiveModel {
     return runInCreatingContext(() => {
       if ((opts.sanitize ?? true) && !isSanitized(data)) {
         data = this.sanitize(data as object)
+      } else if (!isSanitized(data)) {
+        // the lazy path: defaults and the non-fillable strip go into a copy, never into the caller's object
+        data = { ...(data as object) }
       }
       // The raw instance is built *before* it is wrapped in the proxy, so
       // class-field initializers run unintercepted, ahead of fill().
