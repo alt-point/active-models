@@ -90,12 +90,8 @@ const validateModelType = (Model: typeof ActiveModel, prop: string) => {
   }
 }
 
-const factoryDecorator = (
-  target: ActiveModel,
-  prop: string,
-  factory?: FactoryConfig,
-  _isOptional?: boolean
-) => {
+const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryConfig) => {
+
   if (!factory) {
     return
   }
@@ -189,9 +185,10 @@ const buildPipeline = (options: ActiveFieldDescriptor): PipelineConfig | undefin
 
 export function ActiveFactory (
   factory: FactoryConfig,
-  // Stryker disable next-line BooleanLiteral: reserved parameter, currently unused
-  isOptional: boolean = false
+  /** Unused; kept so that existing two-argument calls still type-check. */
+  _isOptional?: boolean
 ) {
+
   return function (target: ActiveModel, prop: string): void {
     const Ctor = <typeof ActiveModel>target.constructor
 
@@ -200,7 +197,8 @@ export function ActiveFactory (
 
     Ctor.addToFillable(prop)
 
-    factoryDecorator(target, prop, factory, isOptional)
+    factoryDecorator(target, prop, factory)
+
   }
 }
 
@@ -256,8 +254,8 @@ export function ActiveField<_T extends ActiveModel> (
       Ctor.defineSetter(prop, options.setter)
     }
 
-    // Stryker disable next-line BooleanLiteral: reserved parameter, currently unused
-    factoryDecorator(target, prop, options.factory, false)
+    factoryDecorator(target, prop, options.factory)
+
 
     if (options.container) containerDecorator(target, prop, options.container, hasOwnDefault)
 
