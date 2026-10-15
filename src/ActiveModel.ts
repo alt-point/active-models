@@ -157,8 +157,13 @@ const collectIssues = (model: ActiveModel, prefix: string, issues: ValidationIss
     }
 
     const isList = isCollection(value) || Array.isArray(value)
-    const items = isList ? Array.from(value as Iterable<unknown>) : [value]
+    let items = [value]
+    if (isList) {
+      // an ActiveMap iterates [key, item] pairs: walk its values
+      items = Array.from(value instanceof Map ? (value as Map<unknown, unknown>).values() : (value as Iterable<unknown>))
+    }
     items.forEach((item, index) => {
+
       if (item instanceof ActiveModel) {
         collectIssues(rawOf.get(item) ?? item, isList ? `${path}[${index}]` : path, issues, seen)
       }

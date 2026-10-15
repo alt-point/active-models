@@ -442,12 +442,19 @@ describe('containers on a model', () => {
   })
 
   it('validate() recurses into the items of a map and a set', () => {
-    class Item extends ActiveModel { @ActiveField({ required: true }) label?: string }
+    class Item extends ActiveModel {
+      @ActiveField() id: number = 0
+      @ActiveField({ required: true }) label?: string
+    }
     class Bag extends ActiveModel {
-      @ActiveField({ container: ActiveMap.field(Item, { key: 'label' }) }) items!: ActiveMap<Item>
+      @ActiveField({ container: ActiveMap.field(Item, { key: 'id' }) }) items!: ActiveMap<Item>
+      @ActiveField({ container: ActiveSet.field(Item) }) extras!: ActiveSet<Item>
     }
     expect(Bag.create({}).validate().valid).toBe(true)
+    const bag = Bag.create({ items: [{ id: 1, label: 'a' }, { id: 2 }], extras: [{ id: 3 }] })
+    expect(bag.validate().issues.map((issue) => issue.path)).toEqual(['items[1].label', 'extras[0].label'])
   })
+
 
   it('cannot combine a container with factory on one field, and refuses a foreign descriptor', () => {
     expect(() => {

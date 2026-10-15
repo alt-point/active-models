@@ -74,7 +74,9 @@ order.assertValid()                                   // бросает Validati
 Order.create(data, { validate: true })                // бросает вместо возврата невалидной модели; `created` не эмитится
 ```
 
-Рекурсивно обходит вложенные модели, коллекции и массивы моделей (пути вида `history[1].city`), переживает циклические
+Рекурсивно обходит вложенные модели, коллекции (элемент `ActiveMap` / `ActiveSet` — по индексу обхода) и массивы моделей
+(пути вида `history[1].city`), переживает циклические
+
 ссылки и запускает `validator` только для заданных значений (как и при записи). Коды: `required`, `type`, `coerce`,
 `min`, `max`, `minLength`, `maxLength`, `pattern`, `oneOf`, `transition`, `validator`.
 
