@@ -27,6 +27,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 - `ActiveMap.add(a, b, ...)` and the initial items of `ActiveMap.create()` emitted `itemsAdded` and `touched` once per item; like `ActiveCollection` and `ActiveSet`, the whole batch is now reported by one `itemsAdded` (with all `items` / `keys`) and one `touched`. A key repeated in one call keeps the last item; the others are no longer stored and reported removed.
 - With `history` enabled, a nested `transaction()` (or atomic `fill()`) that rolled back left its writes in the undo step of the enclosing transaction, so `redo()` re-applied them.
 - `Model.createLazy(data)` - and so a plain object pushed into an `ActiveCollection` / `ActiveMap` / `ActiveSet` or assigned to a `factory` field - modified the caller's object: field defaults were added to it and `fillable: false` keys deleted from it. The lazy path now works on a shallow copy (nested values are still shared, as before).
+- `isCollection()` is `true` for an `ActiveMap` / `ActiveSet` too, but its type predicate narrowed to `ActiveCollection` only; it now narrows to the union of the three.
 
 ## [5.0.0] - 2026-10-03
 

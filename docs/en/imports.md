@@ -14,7 +14,7 @@ separate entry point (a subpath), so a bundle contains only what you import. The
 | `/ActiveCollection` | `ActiveCollection`, type `CollectionInput` |
 | `/ActiveMap` | `ActiveMap` |
 | `/ActiveSet` | `ActiveSet` |
-| `/collectionRegistry` | `isCollection` |
+| `/collectionRegistry` | `isCollection` (`true` for an `ActiveCollection`, `ActiveMap` or `ActiveSet`) |
 | `/scalars/Decimal` | `Decimal`, types `DecimalInput`, `RoundingMode` |
 | `/scalars/Money` | `Money`, `minorUnits` |
 | `/scalars/LocalDate` | `LocalDate` |

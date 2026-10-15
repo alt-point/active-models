@@ -14,7 +14,7 @@
 | `/ActiveCollection` | `ActiveCollection`, тип `CollectionInput` |
 | `/ActiveMap` | `ActiveMap` |
 | `/ActiveSet` | `ActiveSet` |
-| `/collectionRegistry` | `isCollection` |
+| `/collectionRegistry` | `isCollection` (`true` для `ActiveCollection`, `ActiveMap` и `ActiveSet`) |
 | `/scalars/Decimal` | `Decimal`, типы `DecimalInput`, `RoundingMode` |
 | `/scalars/Money` | `Money`, `minorUnits` |
 | `/scalars/LocalDate` | `LocalDate` |

@@ -1,4 +1,6 @@
 import type { ActiveCollection } from './ActiveCollection'
+import type { ActiveMap } from './ActiveMap'
+import type { ActiveSet } from './ActiveSet'
 
 /**
  * Marks collection instances (proxy and raw target) so `ActiveModel` can recognise one
@@ -12,6 +14,6 @@ export const registerCollection = (...instances: object[]) => {
   }
 }
 
-/** Whether `value` is an `ActiveCollection` */
-export const isCollection = (value: unknown): value is ActiveCollection<any> =>
+/** Whether `value` is an `ActiveCollection`, an `ActiveMap` or an `ActiveSet` */
+export const isCollection = (value: unknown): value is ActiveCollection<any> | ActiveMap<any> | ActiveSet<any> =>
   typeof value === 'object' && value !== null && registry.has(value)

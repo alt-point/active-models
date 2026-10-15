@@ -263,6 +263,14 @@ describe('ActiveMap', () => {
     expect(events).toHaveLength(7)
     expect(users.size).toBe(1002)
   })
+
+  it('isCollection() narrows to a collection, a map or a set', () => {
+    const value: unknown = make()
+    if (!isCollection(value)) throw new Error('not a collection')
+    // @ts-expect-error only an ActiveCollection has `length`: the narrowed type is a union with ActiveMap / ActiveSet
+    expect(value.length).toBeUndefined()
+    expect(value instanceof ActiveMap ? value.size : 0).toBe(2)
+  })
 })
 
 describe('ActiveSet', () => {
