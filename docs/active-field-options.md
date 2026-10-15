@@ -326,7 +326,9 @@ own-property на инстансе — а `Object.keys()`/`JSON.stringify()` п�
 
 **Одна модель**: `factory: Model`. Значение оборачивается через `Model.createLazy(value)`, а если значение —
 массив, каждый элемент оборачивается через `Model.createFromCollectionLazy(value)` (форма автоматически
-подстраивается под то, что реально пришло).
+подстраивается под то, что реально пришло). `null` и `undefined` сохраняются как есть — пустая модель
+для них не создаётся.
+
 
 ```ts
 class Address extends ActiveModel {

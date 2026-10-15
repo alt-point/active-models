@@ -123,11 +123,13 @@ const factoryDecorator = (
   const Model = factory
   validateModelType(Model, prop)
   Ctor.defineSetter(prop, (m, p, v, r) => {
-    const value = Array.isArray(v)
-      ? Model.createFromCollectionLazy(v)
-      : Model.createLazy(v)
+    if (v == null) {
+      return Reflect.set(m, p, v, r)
+    }
+    const value = Array.isArray(v) ? Model.createFromCollectionLazy(v) : Model.createLazy(v)
     return Reflect.set(m, p, value, r)
   })
+
 }
 
 const containerDecorator = (

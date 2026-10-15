@@ -275,7 +275,26 @@ describe('factory', () => {
     expect(order.items[0]).toBeInstanceOf(Item)
     expect(order.items[1].label).toBe('b')
   })
+
+  it('stores null and undefined as they are instead of building an empty model', () => {
+    class Address extends ActiveModel {
+      @ActiveField() city: string = ''
+    }
+    class User extends ActiveModel {
+      @ActiveField({ factory: Address }) address?: Address | null
+    }
+
+    const user = User.create({ address: { city: 'Berlin' } })
+    const nulled: unknown[] = []
+    user.on(EventType.nulling, ({ prop }) => nulled.push(prop))
+    user.address = null
+    expect(user.address).toBeNull()
+    expect(nulled).toEqual(['address'])
+    expect(User.create({ address: null }).address).toBeNull()
+    expect(User.create({ address: undefined }).address).toBeUndefined()
+  })
 })
+
 
 describe('on / once hooks', () => {
   it('decorator-level on{} fires per property, shared across all instances of the class', () => {

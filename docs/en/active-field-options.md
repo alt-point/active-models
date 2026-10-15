@@ -322,7 +322,9 @@ Wraps an incoming value in an instance of another `ActiveModel` class - handy fo
 
 **A single model**: `factory: Model`. The value is wrapped via `Model.createLazy(value)`, and if the value
 is an array, each item is wrapped via `Model.createFromCollectionLazy(value)` instead (the form adapts
-automatically to whatever actually arrived).
+automatically to whatever actually arrived). `null` and `undefined` are stored as they are - no empty
+model is built for them.
+
 
 ```ts
 class Address extends ActiveModel {

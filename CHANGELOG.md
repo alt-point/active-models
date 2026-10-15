@@ -21,6 +21,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 - `Model.create(data)` looped forever when `data` contained a circular reference: the sanitizer's object walk had no cycle guard.
 - `fill(data, true)` and `Object.assign(model, data)` wrote the keys `__proto__` and `constructor` from `data` (e.g. parsed JSON), swapping the prototype or the class of the instance; both keys are now ignored.
 - `@ActiveField({ value: 0 })`, `value: false`, `value: ''`, `value: null` and the bare shorthand `@ActiveField(0)` were ignored: the default was tested for truthiness instead of presence.
+- `@ActiveField({ factory: Model })` turned `null` / `undefined` (assigned, or passed in `create()` data) into an empty `Model`; the value is now stored as is and `nulling` fires like for any other field.
+
 
 
 
