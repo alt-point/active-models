@@ -74,6 +74,10 @@ const isThenable = (value: unknown): value is PromiseLike<unknown> =>
  */
 const frozenModels = new WeakSet<object>()
 
+/** Keys that would swap the prototype or the class of an instance (e.g. from parsed JSON): never written. */
+const unsafeKeys = new Set<string | symbol>(['__proto__', 'constructor'])
+
+
 /**
  * Per parent instance: prop -> unsubscribe functions of the `touched`
  * listeners it holds on its nested models. Lets a replaced child stop
@@ -1019,9 +1023,10 @@ export class ActiveModel {
       ...(this?.__fillable__ || []),
     ])
     for (const prop in data) {
-      if (!ownFields.has(prop) && !force) {
+      if ((!ownFields.has(prop) && !force) || unsafeKeys.has(prop)) {
         continue
       }
+
       Reflect.set(model, prop, Reflect.get(data, prop))
     }
     return model
@@ -1190,7 +1195,11 @@ export class ActiveModel {
         const oldValue = Reflect.get(target, prop, receiver)
 
         if (!Ctor.isActiveField(prop)) {
+          if (unsafeKeys.has(prop)) {
+            return true
+          }
           if (Ctor.strict && !restoring && typeof prop === 'string' && !(prop in target)) {
+
             throw new TypeError(`Unknown property "${prop}" on ${Ctor.name}: declare it with @ActiveField() (strict model)`)
           }
           return Reflect.set(target, prop, value, receiver)

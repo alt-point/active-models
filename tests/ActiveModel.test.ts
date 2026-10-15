@@ -89,6 +89,22 @@ describe('fill()', () => {
     expect((user as any).unknownField).toBe('x')
   })
 
+  it('never writes __proto__ or constructor from data, even with force or by assignment', () => {
+    class User extends ActiveModel {
+      @ActiveField() name: string = ''
+    }
+
+    const user = User.create({ name: 'Alice' })
+    user.fill(JSON.parse('{"__proto__": {"polluted": true}, "constructor": null, "name": "Bob"}'), true)
+    Object.assign(user, JSON.parse('{"__proto__": {"polluted": true}, "constructor": null}'))
+    expect(user.name).toBe('Bob')
+    expect(Object.getPrototypeOf(user)).toBe(User.prototype)
+    expect(user.constructor).toBe(User)
+    expect((user as any).polluted).toBeUndefined()
+    expect(Object.prototype.hasOwnProperty.call(user, 'constructor')).toBe(false)
+  })
+
+
   it('runs the beforeFill static hook before filling', () => {
     const calls: unknown[] = []
     class User extends ActiveModel {

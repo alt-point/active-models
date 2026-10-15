@@ -19,6 +19,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 ### Fixed
 
 - `Model.create(data)` looped forever when `data` contained a circular reference: the sanitizer's object walk had no cycle guard.
+- `fill(data, true)` and `Object.assign(model, data)` wrote the keys `__proto__` and `constructor` from `data` (e.g. parsed JSON), swapping the prototype or the class of the instance; both keys are now ignored.
+
 
 ## [5.0.0] - 2026-10-03
 
