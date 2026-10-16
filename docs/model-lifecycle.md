@@ -15,7 +15,7 @@ flowchart TD
     A["Model.create(data, opts)"] --> B{"data instanceof Model\nи opts.lazy?"}
     B -- да --> B1["вернуть data как есть"]
     B -- нет --> C{"data — примитив?"}
-    C -- да --> C1["data = {}"]
+    C -- да --> C1["data = {}\nconsole.warn один раз на класс;\nв 6.0 — TypeError"]
     C -- нет --> D
     C1 --> D["startCreating()"]
     D --> E{"opts.sanitize и\nданные ещё не sanitized?"}

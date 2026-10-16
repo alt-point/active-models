@@ -21,6 +21,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 - A field `validator` may now refuse a value by returning `false`: the write throws a `ValidationError` with code `validator` and the message `"prop" is invalid`, and `validate()` reports the same issue for a stored value. Throwing works as before; `true` / `undefined` accept. A validator that returned `false` and relied on the write going through now refuses it.
 - `ActiveMap.addAll(iterable)`: store any iterable of items as one atomic batch (one `itemsAdded`, one `touched`); `add(...items)` is now a wrapper around it, so a large array no longer has to be spread into arguments.
 
+### Deprecated
+
+- `Model.create(primitive)`: a primitive source is still treated as `{}`, but now logs a `console.warn` once per class; 6.0 will throw a `TypeError`. Pass an object (or nothing).
+
 ### Fixed
 
 - `Model.create(data)` looped forever when `data` contained a circular reference: the sanitizer's object walk had no cycle guard.

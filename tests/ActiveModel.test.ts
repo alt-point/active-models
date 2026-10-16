@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ActiveModel } from '../src/ActiveModel'
 import { ActiveField } from '../src/decorators'
 import { EventType } from '../src/types'
@@ -22,14 +22,26 @@ describe('ActiveModel.create()', () => {
     expect(user.name).toBe('Guest')
   })
 
-  it('is idempotent for a primitive/undefined source', () => {
+  it('treats a primitive source as {} and warns once per class (6.0 will refuse it)', () => {
     class Empty extends ActiveModel {
       @ActiveField() x: number = 0
     }
-
-    expect(Empty.create().x).toBe(0)
-    // @ts-expect-error primitive source is coerced to {}
-    expect(Empty.create('not an object').x).toBe(0)
+    class Another extends Empty {}
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      expect(Empty.create().x).toBe(0)
+      expect(warn).not.toHaveBeenCalled()
+      // @ts-expect-error primitive source is coerced to {}
+      expect(Empty.create('not an object').x).toBe(0)
+      expect(Empty.create(5 as any).x).toBe(0)
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(warn.mock.calls[0][0]).toBe('Empty.create() got "not an object" instead of an object: a primitive is treated as {} and will be refused in 6.0')
+      Another.create(null as any)
+      expect(warn).toHaveBeenCalledTimes(2)
+      expect(warn.mock.calls[1][0]).toMatch(/^Another\.create\(\) got null /)
+    } finally {
+      warn.mockRestore()
+    }
   })
 })
 

@@ -91,6 +91,9 @@ const isThenable = (value: unknown): value is PromiseLike<unknown> =>
  */
 const frozenModels = new WeakSet<object>()
 
+/** classes already warned about `create(primitive)` */
+const warnedPrimitive = new WeakSet<object>()
+
 /** Keys that would swap the prototype or the class of an instance (e.g. from parsed JSON): never written. */
 const unsafeKeys = new Set<string | symbol>(['__proto__', 'constructor'])
 
@@ -827,6 +830,13 @@ export class ActiveModel {
     }
 
     if (isPrimitiveValue(data)) {
+      if (!warnedPrimitive.has(this)) {
+        warnedPrimitive.add(this)
+        // shortcut: warns in every build (the package has no dev build); gate it on a build-time define if production logs get noisy
+        console.warn(
+          `${this.name}.create() got ${typeof data === 'string' ? JSON.stringify(data) : String(data)} instead of an object: a primitive is treated as {} and will be refused in 6.0`
+        )
+      }
       data = {}
     }
 
