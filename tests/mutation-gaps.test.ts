@@ -32,15 +32,9 @@ describe('primitive source data', () => {
     @ActiveField({ value: 'dflt' }) name: string = ''
   }
 
-  it.each([['a string', 'text'], ['a number', 5], ['null', null], ['undefined', undefined], ['a boolean', true]])(
-    'create() treats %s as empty data and still applies defaults',
-    (_label, value) => {
-      expect(WithDefault.create(value as any).name).toBe('dflt')
-    }
-  )
-
-  it('new Model() does too', () => {
-    expect(new WithDefault('text' as any).name).toBe('')
+  // other primitives throw: see 'refuses a primitive source' in ActiveModel.test.ts
+  it('create(undefined) is create({}) and still applies defaults', () => {
+    expect(WithDefault.create(undefined).name).toBe('dflt')
   })
 })
 

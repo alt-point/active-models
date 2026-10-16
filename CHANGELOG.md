@@ -16,16 +16,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 
 ## [Unreleased]
 
+Migration guide: [docs/en/migration-6.md](docs/en/migration-6.md) ([RU](docs/migration-6.md)).
+
+### Breaking changes
+
+**English**
+
+| 5.x | 6.0 |
+|---|---|
+| `Model.create('str' / 42 / true / null)` was treated as `create({})` (with a `console.warn` since 5.1) | throws a `TypeError` (`User.create() expects an object, got null`), and so does `new Model(primitive)`; `create()` with no argument still gives an empty model |
+
+**Русский**
+
+| 5.x | 6.0 |
+|---|---|
+| `Model.create('str' / 42 / true / null)` превращался в `create({})` (с `console.warn` начиная с 5.1) | бросает `TypeError` (`User.create() expects an object, got null`), как и `new Model(primitive)`; `create()` без аргумента по-прежнему даёт пустую модель |
+
 ### Added
 
 - A field `validator` may now refuse a value by returning `false`: the write throws a `ValidationError` with code `validator` and the message `"prop" is invalid`, and `validate()` reports the same issue for a stored value. Throwing works as before; `true` / `undefined` accept. A validator that returned `false` and relied on the write going through now refuses it.
 - `ActiveMap.addAll(iterable)`: store any iterable of items as one atomic batch (one `itemsAdded`, one `touched`); `add(...items)` is now a wrapper around it, so a large array no longer has to be spread into arguments.
 - The codemod (`npx @alt-point/active-models migrate`) rewrites `map.add(...items)` into `map.addAll(items)` when the file shows `map` to be an `ActiveMap` (created with `ActiveMap.create()`, typed `ActiveMap<...>` or declared as a field with the `map` option / `container: ActiveMap.field()`), and `ActiveMap.create(...).add(...items)` itself; other `add` calls are left alone.
 - `Model.create(data, { tracked: 'shallow' })`: dirty tracking that keeps the field values by reference instead of a deep copy and compares them with `Object.is`, so `isTouched()`, `changes()`, `isDirty()` and `revert()` cost O(fields) and never walk nested models or collections. A reassignment counts, an in-place edit inside a nested value does not; `revert()` puts the kept instance back; `clone()` keeps the changed fields. A document with a 2000-row collection: `isTouched()` ≈ 370 µs with `tracked: true` → ≈ 0.2 µs, `isDirty('lines')` ≈ 370 µs → ≈ 0.15 µs.
-
-### Deprecated
-
-- `Model.create(primitive)`: a primitive source is still treated as `{}`, but now logs a `console.warn` once per class; 6.0 will throw a `TypeError`. Pass an object (or nothing).
 
 ### Fixed
 

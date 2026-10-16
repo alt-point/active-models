@@ -14,10 +14,9 @@ of the current package version.
 flowchart TD
     A["Model.create(data, opts)"] --> B{"data instanceof Model\nand opts.lazy?"}
     B -- yes --> B1["return data as-is"]
-    B -- no --> C{"data is a primitive?"}
-    C -- yes --> C1["data = {}\nconsole.warn once per class;\n6.0 throws a TypeError"]
-    C -- no --> D
-    C1 --> D["startCreating()"]
+    B -- no --> C{"data is a primitive\nor an array?"}
+    C -- yes --> C1["throw TypeError"]
+    C -- no --> D["startCreating()"]
     D --> E{"opts.sanitize and\ndata not sanitized yet?"}
     E -- yes --> F["sanitize(data):\ndeep clone + markSanitized"]
     E -- no --> G

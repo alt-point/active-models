@@ -22,23 +22,21 @@ describe('ActiveModel.create()', () => {
     expect(user.name).toBe('Guest')
   })
 
-  it('treats a primitive source as {} and warns once per class (6.0 will refuse it)', () => {
+  it('refuses a primitive source with a TypeError; no argument still gives an empty model', () => {
     class Empty extends ActiveModel {
       @ActiveField() x: number = 0
     }
-    class Another extends Empty {}
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
       expect(Empty.create().x).toBe(0)
+      expect(Empty.create(undefined).x).toBe(0)
+      // @ts-expect-error a primitive source is refused
+      expect(() => Empty.create('not an object')).toThrow(new TypeError('Empty.create() expects an object, got "not an object"'))
+      expect(() => Empty.create(null)).toThrow(new TypeError('Empty.create() expects an object, got null'))
+      expect(() => Empty.create(42 as any)).toThrow(new TypeError('Empty.create() expects an object, got 42'))
+      expect(() => Empty.create(true as any)).toThrow(new TypeError('Empty.create() expects an object, got true'))
+      expect(() => new Empty('not an object' as any)).toThrow(new TypeError('new Empty() expects an object, got "not an object"'))
       expect(warn).not.toHaveBeenCalled()
-      // @ts-expect-error primitive source is coerced to {}
-      expect(Empty.create('not an object').x).toBe(0)
-      expect(Empty.create(5 as any).x).toBe(0)
-      expect(warn).toHaveBeenCalledTimes(1)
-      expect(warn.mock.calls[0][0]).toBe('Empty.create() got "not an object" instead of an object: a primitive is treated as {} and will be refused in 6.0')
-      Another.create(null as any)
-      expect(warn).toHaveBeenCalledTimes(2)
-      expect(warn.mock.calls[1][0]).toMatch(/^Another\.create\(\) got null /)
     } finally {
       warn.mockRestore()
     }

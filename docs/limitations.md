@@ -57,6 +57,6 @@ model.items = [...model.items, 'a'] // эмитится afterSetValue и touched
 
 ## `createFromCollection` пропускает только `null`/`undefined`
 
-Остальные элементы (включая примитивы) идут в `create()`; массив вместо объекта в `create()` бросает
-`TypeError` с подсказкой использовать `createFromCollection()`. Примитив в `create()` пока превращается в `{}`
-с `console.warn` (один раз на класс); в 6.0 это станет `TypeError` — передавайте объект.
+Остальные элементы (включая примитивы) идут в `create()`, а он бросает `TypeError` на всё, кроме объекта:
+на примитив (`User.create() expects an object, got 42`) и на массив (с подсказкой использовать
+`createFromCollection()`). Передавайте объект; `create()` без аргумента по-прежнему даёт пустую модель.

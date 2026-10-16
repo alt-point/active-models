@@ -92,8 +92,8 @@ const isThenable = (value: unknown): value is PromiseLike<unknown> =>
  */
 const frozenModels = new WeakSet<object>()
 
-/** classes already warned about `create(primitive)` */
-const warnedPrimitive = new WeakSet<object>()
+/** How a refused primitive source shows in the error: a string quoted, anything else via `String()` */
+const describePrimitive = (value: unknown): string => typeof value === 'string' ? JSON.stringify(value) : String(value)
 
 /** Keys that would swap the prototype or the class of an instance (e.g. from parsed JSON): never written. */
 const unsafeKeys = new Set<string | symbol>(['__proto__', 'constructor'])
@@ -831,14 +831,7 @@ export class ActiveModel {
     }
 
     if (isPrimitiveValue(data)) {
-      if (!warnedPrimitive.has(this)) {
-        warnedPrimitive.add(this)
-        // shortcut: warns in every build (the package has no dev build); gate it on a build-time define if production logs get noisy
-        console.warn(
-          `${this.name}.create() got ${typeof data === 'string' ? JSON.stringify(data) : String(data)} instead of an object: a primitive is treated as {} and will be refused in 6.0`
-        )
-      }
-      data = {}
+      throw new TypeError(`${this.name}.create() expects an object, got ${describePrimitive(data)}`)
     }
 
     if (Array.isArray(data)) {
@@ -1686,7 +1679,7 @@ export class ActiveModel {
     }
 
     if (isPrimitiveValue(data)) {
-      data = {}
+      throw new TypeError(`new ${Ctor.name}() expects an object, got ${describePrimitive(data)}`)
     }
 
     if (!isSanitized(data)) {

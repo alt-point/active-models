@@ -57,6 +57,6 @@ Details: [Advanced features → Validators](/en/active-model-advanced#validators
 
 ## `createFromCollection` skips only `null`/`undefined`
 
-Every other item (primitives included) goes to `create()`; an array instead of an object in `create()`
-throws a `TypeError` pointing at `createFromCollection()`. A primitive in `create()` is still treated as `{}`,
-with a `console.warn` (once per class); 6.0 will throw a `TypeError` - pass an object.
+Every other item (primitives included) goes to `create()`, which throws a `TypeError` for anything but an
+object: a primitive (`User.create() expects an object, got 42`) or an array (the message points at
+`createFromCollection()`). Pass an object; `create()` with no argument still gives an empty model.
