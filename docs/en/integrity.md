@@ -45,9 +45,14 @@ awaited. Transactions nest, each rolling back to its own start.
 refused value.
 
 - Events fire as the writes happen and aren't un-fired; the rollback emits its own for the fields it puts back.
-- Nested models and containers are restored **in place**: a reference you kept to a nested instance or a collection
-  stays valid, a replaced instance is put back, a collection whose items changed is refilled; their rollback events
-  fire on them and bubble up as `touched`.
+- Nested models and containers are restored **in place**: the rollback replays a journal of changes (every write to a model
+  and every container operation inside the transaction records how to undo itself) newest first, so a reference you kept to a
+  nested instance or a collection stays valid, a replaced instance is put back, the items of a collection return to their
+  places; their rollback events fire on them and bubble up as `touched`. A rollback costs in proportion to the number of
+  changes, not to the size of the model.
+- Mutating a plain value in place (`m.tags.push(x)`, `m.date.setHours(0)`) is not a write to the model: the journal doesn't
+  see it and can't undo it, so replace the value instead (`m.tags = [...m.tags, x]`). An instance nested in two models at
+  once is rolled back only by a transaction of the one it was bound to last.
 - The rollback bypasses rules and transitions (those values were valid when taken).
 
 ## Diffs and revert

@@ -4,6 +4,7 @@
  */
 import { EventType, type KeyOf } from './types'
 import type { ActiveModel } from './ActiveModel'
+import { setParent } from './journal'
 
 export const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   if (typeof value !== 'object' || value === null) {
@@ -88,7 +89,7 @@ export const isNilKey = (key: unknown): key is null | undefined => key === null 
  * A `WeakMap`, not a `Map`: deleting and re-adding the same key in a large `Map` walks an ever longer chain
  * of tombstones (~25 µs per push + remove of one item with 10k entries, 0.2 µs here).
  */
-export type Watching<T extends object> = { attached: WeakMap<T, { off: () => void, count: number }> }
+export type Watching<T extends object> = { self: object, attached: WeakMap<T, { off: () => void, count: number }> }
 
 /**
  * Subscribe `host` to `item`'s `touched`. The item outlives the container it sits in, so it must not keep
@@ -99,6 +100,7 @@ export const attachItem = <T extends ActiveModel, H extends Watching<T>>(
   item: T,
   onTouched: (host: H, item: T) => void
 ) => {
+  setParent(item, host.self)
   const known = host.attached.get(item)
   if (known) {
     known.count++

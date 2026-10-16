@@ -2,6 +2,7 @@ import { ActiveModel } from './ActiveModel'
 import { emit as emitEvent, useEmitter } from './emitter'
 import { registerCollection } from './collectionRegistry'
 import { attachItem, detachItem, isNilKey, isPlainObject, keyFunction, normalizeItem, wrapContainer } from './collectionCore'
+import { isJournaling, journal } from './journal'
 import {
   EventType,
   type ActiveModelHookListener,
@@ -50,6 +51,8 @@ const onItemTouched = <T extends ActiveModel>(state: State<T>, item: T) => {
         state.itemKey.delete(displaced)
         detach(state, displaced)
         emit(state, EventType.itemsRemoved, { target: state.self, items: [displaced], keys: [key] })
+        // runs after the write that moved `item` here is undone (it was recorded later), so the key is free again
+        journal(state.self, () => { state.self.set(key, displaced) })
       }
       MapProto.set.call(state.self, key, item)
     }
@@ -71,6 +74,13 @@ const store = <T extends ActiveModel>(state: State<T>, key: unknown, item: T): b
   MapProto.set.call(state.self, key, item)
   state.itemKey.set(item, key)
   attach(state, item)
+  journal(state.self, () => {
+    if (existing === undefined) {
+      state.self.delete(key)
+    } else {
+      state.self.set(key, existing)
+    }
+  })
   return true
 }
 
@@ -242,11 +252,20 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
     if (item === undefined) {
       return false
     }
+    // shortcut: a rollback rebuilds the whole map to give the entry its position back, O(n) per delete inside a
+    // transaction; record `set(key, item)` instead if large maps are pruned in transactions and order may change
+    const before = isJournaling() ? Array.from(this.values()) : undefined
     MapProto.delete.call(this, key)
     state.itemKey.delete(item)
     detach(state, item)
     emit(state, EventType.itemsRemoved, { target: this, items: [item], keys: [key] })
     emit(state, EventType.touched, { target: this })
+    if (before) {
+      journal(this, () => {
+        this.clear()
+        addAll(this, before)
+      })
+    }
     return true
   }
 
@@ -266,6 +285,7 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
     if (items.length > 0) {
       emit(state, EventType.itemsRemoved, { target: this, items, keys })
       emit(state, EventType.touched, { target: this })
+      journal(this, () => addAll(this, items))
     }
   }
 

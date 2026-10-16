@@ -61,11 +61,11 @@ describe('features budgets (median ns/op)', () => {
     }
     const doc = Doc.create({ title: 't', list: Array.from({ length: 2000 }, (_, i) => ({ id: i, note: 'n' })) })
     let i = 0
-    expect(measure(() => doc.transaction((d) => { d.title = 'x' + i++ }), 20, 5)).toBeLessThan(us(2000))
+    expect(measure(() => doc.transaction((d) => { d.title = 'x' + i++ }), 20, 5)).toBeLessThan(us(700))
     const abort = new Error('x')
     expect(measure(() => {
       try { doc.transaction((d) => { d.list[5].note = 'z' + i++; throw abort }) } catch (e) { if (e !== abort) throw e }
-    }, 20, 5)).toBeLessThan(us(1500))
+    }, 20, 5)).toBeLessThan(us(50))
   })
 
   it('a write with history enabled, and undo/redo', () => {

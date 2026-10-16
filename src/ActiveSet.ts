@@ -2,6 +2,7 @@ import { ActiveModel } from './ActiveModel'
 import { emit as emitEvent, useEmitter } from './emitter'
 import { registerCollection } from './collectionRegistry'
 import { attachItem, detachItem, isNilKey, keyFunction, normalizeItem, wrapContainer } from './collectionCore'
+import { isJournaling, journal } from './journal'
 import { ValidationError } from './pipeline'
 import {
   EventType,
@@ -200,6 +201,7 @@ export class ActiveSet<T extends ActiveModel = ActiveModel> extends Set<T> {
     if (fresh.length > 0) {
       emit(state, EventType.itemsAdded, { target: this, items: fresh })
       emit(state, EventType.touched, { target: this })
+      journal(this, () => fresh.forEach((item) => this.delete(item)))
     }
     return this
   }
@@ -209,6 +211,9 @@ export class ActiveSet<T extends ActiveModel = ActiveModel> extends Set<T> {
     if (!state) {
       return super.delete(item)
     }
+    // shortcut: a rollback rebuilds the whole set to give the item its position back, O(n) per delete inside a
+    // transaction; record `add(item)` instead if large sets are pruned in transactions and order may change
+    const before = isJournaling() && SetProto.has.call(this, item) ? Array.from(this) : undefined
     if (!SetProto.delete.call(this, item)) {
       return false
     }
@@ -216,6 +221,12 @@ export class ActiveSet<T extends ActiveModel = ActiveModel> extends Set<T> {
     releaseKey(state, item)
     emit(state, EventType.itemsRemoved, { target: this, items: [item] })
     emit(state, EventType.touched, { target: this })
+    if (before) {
+      journal(this, () => {
+        this.clear()
+        this.addAll(before)
+      })
+    }
     return true
   }
 
@@ -234,6 +245,7 @@ export class ActiveSet<T extends ActiveModel = ActiveModel> extends Set<T> {
     if (items.length > 0) {
       emit(state, EventType.itemsRemoved, { target: this, items })
       emit(state, EventType.touched, { target: this })
+      journal(this, () => this.addAll(items))
     }
   }
 

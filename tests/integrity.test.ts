@@ -256,6 +256,150 @@ describe('transaction()', () => {
     expect(atomic.seats).toBe(7)
     expect((atomic as any).notAField).toBe(1)
   })
+
+  class Row extends ActiveModel {
+    @ActiveField() id: number = 0
+  }
+  class Table extends ActiveModel {
+    @ActiveField({ container: ActiveCollection.field(Row) }) rows!: ActiveCollection<Row>
+    @ActiveField({ container: ActiveCollection.field(Row, { sortBy: 'id', unique: 'id' }) }) sorted!: ActiveCollection<Row>
+    @ActiveField({ container: ActiveMap.field(Row, { key: 'id' }) }) byId!: ActiveMap<Row>
+    @ActiveField({ container: ActiveSet.field(Row) }) set!: ActiveSet<Row>
+  }
+  class Note extends ActiveModel {
+    @ActiveField({ protected: false }) text?: string = 'n'
+  }
+  class Pad extends ActiveModel {
+    @ActiveField({ factory: Note }) note?: Note
+    @ActiveField({ container: ActiveCollection.field(Row) }) rows!: ActiveCollection<Row>
+  }
+  class Shelf extends ActiveModel {
+    @ActiveField({ factory: Pad }) pad?: Pad
+    @ActiveField() label: string = ''
+  }
+  const ids = (items: Iterable<Row>) => Array.from(items, (row) => row.id)
+  const abort = new Error('abort')
+  const attempt = (model: ActiveModel, fn: () => void) => {
+    try {
+      model.transaction(fn)
+    } catch (e) {
+      if (e !== abort) throw e
+    }
+  }
+
+  it('rolls back every collection operation, keeping the items and the order', () => {
+    const table = Table.create({ rows: [{ id: 1 }, { id: 2 }, { id: 3 }], sorted: [{ id: 1 }, { id: 2 }, { id: 3 }] })
+    const [a, b, c] = table.rows
+    const [s1, s2, s3] = table.sorted
+
+    attempt(table, () => {
+      table.rows.push({ id: 4 }, { id: 5 })
+      table.rows.unshift({ id: 0 })
+      table.rows.splice(1, 2, { id: 9 })
+      table.rows[0] = Row.create({ id: 8 })
+      table.rows.sort((x, y) => y.id - x.id)
+      table.rows.reverse()
+      table.rows.fill(a, 1, 2)
+      table.rows.copyWithin(0, 2)
+      table.rows.pop()
+      table.sorted.push({ id: 0 }, { id: 10 })
+      table.sorted.remove(s2)
+      s3.id = -1
+      table.sorted.reverse()
+      table.sorted.replaceAll([{ id: 7 }])
+      throw abort
+    })
+    expect([...table.rows]).toEqual([a, b, c])
+    expect([...table.sorted]).toEqual([s1, s2, s3])
+    expect(s3.id).toBe(3)
+    expect(table.sorted.getByKey(3)).toBe(s3)
+    expect(table.sorted.hasKey(7)).toBe(false)
+    table.sorted.push({ id: 0 })
+    expect(ids(table.sorted)).toEqual([0, 1, 2, 3])
+  })
+
+  it('rolls back ActiveMap and ActiveSet operations, including a key move that displaced an entry', () => {
+    const table = Table.create({ byId: [{ id: 1 }, { id: 2 }, { id: 3 }], set: [{ id: 1 }, { id: 2 }] })
+    const [m1, m2, m3] = table.byId.values()
+    const [s1, s2] = table.set
+
+    attempt(table, () => {
+      table.byId.set(4, { id: 4 })
+      table.byId.add({ id: 2 }) // replaces m2
+      table.byId.delete(1)
+      m3.id = 4 // displaces the item under 4
+      table.byId.clear()
+      table.set.add({ id: 3 })
+      table.set.delete(s1)
+      table.set.clear()
+      throw abort
+    })
+    expect([...table.byId.entries()]).toEqual([[1, m1], [2, m2], [3, m3]])
+    expect(m3.id).toBe(3)
+    expect([...table.set]).toEqual([s1, s2])
+  })
+
+  it('restores a model written after it left the collection inside the transaction', () => {
+    const table = Table.create({ rows: [{ id: 1 }] })
+    const row = table.rows[0]
+    attempt(table, () => {
+      table.rows.remove(row)
+      row.id = 9
+      throw abort
+    })
+    expect(table.rows[0]).toBe(row)
+    expect(row.id).toBe(1)
+  })
+
+  it('a nested transaction rolled back inside an outer one is not undone twice', () => {
+    const table = Table.create({ rows: [{ id: 1 }, { id: 2 }] })
+    const [a, b] = table.rows
+    attempt(table, () => {
+      table.rows.push({ id: 3 })
+      attempt(table, () => {
+        table.rows.unshift({ id: 0 })
+        a.id = 11
+        throw abort
+      })
+      expect(ids(table.rows)).toEqual([1, 2, 3])
+      b.id = 22
+      throw abort
+    })
+    expect([...table.rows]).toEqual([a, b])
+    expect([a.id, b.id]).toEqual([1, 2])
+  })
+
+  it('a transaction on a nested model rolls back writes below it and a deleted field, not a write outside it', () => {
+    const shelf = Shelf.create({ pad: { note: {}, rows: [{ id: 1 }] } })
+    const pad = shelf.pad!
+    expect(() => pad.transaction(() => {
+      pad.rows[0].id = 5
+      pad.rows.push({ id: 2 })
+      delete pad.note!.text
+      shelf.label = 'outside'
+      throw abort
+    })).toThrow(abort)
+    expect(pad.note!.text).toBe('n')
+    expect(ids(pad.rows)).toEqual([1])
+    expect(shelf.label).toBe('outside')
+  })
+
+  it('an enclosing transaction does not re-apply what a nested model\'s rolled-back transaction already undid', () => {
+    const shelf = Shelf.create({ pad: { rows: [{ id: 1 }, { id: 2 }] } })
+    const pad = shelf.pad!
+    const [a, b] = pad.rows
+    attempt(shelf, () => {
+      shelf.label = 'x'
+      attempt(pad, () => {
+        pad.rows.unshift({ id: 0 })
+        throw abort
+      })
+      expect([...pad.rows]).toEqual([a, b])
+      throw abort
+    })
+    expect([...pad.rows]).toEqual([a, b])
+    expect(shelf.label).toBe('')
+  })
 })
 
 describe('changes() / revert() / reset()', () => {

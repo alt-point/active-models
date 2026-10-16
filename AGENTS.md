@@ -164,7 +164,7 @@ bun run docs:dev                                         # VitePress
   published build; don't replace it with SWC/oxc — class-field/Proxy timing differs.
 - Every public capability is a tsup entry and a `package.json` `exports` subpath (+ `typesVersions`); there is no `src/index.ts`. Adding one means
   touching `tsup.config.ts`, `exports`, `typesVersions` (`tests/package-entries.test.ts` fails otherwise) and `typedoc.json`. Internals
-  (`meta`, `emitter`, `history`, `equal`, `clone`, `collectionCore`, `mapper`) must stay unexported. Zero runtime dependencies is enforced.
+  (`meta`, `emitter`, `history`, `equal`, `clone`, `collectionCore`, `mapper`, `journal`) must stay unexported. Zero runtime dependencies is enforced.
 - `bun run test:dist` checks the built package (ESM + CJS load by subpath and share one copy of every class); `tests/treeshake.test.ts`
   bundles each entry and fails if it pulls in code it should not, or grows past its size budget.
 - Style: no semicolons, single quotes, `space-before-function-paren` (enforced by ESLint).

@@ -48,7 +48,7 @@ describe('package entry points', () => {
   })
 
   it('keeps internals private: modules that are not entries are not exported', () => {
-    for (const internal of ['meta', 'emitter', 'history', 'equal', 'clone', 'collectionCore', 'mapper']) {
+    for (const internal of ['meta', 'emitter', 'history', 'equal', 'clone', 'collectionCore', 'mapper', 'journal']) {
       expect(subpaths, internal).not.toContain(`./${internal}`)
     }
   })

@@ -2,6 +2,7 @@ import { ActiveModel } from './ActiveModel'
 import { emit as emitEvent, useEmitter } from './emitter'
 import { registerCollection } from './collectionRegistry'
 import { attachItem, detachItem, isNilKey, keyFunction, normalizeItem, wrapContainer } from './collectionCore'
+import { isJournaling, journal } from './journal'
 import { ValidationError } from './pipeline'
 import {
   EventType,
@@ -269,8 +270,11 @@ const rekey = <T extends ActiveModel>(state: State<T>, item: T) => {
   }
 }
 
-/** Insert already-validated items: at `position` when unsorted, at their sorted place otherwise */
-const insert = <T extends ActiveModel>(state: State<T>, items: T[], position: number) => {
+/**
+ * Insert already-validated items: at `position` when unsorted, at their sorted place otherwise;
+ * `exact` puts them back at `position` even when sorted (a rollback re-splicing what a removal took out).
+ */
+const insert = <T extends ActiveModel>(state: State<T>, items: T[], position: number, exact = false) => {
   if (items.length === 0) {
     return
   }
@@ -279,7 +283,7 @@ const insert = <T extends ActiveModel>(state: State<T>, items: T[], position: nu
   }
   const raw = state.raw
   let index = position
-  if (state.sorted) {
+  if (state.sorted && !exact) {
     index = upperBound(state, items[0])
     // Stryker disable next-line ConditionalExpression,EqualityOperator: both paths produce the same order, the threshold only picks the faster one
     if (items.length > BULK_SORT_THRESHOLD) {
@@ -306,6 +310,21 @@ const insert = <T extends ActiveModel>(state: State<T>, items: T[], position: nu
   items.forEach((item) => attach(state, item))
   emit(state, EventType.itemsAdded, { target: state.self, items, index })
   emit(state, EventType.touched, { target: state.self })
+  if (isJournaling()) {
+    journal(state.self, () => {
+      if (state.sorted) {
+        // sorted items went to their own places, and may have moved since: take each out by identity
+        items.forEach((item) => {
+          const i = rawIndexOf(state.raw, item)
+          if (i >= 0) {
+            removeRange(state, i, 1)
+          }
+        })
+      } else {
+        removeRange(state, position, items.length)
+      }
+    })
+  }
 }
 
 const removeRange = <T extends ActiveModel>(state: State<T>, start: number, count: number): T[] => {
@@ -319,8 +338,27 @@ const removeRange = <T extends ActiveModel>(state: State<T>, start: number, coun
     })
     emit(state, EventType.itemsRemoved, { target: state.self, items: removed, index: start })
     emit(state, EventType.touched, { target: state.self })
+    journal(state.self, () => insert(state, removed, start, true))
   }
   return removed
+}
+
+/** Record how to put the slots back as they are now: for the operations that only rearrange them */
+const journalOrder = <T extends ActiveModel>(state: State<T>) => {
+  if (!isJournaling()) {
+    return
+  }
+  const before = state.raw.slice()
+  const order = state.order
+  journal(state.self, () => {
+    const current = state.raw.slice()
+    before.forEach((item, i) => { state.raw[i] = item })
+    state.order = order
+    // attach first: an item kept in both keeps its subscription instead of losing and regaining it
+    before.forEach((item) => attach(state, item))
+    current.forEach((item) => detach(state, item))
+    emit(state, EventType.touched, { target: state.self })
+  })
 }
 
 /** Operations that decide positions themselves are refused on a sorted collection */
@@ -362,6 +400,7 @@ const setIndex = <T extends ActiveModel>(state: State<T>, index: number, value: 
   emit(state, EventType.itemsRemoved, { target: state.self, items: [previous], index })
   emit(state, EventType.itemsAdded, { target: state.self, items: [item], index })
   emit(state, EventType.touched, { target: state.self })
+  journal(state.self, () => setIndex(state, index, previous))
   return true
 }
 
@@ -636,10 +675,11 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
    */
   sort (compareFn?: (a: T, b: T) => number): this {
     const state = stateOf<T>(this)
+    if (state.sorted && compareFn) {
+      throw new TypeError('A sorted ActiveCollection cannot be sorted by another comparator')
+    }
+    journalOrder(state)
     if (state.sorted) {
-      if (compareFn) {
-        throw new TypeError('A sorted ActiveCollection cannot be sorted by another comparator')
-      }
       resort(state)
     } else {
       rawSort(state.raw, compareFn)
@@ -651,6 +691,7 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
   /** Reverse in place. For a sorted collection this flips its direction and keeps it sorted. */
   reverse (): this {
     const state = stateOf<T>(this)
+    journalOrder(state)
     if (state.sorted) {
       state.order = state.order === 'asc' ? 'desc' : 'asc'
     }
@@ -668,6 +709,7 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
     const state = stateOf<T>(this)
     assertRearrangeable(state, 'be filled')
     const item = normalize(state, value)
+    journalOrder(state)
     const before = state.raw.slice()
     A.fill.call(state.raw, item, start, end)
     before.forEach((previous) => detach(state, previous))
@@ -679,6 +721,7 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
   copyWithin (target: number, start: number, end?: number): this {
     const state = stateOf<T>(this)
     assertRearrangeable(state, 'be rearranged')
+    journalOrder(state)
     const before = state.raw.slice()
     A.copyWithin.call(state.raw, target, start, end)
     before.forEach((previous) => detach(state, previous))

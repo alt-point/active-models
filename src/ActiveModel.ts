@@ -16,6 +16,7 @@ import {
 import { cloneDeep, cloneDeepWith } from './clone'
 import { deepEqual } from './equal'
 import { isImmutable } from './scalars/immutable'
+import { beginJournal, commitJournal, isJournaling, journal, rollbackJournal, setParent } from './journal'
 import {
   consumeRawConstruction,
   copyTrackingState,
@@ -102,58 +103,6 @@ const childSubscriptions = new WeakMap<object, Map<string | symbol, Array<() => 
 
 /** Parents currently re-emitting a bubbled `touched` (guards against reference cycles). */
 const bubbling = new WeakSet<object>()
-
-/** What `transaction()` rolls back to: the fields of every model it reaches, keyed by the model, the root first */
-type Snapshot = Map<ActiveModel, Map<string | symbol, unknown>>
-
-/**
- * A snapshot entry held by reference and restored in place: a nested model, or a container / plain list
- * of models together with the items it held.
- */
-class Kept {
-  constructor (readonly value: object, readonly items?: object[]) {}
-}
-
-/** Whether `list` holds exactly `items`, in that order */
-const sameItems = (list: ArrayLike<unknown>, items: object[]): boolean =>
-  list.length === items.length && items.every((item, i) => list[i] === item)
-
-/** Put one `Kept` field back: set the original back if it was replaced, refill a container or list whose items changed */
-const restoreKept = (model: ActiveModel, raw: ActiveModel, prop: string | symbol, { value, items }: Kept): void => {
-  const current = Reflect.get(raw, prop)
-  if (!items) {
-    if (current !== value) {
-      Reflect.set(model, prop, value)
-    }
-    return
-  }
-  if (!isCollection(value)) {
-    // a plain list: the factory setter builds a new list around the same instances
-    if (current !== value || !sameItems(current, items)) {
-      Reflect.set(model, prop, items)
-    }
-    return
-  }
-  if (current !== value) {
-    Reflect.set(model, prop, value)
-  }
-  if (sameItems(Array.from(value instanceof Map ? value.values() : (value as Iterable<object>)), items)) {
-    return
-  }
-  if (value instanceof Map) {
-    value.clear()
-    // shortcut: add(...items) spreads the items as arguments and fails past ~100k; use addAll() once ActiveMap has it (5.1)
-    value.add(...items)
-  } else if (value instanceof Set) {
-    value.clear()
-    value.addAll(items)
-  } else {
-    value.replaceAll(items)
-    if (!sameItems(Array.from(value), items)) {
-      value.reverse() // a sorted collection reversed inside the transaction: flip its direction back
-    }
-  }
-}
 
 const makeWrittenTracker = () => {
   const registry = new WeakMap<ActiveModel, Set<string | symbol>>()
@@ -1153,70 +1102,6 @@ export class ActiveModel {
   }
 
   /**
-   * What `transaction()` rolls back to: the value of every declared field of `raw` and, recursively, of every
-   * model it reaches (the root first, each instance once). Nested models, containers and plain lists of models
-   * are kept by reference and restored in place; any other value is a private copy.
-   */
-  protected static snapshot (raw: ActiveModel, snapshot: Snapshot = new Map()): Snapshot {
-    const fields = new Map<string | symbol, unknown>()
-    // registered before its fields are visited, so a cycle or a shared instance is taken once
-    snapshot.set(proxyOf.get(raw) ?? raw, fields)
-    for (const prop of this.fieldNames()) {
-      fields.set(prop, this.keep(Reflect.get(raw, prop), snapshot))
-    }
-    return snapshot
-  }
-
-  /** The `snapshot()` form of one field value */
-  protected static keep (value: unknown, snapshot: Snapshot): unknown {
-    if (typeof value !== 'object' || value === null) {
-      return value
-    }
-    if (value instanceof ActiveModel) {
-      if (!snapshot.has(value)) {
-        (<typeof ActiveModel>value.constructor).snapshot(rawOf.get(value) ?? value, snapshot)
-      }
-      return new Kept(value)
-    }
-    const items = isCollection(value)
-      ? Array.from(value instanceof Map ? value.values() : (value as Iterable<object>))
-      : Array.isArray(value) && value.length > 0 && value.every((item) => item instanceof ActiveModel) ? value.slice() : undefined
-    if (!items) {
-      return this.cloneValue(value)
-    }
-    items.forEach((item) => this.keep(item, snapshot))
-    return new Kept(value, items)
-  }
-
-  /**
-   * Put a `snapshot()` back through the proxies, skipping rules and transitions and writing only what differs:
-   * first the copied fields of every model it reaches, then the fields kept by reference (a nested model or
-   * container that was replaced is set back, a container or list whose items changed is refilled in place).
-   */
-  protected static restore (snapshot: Snapshot): void {
-    runRestoring(() => {
-      for (const [model, fields] of snapshot) {
-        const raw = rawOf.get(model) ?? model
-        const Ctor = <typeof ActiveModel>raw.constructor
-        for (const [prop, saved] of fields) {
-          if (!(saved instanceof Kept) && !deepEqual(Reflect.get(raw, prop), saved, Ctor.sameContent)) {
-            Reflect.set(model, prop, saved)
-          }
-        }
-      }
-      // the items are back to their original fields by now, so a unique or sorted container refills cleanly
-      for (const [model, fields] of snapshot) {
-        const raw = rawOf.get(model) ?? model
-        for (const [prop, saved] of fields) {
-          if (saved instanceof Kept) {
-            restoreKept(model, raw, prop, saved)
-          }
-        }
-      }
-    })
-  }
-
-  /**
    * Re-subscribe `target` to the `touched` of the model(s) now stored under `prop`,
    * so a change deep inside a nested model bubbles up as a `touched` of the parent.
    */
@@ -1245,6 +1130,8 @@ export class ActiveModel {
       byProp = new Map()
       childSubscriptions.set(target, byProp)
     }
+    const parent = proxyOf.get(target) ?? (receiver as object)
+    children.forEach((child) => setParent(child, parent))
     byProp.set(prop, children.map((child) => child.on(EventType.touched, () => {
       if (bubbling.has(target)) {
         return
@@ -1466,6 +1353,12 @@ export class ActiveModel {
         Ctor.bindChildren(target, prop, receiver)
         if (!creating) {
           emit(target, EventType.touched, { target: receiver })
+          if (isJournaling()) {
+            // recorded after `touched`, so a rollback undoes this write before what a container holding the
+            // model did in response (an ActiveMap puts a displaced entry back once its key is free again)
+            const self = proxyOf.get(target)!
+            journal(self, () => { Reflect.set(self, prop, oldValue) })
+          }
         }
         return result
       },
@@ -1486,6 +1379,11 @@ export class ActiveModel {
 
         emit(target, EventType.beforeDeletingAttribute, { target, prop })
 
+        if (isJournaling() && Object.prototype.hasOwnProperty.call(target, prop)) {
+          const self = proxyOf.get(target)!
+          const oldValue = Reflect.get(target, prop)
+          journal(self, () => { Reflect.set(self, prop, oldValue) })
+        }
         return Reflect.deleteProperty(target, prop)
       },
       defineProperty (target, prop, descriptor) {
@@ -1568,14 +1466,14 @@ export class ActiveModel {
    */
   transaction<T> (fn: (model: this) => T): T {
     const raw = rawOf.get(this) ?? this
-    const Ctor = <typeof ActiveModel>raw.constructor
-    const snapshot = Ctor.snapshot(raw)
+    const self = proxyOf.get(raw) ?? this
     const rollback = () => {
       abortGroup(raw)
-      Ctor.restore(snapshot)
+      runRestoring(() => rollbackJournal(self))
     }
 
     beginGroup(raw)
+    beginJournal(self)
     let result: T
     try {
       result = fn(this)
@@ -1591,6 +1489,7 @@ export class ActiveModel {
         throw new ValidationError(issues)
       }
       commitGroup(raw)
+      commitJournal(self)
       return value
     }
 
