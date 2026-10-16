@@ -9,7 +9,7 @@ import type {
 } from './types'
 import { getValue } from './utils'
 import { useEmitter } from './emitter'
-import type { FieldRules, PipelineConfig, Transform } from './pipeline'
+import { allowedValues, type FieldRules, type PipelineConfig, type Transform } from './pipeline'
 
 const defaultOpts: ActiveFieldDescriptor = {
   fillable: true,
@@ -172,6 +172,11 @@ const buildPipeline = (options: ActiveFieldDescriptor): PipelineConfig | undefin
     if (options[key] !== undefined) {
       (rules as Record<string, unknown>)[key] = options[key]
     }
+  }
+
+  if (rules.oneOf) {
+    // a TS enum becomes its list of values once here, not on every write
+    rules.oneOf = allowedValues(rules.oneOf)
   }
 
   const hasRules = Object.keys(rules).length > 0

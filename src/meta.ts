@@ -42,11 +42,6 @@ export const runRestoring = <T>(fn: () => T): T => {
 export const isCreating = (): boolean => creatingDepth > 0
 
 /**
- * Helper for check not creating
- */
-export const isNotCreating = (): boolean => !isCreating()
-
-/**
  * Run `fn` as part of model creation: `touched` is not emitted for the writes it performs.
  * The counter is restored even if `fn` throws.
  */
@@ -186,41 +181,4 @@ function deepFreeze (value: any) {
   }
 
   return value
-}
-
-/**
- * checks for mandatory availability instance
- * @param instance
- */
-const requiredInstance = (instance?: ActiveModel) => {
-  if (!instance) {
-    // Stryker disable next-line StringLiteral: message text
-    throw new Error(`Instance extends ActiveModel is required for this method!`)
-  }
-
-  return instance
-}
-
-/**
- * Helper for use model meta-data
- * @param instance
- */
-export const useMeta = (instance?: ActiveModel) => {
-  let inst = instance
-  return {
-    setInstance: (instance: ActiveModel) => {
-      inst = instance
-    },
-    isCreating,
-    isNotCreating,
-    isRestoring,
-    runRestoring,
-    runInCreatingContext,
-    runRawConstruction,
-    consumeRawConstruction,
-    saveRaw: (raw: any) => saveRaw(requiredInstance(inst), raw),
-    getRaw: () => getRaw(requiredInstance(inst)),
-    saveBaseline: (baseline: ActiveModel) => saveBaseline(requiredInstance(inst), baseline),
-    getBaseline: () => getBaseline(requiredInstance(inst)),
-  }
 }

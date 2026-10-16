@@ -202,6 +202,10 @@ const describeBound = (bound: Bound): string =>
 const lengthOf = (value: unknown): number | undefined =>
   typeof value === 'string' || Array.isArray(value) ? value.length : undefined
 
+/** A `g` or `y` regex remembers `lastIndex` between tests: such a pattern is tested through a fresh copy without `g` */
+const statelessPattern = (pattern: RegExp): RegExp =>
+  pattern.global || pattern.sticky ? new RegExp(pattern.source, pattern.flags.replace('g', '')) : pattern
+
 /**
  * Every rule a value breaks. `null`/`undefined` only break `required` - an optional field
  * that is absent has nothing to check; `required` also rejects the empty string.
@@ -235,7 +239,7 @@ export const ruleIssues = (rules: FieldRules, value: unknown, path: string, coer
   if (length !== undefined && rules.maxLength !== undefined && length > rules.maxLength) {
     add('maxLength', `"${path}" must have at most ${rules.maxLength} characters/items, has ${length}`)
   }
-  if (rules.pattern && typeof value === 'string' && !new RegExp(rules.pattern.source, rules.pattern.flags.replace('g', '')).test(value)) {
+  if (rules.pattern && typeof value === 'string' && !statelessPattern(rules.pattern).test(value)) {
     add('pattern', `"${path}" does not match ${rules.pattern}`)
   }
   if (rules.oneOf && !allowedValues(rules.oneOf).includes(value)) {

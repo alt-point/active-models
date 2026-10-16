@@ -48,7 +48,8 @@ describe('absolute budgets (median ns/op)', () => {
 
   it('writing a field', () => {
     const m = M10.create(d10) as any
-    expect(measure(() => { m.f0 = m.f0 + 1 }, 50_000)).toBeLessThan(us(8))
+    // ~2x the laptop number: a write is a few hundred ns, so a looser budget would miss a per-write allocation creeping back
+    expect(measure(() => { m.f0 = m.f0 + 1 }, 50_000)).toBeLessThan(us(0.5))
   })
 
   it('toJSON() of 10 fields / of an order with 50 lines', () => {

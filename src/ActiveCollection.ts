@@ -1,5 +1,5 @@
 import { ActiveModel } from './ActiveModel'
-import { useEmitter } from './emitter'
+import { emit as emitEvent, useEmitter } from './emitter'
 import { registerCollection } from './collectionRegistry'
 import { attachItem, detachItem, isNilKey, keyFunction, normalizeItem, wrapContainer } from './collectionCore'
 import { ValidationError } from './pipeline'
@@ -133,7 +133,7 @@ const compareKeys = (a: any, b: any, order: 'asc' | 'desc'): number => {
 }
 
 const emit = (state: State<any>, event: EventType, payload: unknown) => {
-  useEmitter(state.raw).emit(event, payload)
+  emitEvent(state.raw, event, payload)
 }
 
 const normalize = <T extends ActiveModel>(state: State<T>, item: unknown): T =>

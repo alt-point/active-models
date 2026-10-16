@@ -1,5 +1,5 @@
 import { ActiveModel } from './ActiveModel'
-import { useEmitter } from './emitter'
+import { emit as emitEvent, useEmitter } from './emitter'
 import { registerCollection } from './collectionRegistry'
 import { attachItem, detachItem, isNilKey, keyFunction, normalizeItem, wrapContainer } from './collectionCore'
 import { ValidationError } from './pipeline'
@@ -27,7 +27,7 @@ const states = new WeakMap<object, State<any>>()
 const SetProto = Set.prototype
 
 const emit = (state: State<any>, event: EventType, payload: unknown) => {
-  useEmitter(state.self).emit(event, payload)
+  emitEvent(state.self, event, payload)
 }
 
 const attach = <T extends ActiveModel>(state: State<T>, item: T) => attachItem(state, item, onItemTouched)

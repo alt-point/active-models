@@ -35,10 +35,10 @@ What is covered:
   listeners are garbage collected; tracked snapshots don't accumulate; an instance with 10 fields costs
   < 1.5 KB.
 
-Reference numbers on a laptop (ns/op): `create()` 10 fields ≈ 11k, 100 fields ≈ 116k; write ≈ 760 (plain
-object: 4); read ≈ 37; `toJSON()` of 10 fields ≈ 4.9k; `isTouched()` ≈ 4.3k. A write costs ~190x a plain
+Reference numbers on a laptop (ns/op): `create()` 10 fields ≈ 7k, 100 fields ≈ 74k; write ≈ 270 (plain
+object: 4); read ≈ 37; `toJSON()` of 10 fields ≈ 570; `isTouched()` ≈ 340. A write costs ~65x a plain
 assignment because every write walks the pipeline (fillable → readonly → validator → events); that is the
-price of the guarantees, and it is still under a microsecond.
+price of the guarantees, and it is still well under a microsecond.
 
 ## Mutation testing
 

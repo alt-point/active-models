@@ -454,6 +454,28 @@ describe('on / once hooks', () => {
     expect(count).toBe(1)
   })
 
+  it('class-level listeners: the same function registered twice fires once, new ones still fire after an unsubscribe', () => {
+    class Order extends ActiveModel {
+      @ActiveField() a: string = ''
+    }
+    const order = Order.create({ a: 'x' })
+    let hits = 0
+    const cb = () => { hits++ }
+    const off = Order.on(EventType.nulling, cb)
+    const offAgain = Order.on(EventType.nulling, cb)
+    order.a = null as any
+    expect(hits).toBe(1)
+    off()
+    offAgain()
+    order.a = 'y'
+    order.a = null as any
+    expect(hits).toBe(1)
+    Order.on(EventType.nulling, cb)
+    order.a = 'z'
+    order.a = null as any
+    expect(hits).toBe(2)
+  })
+
   it('emitter is not part of the public API', () => {
     class Order extends ActiveModel {
       @ActiveField() a: string = ''

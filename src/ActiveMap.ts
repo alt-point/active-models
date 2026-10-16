@@ -1,5 +1,5 @@
 import { ActiveModel } from './ActiveModel'
-import { useEmitter } from './emitter'
+import { emit as emitEvent, useEmitter } from './emitter'
 import { registerCollection } from './collectionRegistry'
 import { attachItem, detachItem, isNilKey, isPlainObject, keyFunction, normalizeItem, wrapContainer } from './collectionCore'
 import {
@@ -28,7 +28,7 @@ const MapProto = Map.prototype
 const stateOf = <T extends ActiveModel>(map: object): State<T> | undefined => states.get(map)
 
 const emit = (state: State<any>, event: EventType, payload: unknown) => {
-  useEmitter(state.self).emit(event, payload)
+  emitEvent(state.self, event, payload)
 }
 
 const attach = <T extends ActiveModel>(state: State<T>, item: T) => attachItem(state, item, onItemTouched)

@@ -129,6 +129,7 @@ describe('rules', () => {
     @ActiveField({ minLength: 2, maxLength: 4 }) tag?: string
     @ActiveField({ minLength: 1, maxLength: 2 }) list?: string[]
     @ActiveField({ pattern: /^[a-z]+$/g }) slug?: string
+    @ActiveField({ pattern: /^[a-z]+$/y }) stickySlug?: string
     @ActiveField({ oneOf: ['a', 'b'] }) letter?: string
     @ActiveField({ type: 'string' }) text?: unknown
     @ActiveField({ type: 'array' }) arr?: unknown
@@ -167,6 +168,14 @@ describe('rules', () => {
     person.list = ['x']
     expect(issuesOf(() => { person.list = [] })[0].code).toBe('minLength')
     expect(issuesOf(() => { person.list = ['a', 'b', 'c'] })[0].code).toBe('maxLength')
+  })
+
+  it('a sticky (/y) pattern is matched from the start on every write', () => {
+    const person = Person.create({})
+    person.stickySlug = 'abc'
+    person.stickySlug = 'def'
+    expect(person.stickySlug).toBe('def')
+    expect(issuesOf(() => { person.stickySlug = '1' })[0].code).toBe('pattern')
   })
 
   it('pattern tests strings (a /g flag does not make it stateful) and oneOf checks membership', () => {

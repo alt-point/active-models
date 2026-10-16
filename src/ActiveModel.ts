@@ -16,7 +16,22 @@ import {
 import { cloneDeep, cloneDeepWith } from './clone'
 import { deepEqual } from './equal'
 import { isImmutable } from './scalars/immutable'
-import { copyTrackingState, getBaseline, isSanitized, markSanitized, runRestoring, unmarkSanitized, useMeta } from './meta'
+import {
+  consumeRawConstruction,
+  copyTrackingState,
+  getBaseline,
+  getRaw as getRawData,
+  isCreating,
+  isRestoring,
+  isSanitized,
+  markSanitized,
+  runInCreatingContext,
+  runRawConstruction,
+  runRestoring,
+  saveBaseline,
+  saveRaw,
+  unmarkSanitized,
+} from './meta'
 import {
   abortGroup,
   beginGroup,
@@ -25,6 +40,7 @@ import {
   clearHistory as clearHistoryStack,
   commitGroup,
   enableHistory,
+  hasHistory,
   recordChange,
   step as stepHistory,
 } from './history'
@@ -38,7 +54,7 @@ import {
   isNull,
   isPOJOSSafetyValue,
 } from './utils'
-import { useEmitter } from './emitter'
+import { emit, useEmitter } from './emitter'
 import { useMapper } from './mapper'
 import { isCollection } from './collectionRegistry'
 import {
@@ -123,7 +139,7 @@ const getFillableWritten = makeWrittenTracker()
 
 /** The pristine copy a tracked model keeps for `changes()` / `revert()` (as its raw object) */
 const baselineOf = (model: ActiveModel): ActiveModel => {
-  const baseline = useMeta(model).getBaseline()
+  const baseline = getBaseline(model)
   if (!baseline) {
     throw new TypeError('changes() and revert() need a model created with create(data, { tracked: true })')
   }
@@ -193,7 +209,7 @@ export class ActiveModel {
    * `Ctor.getter()`'s `Reflect.get(target, prop, target)` below - resolves
    * `this` to the raw target. That keeps the returned closure's `addListener`
    * keyed by the same raw object the `set`/`deleteProperty` traps use to
-   * `emit()` (see the internal-only `useEmitter()` calls throughout this
+   * `emit()` (see the internal-only `emit()` calls throughout this
    * file) - a plain prototype method would instead bind `this` to the proxy
    * at call time (`model.on(...)` calls with `this === model`), which is a
    * *different* WeakMap key and would silently never see trap-emitted events.
@@ -215,7 +231,7 @@ export class ActiveModel {
   /**
    * Subscribe to a lifecycle/field event for *every* instance of this class
    * (subclasses' instances included), not just one. Registered against the
-   * constructor itself, which `useEmitter()`'s `getListeners()` merges in as
+   * constructor itself, which `emit()` merges in as
    * "inherited" listeners for any instance of this class - the same
    * mechanism `@ActiveField({ on: {...} })` already uses internally.
    */
@@ -809,14 +825,6 @@ export class ActiveModel {
       )
     }
 
-    const {
-      setInstance,
-      saveRaw,
-      saveBaseline,
-      runInCreatingContext,
-      runRawConstruction
-    } = useMeta()
-
     return runInCreatingContext(() => {
       if ((opts.sanitize ?? true) && !isSanitized(data)) {
         data = this.sanitize(data as object)
@@ -830,17 +838,15 @@ export class ActiveModel {
       this.sealNonFillable(raw)
       const model = this.wrap(raw)
 
-      setInstance(model)
-
       if (opts.tracked) {
         // the source exactly as it was passed in - before defaults are added and non-fillable keys stripped
-        saveRaw(data)
+        saveRaw(model, data)
       }
 
       this.fill(model, this.stripNonFillable(this.setDefaultAttributes(data)))
 
       if (opts.tracked) {
-        saveBaseline(model.clone())
+        saveBaseline(model, model.clone())
       }
       if (opts.history) {
         enableHistory(raw, typeof opts.history === 'object' ? opts.history.limit : undefined)
@@ -861,7 +867,7 @@ export class ActiveModel {
       // purely from the order of a synchronous call stack. Emitted keyed by
       // `raw` - the same key every `on()`/`once()` subscription and every
       // trap-emitted event uses (see `Ctor.getter()`).
-      useEmitter(raw).emit(EventType.created, { target: model })
+      emit(raw, EventType.created, { target: model })
 
       return model as InstanceType<T>
     })
@@ -987,7 +993,7 @@ export class ActiveModel {
   /**
    * Filling data to **only own fields**
    * @param data
-   * @param force
+   * @param options
    */
   fill (data: ActiveModelSource, options: boolean | { force?: boolean, atomic?: boolean } = false): this {
     const { force = false, atomic = false } = typeof options === 'boolean' ? { force: options } : options
@@ -1149,7 +1155,7 @@ export class ActiveModel {
       }
       bubbling.add(target)
       try {
-        useEmitter(target).emit(EventType.touched, { target: receiver })
+        emit(target, EventType.touched, { target: receiver })
       } finally {
         bubbling.delete(target)
       }
@@ -1242,9 +1248,9 @@ export class ActiveModel {
         if (frozenModels.has(target)) {
           throw new TypeError(`Cannot assign to "${String(prop)}": the model is frozen (makeFreeze)`)
         }
-        const { isNotCreating, isRestoring } = useMeta()
         const Ctor: typeof ActiveModel = <typeof ActiveModel>target.constructor
         const restoring = isRestoring()
+        const creating = isCreating()
         const oldValue = Reflect.get(target, prop, receiver)
 
         if (!Ctor.isActiveField(prop)) {
@@ -1259,7 +1265,7 @@ export class ActiveModel {
 
         if (Object.is(oldValue, value)) {
           // same value as before: nothing to validate, store or announce
-          return Reflect.set(target, prop, value, receiver)
+          return Reflect.set(target, prop, value)
         }
 
         let markFillable = false
@@ -1303,7 +1309,7 @@ export class ActiveModel {
             if (Object.is(oldValue, next)) {
               return true
             }
-            if (pipeline.transitions && isNotCreating() && !canTransitionFn(pipeline.transitions, oldValue, next)) {
+            if (pipeline.transitions && !creating && !canTransitionFn(pipeline.transitions, oldValue, next)) {
               throw new ValidationError([{
                 path: String(prop),
                 code: 'transition',
@@ -1326,17 +1332,20 @@ export class ActiveModel {
           getReadonlyWritten(target).add(prop)
         }
 
-        useEmitter(target).emit(EventType.beforeSetValue, {
+        emit(target, EventType.beforeSetValue, {
           target,
           prop,
           value: next,
           oldValue,
         })
 
+        // shortcut: stored without the receiver, which halves a write (no round trip through the defineProperty
+        // trap); a setter accessor declared as @ActiveField would get the raw instance as `this` - pass the
+        // receiver again if such fields appear
         const result =
           Ctor.resolveSetter(prop)?.(target, prop as string, next, receiver) ??
-          Reflect.set(target, prop, next, receiver)
-        useEmitter(target).emit(EventType.afterSetValue, {
+          Reflect.set(target, prop, next)
+        emit(target, EventType.afterSetValue, {
           target,
           prop,
           value: next,
@@ -1345,7 +1354,7 @@ export class ActiveModel {
 
         // nullabling definition
         if (!isNull(oldValue) && isNull(next)) {
-          useEmitter(target).emit(EventType.nulling, {
+          emit(target, EventType.nulling, {
             target,
             prop,
             value: next,
@@ -1353,14 +1362,14 @@ export class ActiveModel {
           })
         }
 
-        if (!restoring && isNotCreating()) {
+        if (!restoring && !creating && hasHistory(target)) {
           recordChange(target, { prop, from: oldValue, to: Reflect.get(target, prop) })
         }
 
         // only a write that actually went through counts as a change
         Ctor.bindChildren(target, prop, receiver)
-        if (isNotCreating()) {
-          useEmitter(target).emit(EventType.touched, { target: receiver })
+        if (!creating) {
+          emit(target, EventType.touched, { target: receiver })
         }
         return result
       },
@@ -1379,7 +1388,7 @@ export class ActiveModel {
           throw new TypeError(`Property "${prop as string}" is protected!`)
         }
 
-        useEmitter(target).emit(EventType.beforeDeletingAttribute, { target, prop })
+        emit(target, EventType.beforeDeletingAttribute, { target, prop })
 
         return Reflect.deleteProperty(target, prop)
       },
@@ -1599,8 +1608,7 @@ export class ActiveModel {
    * not created tracked. A `clone()` carries it over.
    */
   getRaw (): Readonly<Record<string, unknown>> | undefined {
-    const { getRaw } = useMeta(this)
-    return getRaw()
+    return getRawData(this)
   }
 
   /**
@@ -1616,7 +1624,6 @@ export class ActiveModel {
   }
 
   constructor (data: ActiveModelSource = {}) {
-    const { consumeRawConstruction, runInCreatingContext } = useMeta()
     const Ctor = <typeof ActiveModel>this.constructor
     if (consumeRawConstruction()) {
       return this
@@ -1650,7 +1657,7 @@ export class ActiveModel {
       // see the comment on `Ctor.getter()` for why the two are different
       // WeakMap keys and only the raw one matches what `on()`/`once()` and
       // the traps use.
-      useEmitter(this).emit(EventType.created, { target: filled })
+      emit(this, EventType.created, { target: filled })
     })
 
     return filled
