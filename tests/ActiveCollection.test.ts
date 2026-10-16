@@ -131,6 +131,80 @@ describe('ActiveCollection: no way around the rule', () => {
   })
 })
 
+describe('ActiveCollection: reads go to the storage, with the Array rules', () => {
+  it('callback methods pass the collection (not its storage) as the third argument and honor thisArg', () => {
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }, { id: 3 }])
+    const ctx = { min: 2 }
+    for (const method of ['forEach', 'map', 'filter', 'find', 'findIndex', 'findLast', 'findLastIndex', 'some', 'every'] as const) {
+      const calls: unknown[][] = []
+      ;(tasks as any)[method](function (this: unknown, ...args: unknown[]) { calls.push([this, ...args]) }, ctx)
+      expect(calls.length, method).toBeGreaterThan(0)
+      for (const [self, item, index, list] of calls) {
+        expect(self, method).toBe(ctx)
+        expect(list, method).toBe(tasks)
+        expect(item, method).toBe(tasks[index as number])
+      }
+    }
+    expect(tasks.map((t) => t.id * 2)).toEqual([2, 4, 6])
+    const kept = tasks.filter(function (this: typeof ctx, t) { return t.id >= this.min }, ctx)
+    expect(kept).toBeInstanceOf(ActiveCollection)
+    expect(ids(kept)).toEqual([2, 3])
+    expect(tasks.find((t) => t.id > 1)).toBe(tasks[1])
+    expect(tasks.findIndex((t) => t.id > 1)).toBe(1)
+    expect(tasks.findLast((t) => t.id > 1)).toBe(tasks[2])
+    expect(tasks.findLastIndex((t) => t.id > 1)).toBe(2)
+    expect(tasks.find((t) => t.id > 9)).toBeUndefined()
+    expect(tasks.findIndex((t) => t.id > 9)).toBe(-1)
+    expect(tasks.findLast((t) => t.id > 9)).toBeUndefined()
+    expect(tasks.findLastIndex((t) => t.id > 9)).toBe(-1)
+    expect(tasks.some((t) => t.id === 2)).toBe(true)
+    expect(tasks.some((t) => t.id === 9)).toBe(false)
+    expect(tasks.every((t) => t.id > 0)).toBe(true)
+    expect(tasks.every((t) => t.id > 1)).toBe(false)
+  })
+
+  it('reduce works with and without an initial value', () => {
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }, { id: 3 }])
+    expect(tasks.reduce((sum, t) => sum + t.id, 10)).toBe(16)
+    expect(tasks.reduce((sum, t, i, list) => sum + t.id + i + (list === tasks ? 100 : 0), 0)).toBe(309)
+    expect(tasks.reduce((a, t) => (a.id > t.id ? a : t))).toBe(tasks[2])
+    expect(ActiveCollection.create(Task).reduce((a) => a, 'init')).toBe('init')
+    expect(() => ActiveCollection.create(Task).reduce((a) => a)).toThrow(TypeError)
+  })
+
+  it('iterators, indexOf and includes', () => {
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }])
+    expect(Array.from(tasks.values())).toEqual([tasks[0], tasks[1]])
+    expect(Array.from(tasks.keys())).toEqual([0, 1])
+    expect(Array.from(tasks.entries())).toEqual([[0, tasks[0]], [1, tasks[1]]])
+    expect([...tasks]).toEqual([tasks[0], tasks[1]])
+    expect(tasks.indexOf(tasks[1])).toBe(1)
+    expect(tasks.indexOf(tasks[0], 1)).toBe(-1)
+    expect(tasks.indexOf(Task.create({ id: 1 }))).toBe(-1)
+    expect(tasks.includes(tasks[0])).toBe(true)
+    expect(tasks.includes(tasks[0], 1)).toBe(false)
+  })
+
+  it('a loop fixes the length when it starts and skips slots removed meanwhile', () => {
+    const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }, { id: 3 }])
+    const visited: number[] = []
+    tasks.forEach((t) => { visited.push(t.id); if (t.id === 1) tasks.push({ id: 4 }) })
+    expect(visited).toEqual([1, 2, 3])
+    visited.length = 0
+    tasks.forEach((t) => { visited.push(t.id); if (t.id === 1) tasks.splice(1, 3) })
+    expect(visited).toEqual([1])
+    expect(ids(tasks)).toEqual([1])
+  })
+
+  it('reads work on an instance that did not come from create()', () => {
+    const bare = new ActiveCollection<Task>()
+    Array.prototype.push.call(bare, Task.create({ id: 7 }))
+    expect(ids(bare)).toEqual([7])
+    expect(bare.find((t) => t.id === 7)).toBe(bare[0])
+    expect(bare.indexOf(bare[0])).toBe(0)
+  })
+})
+
 describe('ActiveCollection: mutators', () => {
   it('push / add / unshift / pop / shift', () => {
     const tasks = ActiveCollection.create(Task)

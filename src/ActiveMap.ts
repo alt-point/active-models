@@ -19,7 +19,7 @@ type State<T extends ActiveModel> = {
   keyOf: (item: T) => unknown
   /** item -> the key it is stored under */
   itemKey: Map<T, unknown>
-  attached: Map<T, { off: () => void, count: number }>
+  attached: WeakMap<T, { off: () => void, count: number }>
 }
 
 const states = new WeakMap<object, State<any>>()
@@ -144,7 +144,7 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
       options,
       keyOf,
       itemKey: new Map(),
-      attached: new Map(),
+      attached: new WeakMap(),
     })
     registerCollection(map)
     addAll(map, items as Iterable<RecursivePartialActiveModel<InstanceType<M>>>)

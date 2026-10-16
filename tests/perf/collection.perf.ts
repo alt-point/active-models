@@ -65,6 +65,29 @@ describe('ActiveCollection budgets (median ns/op)', () => {
     const readCollection = () => { let sum = 0; for (let i = 0; i < 1000; i++) sum += collection[i].id; return sum }
     expect(measure(readCollection, 2000) / measure(readPlain, 2000)).toBeLessThan(8)
   })
+
+  it('a sorted push of the same item at the end of 10000 items + pop', () => {
+    const collection = ActiveCollection.create(Row, rows(10_000), { sortBy: 'id' })
+    const extra = Row.create({ id: 999_999 })
+    expect(measure(() => { collection.push(extra); collection.pop() }, 2000)).toBeLessThan(us(8))
+  })
+
+  it('iterating 10000 items: for..of, forEach, map, find, reduce', () => {
+    const collection = ActiveCollection.create(Row, rows(10_000))
+    const last = collection[9_999]
+    expect(measure(() => { let n = 0; for (const row of collection) if (row) n++; return n }, 50)).toBeLessThan(us(150))
+    expect(measure(() => { let n = 0; collection.forEach((row) => { if (row) n++ }); return n }, 50)).toBeLessThan(us(100))
+    expect(measure(() => collection.map((row) => row), 50)).toBeLessThan(us(150))
+    expect(measure(() => collection.find((row) => row === last), 50)).toBeLessThan(us(100))
+    expect(measure(() => collection.reduce((n, row) => n + (row ? 1 : 0), 0), 50)).toBeLessThan(us(100))
+  })
+
+  it('indexOf and includes of the last of 10000 items', () => {
+    const collection = ActiveCollection.create(Row, rows(10_000))
+    const last = collection[9_999]
+    expect(measure(() => collection.indexOf(last), 200)).toBeLessThan(us(50))
+    expect(measure(() => collection.includes(last), 200)).toBeLessThan(us(50))
+  })
 })
 
 describe('ActiveCollection scaling', () => {

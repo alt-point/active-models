@@ -34,7 +34,7 @@ type State<T extends ActiveModel> = {
   keys: Map<unknown, T>
   /** item -> the unique key it was registered under */
   itemKey: Map<T, unknown>
-  attached: Map<T, { off: () => void, count: number }>
+  attached: WeakMap<T, { off: () => void, count: number }>
 }
 
 const A = Array.prototype
@@ -109,6 +109,9 @@ const sortedCopy = <T extends ActiveModel>(state: State<T>, items: T[]): T[] => 
     .sort((a, b) => compareKeys(a.key, b.key, order))
     .map(({ item }) => item)
 }
+
+/** The storage to read from: the raw array behind a collection, or the receiver itself when it is not one of ours (a reactive wrapper, a bare `new`) */
+const rawOf = <T extends ActiveModel>(self: ActiveCollection<T>): ActiveCollection<T> => states.get(self)?.raw ?? self
 
 const stateOf = <T extends ActiveModel>(collection: object): State<T> => {
   const state = states.get(collection)
@@ -287,8 +290,9 @@ const insert = <T extends ActiveModel>(state: State<T>, items: T[], position: nu
         A.push.call(raw, item)
       }
     } else {
-      for (const item of items) {
-        rawSplice(raw, upperBound(state, item), 0, [item])
+      rawSplice(raw, index, 0, [items[0]])
+      for (let i = 1; i < items.length; i++) {
+        rawSplice(raw, upperBound(state, items[i]), 0, [items[i]])
       }
     }
   // Stryker disable next-line ConditionalExpression: appending through rawSplice gives the same result, the branch is a fast path
@@ -458,7 +462,7 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
       uniqueKey: keyFunction<InstanceType<M>>(options.unique),
       keys: new Map(),
       itemKey: new Map(),
-      attached: new Map(),
+      attached: new WeakMap(),
     }
     state.compare = options.compare
       // Stryker disable next-line ArithmeticOperator: only the sign of a comparator result matters
@@ -683,10 +687,147 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
     return this
   }
 
+  /*
+   * Reads go to the raw storage: through the Proxy every element costs a trap, and V8 runs the built-in
+   * callback methods on an Array subclass through a generic path, so those are plain loops (with the
+   * built-ins' rules: the length is fixed up front, slots removed meanwhile are skipped, the callback
+   * gets the collection, not the storage).
+   */
+  [Symbol.iterator] (): ReturnType<T[]['values']> {
+    return A.values.call(rawOf(this))
+  }
+
+  values (): ReturnType<T[]['values']> {
+    return A.values.call(rawOf(this))
+  }
+
+  keys (): ReturnType<T[]['keys']> {
+    return A.keys.call(rawOf(this))
+  }
+
+  entries (): ReturnType<T[]['entries']> {
+    return A.entries.call(rawOf(this))
+  }
+
+  forEach (callback: (value: T, index: number, array: T[]) => void, thisArg?: any): void {
+    const raw = rawOf(this)
+    for (let i = 0, length = raw.length; i < length && i < raw.length; i++) {
+      callback.call(thisArg, raw[i], i, this)
+    }
+  }
+
+  map<U> (callback: (value: T, index: number, array: T[]) => U, thisArg?: any): U[] {
+    const raw = rawOf(this)
+    const length = raw.length
+    // Stryker disable next-line ArrayDeclaration: the loop below fills every slot
+    const mapped = new Array<U>(length)
+    for (let i = 0; i < length && i < raw.length; i++) {
+      mapped[i] = callback.call(thisArg, raw[i], i, this)
+    }
+    return mapped
+  }
+
   /** A new collection of the same kind with the items the predicate keeps (items are shared, not copied) */
   filter (predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): ActiveCollection<T> {
     const state = stateOf<T>(this)
-    return this.derive(state, A.filter.call(state.raw, predicate, thisArg))
+    const raw = state.raw
+    const kept: T[] = []
+    for (let i = 0, length = raw.length; i < length && i < raw.length; i++) {
+      const item = raw[i]
+      if (predicate.call(thisArg, item, i, this)) {
+        kept.push(item)
+      }
+    }
+    return this.derive(state, kept)
+  }
+
+  find (predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): T | undefined {
+    const raw = rawOf(this)
+    for (let i = 0, length = raw.length; i < length; i++) {
+      const item = raw[i]
+      if (predicate.call(thisArg, item, i, this)) {
+        return item
+      }
+    }
+    return undefined
+  }
+
+  findIndex (predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): number {
+    const raw = rawOf(this)
+    for (let i = 0, length = raw.length; i < length; i++) {
+      if (predicate.call(thisArg, raw[i], i, this)) {
+        return i
+      }
+    }
+    return -1
+  }
+
+  findLast (predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): T | undefined {
+    const raw = rawOf(this)
+    for (let i = raw.length - 1; i >= 0; i--) {
+      const item = raw[i]
+      if (predicate.call(thisArg, item, i, this)) {
+        return item
+      }
+    }
+    return undefined
+  }
+
+  findLastIndex (predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): number {
+    const raw = rawOf(this)
+    for (let i = raw.length - 1; i >= 0; i--) {
+      if (predicate.call(thisArg, raw[i], i, this)) {
+        return i
+      }
+    }
+    return -1
+  }
+
+  some (predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean {
+    const raw = rawOf(this)
+    for (let i = 0, length = raw.length; i < length && i < raw.length; i++) {
+      if (predicate.call(thisArg, raw[i], i, this)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  every<S extends T> (predicate: (value: T, index: number, array: T[]) => value is S, thisArg?: any): this is S[]
+  every (predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean
+  every (predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean {
+    const raw = rawOf(this)
+    for (let i = 0, length = raw.length; i < length && i < raw.length; i++) {
+      if (!predicate.call(thisArg, raw[i], i, this)) {
+        return false
+      }
+    }
+    return true
+  }
+
+  reduce (callback: (previous: T, current: T, index: number, array: T[]) => T): T
+  reduce (callback: (previous: T, current: T, index: number, array: T[]) => T, initialValue: T): T
+  reduce<U> (callback: (previous: U, current: T, index: number, array: T[]) => U, initialValue: U): U
+  reduce<U> (callback: (previous: U, current: T, index: number, array: T[]) => U, ...initial: [U?]): U {
+    const raw = rawOf(this)
+    const length = raw.length
+    if (initial.length === 0 && length === 0) {
+      throw new TypeError('Reduce of empty array with no initial value')
+    }
+    let i = initial.length === 0 ? 1 : 0
+    let result = (initial.length === 0 ? raw[0] : initial[0]) as U
+    for (; i < length && i < raw.length; i++) {
+      result = callback(result, raw[i], i, this)
+    }
+    return result
+  }
+
+  indexOf (item: T, fromIndex?: number): number {
+    return A.indexOf.call(rawOf(this), item, fromIndex)
+  }
+
+  includes (item: T, fromIndex?: number): boolean {
+    return A.includes.call(rawOf(this), item, fromIndex)
   }
 
   slice (start?: number, end?: number): ActiveCollection<T> {

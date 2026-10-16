@@ -113,7 +113,9 @@ kept as is; anything else throws. `toJSON()` / `JSON.stringify` give plain array
 `push`, `add` (chainable `push`), `unshift`, `pop`, `shift`, `splice`, `remove(item)`, `clear()`,
 `replaceAll(items)`, `sort`, `reverse`, `fill`, `copyWithin`; `filter`, `slice`, `concat` and `clone()` return **new
 collections of the same kind**; `map`, `flatMap` return plain arrays. Reads (`[i]`, `for...of`, `find`,
-`includes`, ...) are the ordinary `Array` ones.
+`includes`, ...) are the ordinary `Array` ones. Iteration (`for...of`, `...spread`, `values()`, `keys()`, `entries()`)
+and `forEach`, `map`, `filter`, `find`, `findIndex`, `findLast`, `findLastIndex`, `some`, `every`, `reduce`, `indexOf`,
+`includes` read the storage directly, bypassing the `Proxy`; the callback gets the collection itself as its third argument.
 
 ## Unique keys
 
@@ -174,7 +176,9 @@ collection they bubble every change up as the model's `touched`, serialize to pl
 
 - **Native mutators are guarded, not atomic.** `Array.prototype.splice.call(tasks, ...)` can never let a foreign
   item in, but it works element by element, so it can stop half-way. Use the collection's own methods.
-- **Cost.** Reading by index is ~2.5x a plain array (it goes through a `Proxy`); a sorted insert is O(log n) to find
-  the place plus a shift; bulk loading sorts once. Reference numbers: [Testing and quality](/en/testing).
+- **Cost.** Reading by index is ~2.5x a plain array (it goes through a `Proxy`); iteration and the callback methods
+  cost what they cost on a plain array (10k items: `for...of` ≈ 55 µs, `forEach` / `map` / `find` ≈ 50 µs, `indexOf`
+  ≈ 16 µs); a sorted insert is O(log n) to find the place plus a shift (into the middle of 10k ≈ 20 µs, at the end
+  ≈ 2 µs); bulk loading sorts once. Reference numbers: [Testing and quality](/en/testing).
 - **Lifetime.** A collection subscribes to its items. It holds itself weakly, so a dropped collection is garbage
   collected even while its items live on; its subscriptions are removed at the items' next change.

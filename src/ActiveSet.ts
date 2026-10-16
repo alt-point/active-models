@@ -20,7 +20,7 @@ type State<T extends ActiveModel> = {
   uniqueKey?: (item: T) => unknown
   keys: Map<unknown, T>
   itemKey: Map<T, unknown>
-  attached: Map<T, { off: () => void, count: number }>
+  attached: WeakMap<T, { off: () => void, count: number }>
 }
 
 const states = new WeakMap<object, State<any>>()
@@ -91,7 +91,7 @@ export class ActiveSet<T extends ActiveModel = ActiveModel> extends Set<T> {
       uniqueKey: keyFunction<InstanceType<M>>(options.unique),
       keys: new Map(),
       itemKey: new Map(),
-      attached: new Map(),
+      attached: new WeakMap(),
     })
     registerCollection(set)
     set.addAll(items as Iterable<RecursivePartialActiveModel<InstanceType<M>>>)
