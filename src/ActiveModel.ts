@@ -147,6 +147,14 @@ const baselineOf = (model: ActiveModel): ActiveModel => {
   return rawOf.get(baseline) ?? baseline
 }
 
+/** The issue of a `validator` that returned `false`; one that throws supplies its own message */
+const refusedIssue = (path: string, value: unknown): ValidationIssue => ({
+  path,
+  code: 'validator',
+  message: `"${path}" is invalid`,
+  value,
+})
+
 /**
  * Every rule/validator problem of `model`, recursing into nested models and collections.
  * `seen` guards against reference cycles.
@@ -168,7 +176,9 @@ const collectIssues = (model: ActiveModel, prefix: string, issues: ValidationIss
     const validator = Ctor.resolveValidator(prop)
     if (validator && value !== undefined && value !== null) {
       try {
-        validator(model, String(prop), value)
+        if (validator(model, String(prop), value) === false) {
+          issues.push(refusedIssue(path, value))
+        }
       } catch (error) {
         issues.push({ path, code: 'validator', message: (error as Error).message, value })
       }
@@ -1305,7 +1315,9 @@ export class ActiveModel {
               throw new ValidationError(issues)
             }
           }
-          Ctor.resolveValidator(prop)?.(target, prop as string, next)
+          if (Ctor.resolveValidator(prop)?.(target, prop as string, next) === false) {
+            throw new ValidationError([refusedIssue(String(prop), next)])
+          }
         }
 
         if (markFillable) {

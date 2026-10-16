@@ -18,6 +18,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 
 ### Added
 
+- A field `validator` may now refuse a value by returning `false`: the write throws a `ValidationError` with code `validator` and the message `"prop" is invalid`, and `validate()` reports the same issue for a stored value. Throwing works as before; `true` / `undefined` accept. A validator that returned `false` and relied on the write going through now refuses it.
 - `ActiveMap.addAll(iterable)`: store any iterable of items as one atomic batch (one `itemsAdded`, one `touched`); `add(...items)` is now a wrapper around it, so a large array no longer has to be spread into arguments.
 
 ### Fixed

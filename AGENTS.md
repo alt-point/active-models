@@ -53,7 +53,7 @@ in a field, import it and describe the field with it: `@ActiveField({ container:
    the constructor and overwrite the data `new` filled in. (`createLazy` returns an existing instance as-is.)
 2. Lists: `Model.createFromCollection([...])`. `create([...])` throws.
 3. Async data: `Model.asyncCreate(promise)`, `asyncCreateFromCollection(promise)`.
-4. A `validator` rejects only by **throwing**; its return value is ignored. It runs only when the value
+4. A `validator` rejects by **throwing** or by returning `false` (a `ValidationError`, code `validator`). It runs only when the value
    actually changes, so it can't enforce "field is required" — check keys before `create()`.
 5. Never rely on a listener to veto a write (the value is already written); use `validator`.
 6. Replace values instead of mutating them in place: `m.items = [...m.items, x]`, not `m.items.push(x)` —
@@ -67,7 +67,7 @@ in a field, import it and describe the field with it: `@ActiveField({ container:
 | Option | Effect |
 |---|---|
 | `value` / `attribute` | default for a key absent from `create()` data (value or `() => value`) |
-| `validator(model, prop, value)` | throw to reject |
+| `validator(model, prop, value)` | throw or return `false` to reject |
 | `setter(model, prop, value, receiver)` / `getter(model, prop, receiver)` | transform on write / read |
 | `readonly: true` | can be set once at creation, later writes are silently ignored |
 | `fillable: false` | data can never set it; direct assignment throws |

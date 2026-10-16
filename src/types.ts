@@ -30,6 +30,7 @@ export type Setter<M extends ActiveModel = ActiveModel, V = any> = (
   receiver?: any
 ) => boolean
 
+/** Refuses `value` by throwing (the error reaches the caller as is) or by returning `false` (a `ValidationError`, code `validator`). */
 export type Validator<M extends ActiveModel = ActiveModel, V = any> = (
   model: M,
   prop: string,

@@ -65,7 +65,7 @@ flowchart TD
     E -- fillable: true --> F
     E2 --> F{"readonly: true\nand already written?"}
     F -- yes --> F1["blocked - silently ignored"]
-    F -- no --> G["validator(model, prop, value)\nmay throw"]
+    F -- no --> G["validator(model, prop, value)\nmay throw or return false"]
     G --> H["event: beforeSetValue"]
     H --> I{"has setter\nor factory?"}
     I -- yes --> I1["setter(model, prop, value, receiver)"]

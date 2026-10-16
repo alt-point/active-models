@@ -223,8 +223,9 @@ outward.
 
 A function `(model, prop, value) => boolean | void`, called before the new value is set.
 
-**Important: `validator` is not a predicate.** Its return value (`true`/`false`) has no effect on the
-outcome - it's simply discarded. The only way to reject a value is to **throw** inside the validator.
+It refuses a value in one of two ways: by **throwing** (your error reaches the caller as is) or by
+**returning `false`**, which makes the write throw a `ValidationError` with code `validator` and the message
+`"prop" is invalid`. Any other return value (`true`, `undefined`) accepts the value.
 
 ```ts
 class Product extends ActiveModel {
@@ -421,7 +422,7 @@ through this sequence:
 2. `fillable` check - if `false`, the write is blocked here (see [`fillable`](#fillable)).
 3. `readonly` check - if the field has already been written once, the write is blocked here (see
    [`readonly`](#readonly)).
-4. `validator(model, prop, value)` - may throw and stop everything that follows.
+4. `validator(model, prop, value)` - may throw or return `false` and stop everything that follows.
 5. `beforeSetValue` event.
 6. `setter(model, prop, value, receiver)` - or, if there isn't one, a plain `Reflect.set`.
 7. `afterSetValue` event.

@@ -65,7 +65,7 @@ flowchart TD
     E -- fillable: true --> F
     E2 --> F{"readonly: true\nи уже записано?"}
     F -- да --> F1["блокировано — тихо игнорируется"]
-    F -- нет --> G["validator(model, prop, value)\nможет бросить исключение"]
+    F -- нет --> G["validator(model, prop, value)\nможет бросить исключение\nили вернуть false"]
     G --> H["событие: beforeSetValue"]
     H --> I{"есть setter\nили factory?"}
     I -- да --> I1["setter(model, prop, value, receiver)"]

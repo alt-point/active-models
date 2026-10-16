@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ActiveModel } from '../src/ActiveModel'
 import { ActiveField, ActiveFactory, GetterMethod, SetterMethod, isFillable, isHidden, isProtected } from '../src/decorators'
 import { EventType } from '../src/types'
+import { ValidationError } from '../src/pipeline'
 
 describe('@ActiveField() defaults', () => {
   it('is fillable and protected (not deletable) by default', () => {
@@ -170,19 +171,24 @@ describe('readonly', () => {
 })
 
 describe('validator', () => {
-  it('rejects a value only by throwing - a falsy return value has no effect', () => {
+  it('returning false refuses the write with a ValidationError (code validator); true or nothing accepts it', () => {
     class Product extends ActiveModel {
-      @ActiveField({
-        validator (model, prop, value) {
-          return value > 0 // returning false must NOT block the write
-        },
-      })
-      qty: number = 1
+      @ActiveField({ validator: (_m, _p, value) => value > 0 }) qty: number = 0
+      @ActiveField({ validator: () => {} }) note: string = ''
     }
 
     const product = Product.create({ qty: 5 })
-    product.qty = -10
-    expect(product.qty).toBe(-10)
+    let error: ValidationError | undefined
+    try { product.qty = -10 } catch (e) { error = e as ValidationError }
+    expect(error).toBeInstanceOf(ValidationError)
+    expect(error!.issues).toEqual([{ path: 'qty', code: 'validator', message: '"qty" is invalid', value: -10 }])
+    expect(product.qty).toBe(5)
+    expect(() => Product.create({ qty: -1 })).toThrow(ValidationError)
+    product.qty = 7
+    product.note = 'x'
+    expect([product.qty, product.note]).toEqual([7, 'x'])
+    // the default never went through the validator: validate() reports it with the same issue
+    expect(Product.create({}).validate().issues).toEqual([{ path: 'qty', code: 'validator', message: '"qty" is invalid', value: 0 }])
   })
 
   it('blocks the write when it throws', () => {

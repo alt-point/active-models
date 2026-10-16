@@ -33,8 +33,8 @@ try {
 console.log(product.price) // 100 — the value was not changed
 ```
 
-**Important:** `validator` is not a predicate. Its return value (`true`/`false`) has no effect on the
-outcome — it is simply discarded. The only way to reject a value is to **throw** inside the validator.
+**Important:** a validator refuses a value by **throwing** (as here) or by **returning `false`**, in which case
+the write throws a `ValidationError` with code `validator`. `true` and `undefined` accept the value.
 
 **Even more important:** the validator (like `setter`, and the `beforeSetValue`/`afterSetValue` events)
 only fires when the new value **differs** from the current one (compared with `Object.is`). It will
