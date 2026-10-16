@@ -36,11 +36,14 @@ This can be easily solved by using `ActiveModel`:
 ```ts
 import { ActiveModel } from '@alt-point/active-models/ActiveModel'
 import { ActiveField } from '@alt-point/active-models/decorators'
-import { Enum } from '@alt-point/active-models/Enum'
 import { Item } from './models'
 
 // We need to have control of Order status, thus we define an enum
-export const OrderStatuses = new Enum(['new', 'complete', 'shipping'], 'new')
+export enum OrderStatus {
+  New = 'new',
+  Complete = 'complete',
+  Shipping = 'shipping'
+}
 
 export default class Order extends ActiveModel {
   
@@ -57,12 +60,9 @@ export default class Order extends ActiveModel {
   })
   goods: Array<Item> = []  
   
-  @ActiveField({
-    validator (model, prop, value) {
-      OrderStatuses.validate(value)
-    }
-  })
-  status: string = OrderStatuses.default
+  // a value outside OrderStatus is refused with a ValidationError
+  @ActiveField({ oneOf: OrderStatus })
+  status: OrderStatus = OrderStatus.New
 
   @ActiveField()
   createdAt: string = ''

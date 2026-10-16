@@ -20,7 +20,6 @@
 | `/scalars/LocalDate` | `LocalDate` |
 | `/scalars/immutable` | `markImmutable` |
 | `/CallableModel` | `CallableModel` |
-| `/Enum` | `Enum` (устарел) |
 | `/utils` | типы `ModelProperties`, `RecursivePartialActiveModel` |
 
 ```ts

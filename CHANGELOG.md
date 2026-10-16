@@ -25,12 +25,14 @@ Migration guide: [docs/en/migration-6.md](docs/en/migration-6.md) ([RU](docs/mig
 | 5.x | 6.0 |
 |---|---|
 | `Model.create('str' / 42 / true / null)` was treated as `create({})` (with a `console.warn` since 5.1) | throws a `TypeError` (`User.create() expects an object, got null`), and so does `new Model(primitive)`; `create()` with no argument still gives an empty model |
+| `import { Enum } from '@alt-point/active-models/Enum'` (deprecated since 4.x) and the `EnumItemType` type from `/types` | removed: use a TS `enum` or a string union with the `oneOf` rule (`@ActiveField({ oneOf: Status })`) |
 
 **Русский**
 
 | 5.x | 6.0 |
 |---|---|
 | `Model.create('str' / 42 / true / null)` превращался в `create({})` (с `console.warn` начиная с 5.1) | бросает `TypeError` (`User.create() expects an object, got null`), как и `new Model(primitive)`; `create()` без аргумента по-прежнему даёт пустую модель |
+| `import { Enum } from '@alt-point/active-models/Enum'` (устарел с 4.x) и тип `EnumItemType` из `/types` | удалены: используйте TS-`enum` или объединение строк с правилом `oneOf` (`@ActiveField({ oneOf: Status })`) |
 
 ### Added
 

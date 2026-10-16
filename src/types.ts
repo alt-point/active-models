@@ -7,8 +7,6 @@ import type { Bound, CoerceTo, Coercible, Transform, Transitions, ValueType } fr
 export type ConstructorType = abstract new (...args: any[]) => any
 export type ActiveModelSource = undefined | object | null
 
-export type EnumItemType = string | Symbol | null
-
 export type AnyClassInstance =
   | { new(...args: any[]): any }
   | {

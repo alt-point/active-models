@@ -52,7 +52,8 @@ export class Order extends ActiveModel {
   })
   goods: Array<Good> = []  
   
-  @ActiveField(OrderStatuses.new)
+  // значение не из OrderStatuses отклоняется с ValidationError
+  @ActiveField({ oneOf: OrderStatuses })
   status: OrderStatuses = OrderStatuses.new
   
   @ActiveField({

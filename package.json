@@ -123,17 +123,6 @@
         "default": "./dist/CallableModel.js"
       }
     },
-    "./Enum": {
-      "source": "./src/Enum.ts",
-      "import": {
-        "types": "./dist/Enum.d.mts",
-        "default": "./dist/Enum.mjs"
-      },
-      "require": {
-        "types": "./dist/Enum.d.ts",
-        "default": "./dist/Enum.js"
-      }
-    },
     "./utils": {
       "source": "./src/utils.ts",
       "import": {
@@ -270,9 +259,6 @@
       ],
       "CallableModel": [
         "dist/CallableModel.d.ts"
-      ],
-      "Enum": [
-        "dist/Enum.d.ts"
       ],
       "utils": [
         "dist/utils.d.ts"

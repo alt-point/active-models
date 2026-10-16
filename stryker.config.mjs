@@ -6,7 +6,7 @@ export default {
   checkers: ['typescript'],
   tsconfigFile: 'tsconfig.json',
   typescriptChecker: { prioritizePerformanceOverAccuracy: true },
-  mutate: ['src/**/*.ts', '!src/types.ts', '!src/index.ts', '!src/Enum.ts'],
+  mutate: ['src/**/*.ts', '!src/types.ts', '!src/index.ts'],
   coverageAnalysis: 'perTest',
   reporters: ['clear-text', 'progress', 'html'],
   htmlReporter: { fileName: 'reports/mutation/index.html' },

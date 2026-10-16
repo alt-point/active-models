@@ -13,7 +13,6 @@ export default defineConfig({
     'src/collectionRegistry.ts',
     'src/pipeline.ts',
     'src/CallableModel.ts',
-    'src/Enum.ts',
     'src/utils.ts',
     'src/scalars/Decimal.ts',
     'src/scalars/Money.ts',

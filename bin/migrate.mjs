@@ -10,7 +10,7 @@ const SUBPATH_EXPORTS = {
   decorators: ['ActiveField', 'ActiveFactory', 'GetterMethod', 'SetterMethod', 'InvariantMethod', 'isHidden', 'isFillable', 'isProtected'],
   types: [
     'ActiveFieldDescriptor', 'ActiveModelHookListener', 'ActiveModelSource', 'AnyClassInstance', 'AttributeValue',
-    'CollectionEventPayload', 'CollectionOptions', 'ConstructorType', 'ContainerSpec', 'DeleteEventPayload', 'EnumItemType',
+    'CollectionEventPayload', 'CollectionOptions', 'ConstructorType', 'ContainerSpec', 'DeleteEventPayload',
     'EventListener', 'EventPayloads', 'EventType', 'FactoryBase', 'FactoryConfig', 'FactoryOptions', 'Getter', 'HandlerMapTo',
     'InstanceEventPayload', 'KeyOf', 'MapOptions', 'MapSource', 'MapTarget', 'MapToMapper', 'PropEvent', 'SetEventPayload',
     'SetOptions', 'Setter', 'StaticContainers', 'Validator',
@@ -24,7 +24,6 @@ const SUBPATH_EXPORTS = {
     'CoerceTo', 'ValueType', 'Coercible', 'Bound',
   ],
   CallableModel: ['CallableModel'],
-  Enum: ['Enum'],
   utils: ['ModelProperties', 'RecursivePartialActiveModel'],
   'scalars/Decimal': ['Decimal', 'DecimalInput', 'RoundingMode'],
   'scalars/Money': ['Money', 'minorUnits'],
@@ -32,10 +31,16 @@ const SUBPATH_EXPORTS = {
   'scalars/immutable': ['markImmutable'],
 }
 
-/** Every name the 4.x root entry exported, mapped to the subpath that exports it now */
+/** Every name the 4.x root entry exported, except the REMOVED ones, mapped to the subpath that exports it now */
 export const EXPORT_MAP = Object.fromEntries(
   Object.entries(SUBPATH_EXPORTS).flatMap(([subpath, names]) => names.map((name) => [name, subpath]))
 )
+
+/** 4.x root exports that no subpath exports any more: left on the root import and reported with what replaces them */
+const REMOVED = {
+  Enum: 'removed in 6.0: use a TS enum or a string union with the oneOf rule',
+  EnumItemType: 'removed in 6.0: use a TS enum or a string union',
+}
 
 const SUBPATH_ORDER = Object.keys(SUBPATH_EXPORTS)
 
@@ -402,7 +407,8 @@ export function migrateSource (source, { api = true } = {}) {
     const extra = statement === target ? additions : []
     const { lines, unknown } = buildLines(statement, extra)
     if (unknown.length) {
-      warnings.push({ line: lineOf(source, statement.start), message: `no subpath for ${unknown.join(', ')}: left on the root import, which no longer exists` })
+      const names = unknown.map((name) => (REMOVED[name] ? `${name} (${REMOVED[name]})` : name))
+      warnings.push({ line: lineOf(source, statement.start), message: `no subpath for ${names.join(', ')}: left on the root import, which no longer exists` })
     }
     const text = lines.join(newline + indent)
     const before = source.slice(statement.start, statement.end).replace(/\s+/g, ' ').trim()

@@ -68,10 +68,13 @@ import { ValidationError } from '@alt-point/active-models/pipeline'
 | `ActiveCollection`, `ActiveMap`, `ActiveSet` | `/ActiveCollection`, `/ActiveMap`, `/ActiveSet` |
 | `isCollection` | `/collectionRegistry` |
 | `Decimal`, `Money`, `LocalDate`, `markImmutable` | `/scalars/Decimal`, `/scalars/Money`, `/scalars/LocalDate`, `/scalars/immutable` |
-| `CallableModel`, `Enum` | `/CallableModel`, `/Enum` |
+| `CallableModel` | `/CallableModel` |
 | `ModelProperties`, `RecursivePartialActiveModel` | `/utils` |
 
 Подпути `/ActiveModel`, `/CallableModel` и `/decorators` существовали и в 4.x.
+
+Из корня экспортировались и `Enum` с типом `EnumItemType`; в 6.0 они удалены, поэтому скрипт оставляет их импорт как
+есть и печатает его как `MANUAL`: см. [Миграция на 6.0](/migration-6).
 
 ## 2. Опции `collection` / `map` / `set` → `container`
 

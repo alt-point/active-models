@@ -145,7 +145,7 @@ User.on(EventType.created, ({ target }) => audit('user created', (target as User
 - `CallableModel` — объекты, которые можно вызывать как функции (без `unsafe-eval`, CSP-безопасно).
 </details>
 
-## CallableModel и Enum
+## CallableModel
 
 `CallableModel` — базовый класс, экземпляры которого можно вызывать как функции (удобно для плагинов
 Nuxt.js/Vue.js; реализован без `extends Function`, поэтому работает под строгим CSP):
@@ -168,9 +168,6 @@ class Notify extends CallableModel {
 
 // plugin: inject('notify', new Notify())  →  this.$notify('Alert!'); this.$notify.silent('...')
 ```
-
-> `Enum` помечен `@deprecated` — для новых моделей используйте нативный `enum` TypeScript вместе с
-> `validator` на поле (см. [пример](docs/active-model-with-decorators.md)).
 
 ## Документация
 

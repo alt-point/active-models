@@ -38,8 +38,8 @@ describe('migrate: the export map', () => {
     expect(wrong).toEqual([])
   })
 
-  it('covers everything the 4.0.0 root entry exported', () => {
-    expect(ROOT_EXPORTS_4_0_0.filter((name) => !(name in EXPORT_MAP))).toEqual([])
+  it('covers everything the 4.0.0 root entry exported, except what 6.0 removed', () => {
+    expect(ROOT_EXPORTS_4_0_0.filter((name) => !(name in EXPORT_MAP))).toEqual(['Enum', 'EnumItemType'])
   })
 })
 
@@ -118,6 +118,17 @@ describe('migrate: imports', () => {
     const { code, warnings } = migrate(`import { ActiveModel, Gone } from '${PACKAGE}'\n`)
     expect(code).toBe(`import { ActiveModel } from '${PACKAGE}/ActiveModel'\nimport { Gone } from '${PACKAGE}'\n`)
     expect(warnings[0].message).toContain('Gone')
+  })
+
+  it('leaves Enum and EnumItemType, removed in 6.0, on the root import and names the replacement', () => {
+    const source = `import { Enum, type EnumItemType } from '${PACKAGE}'\n`
+    const { code, warnings } = migrate(source)
+    expect(code).toBe(source)
+    expect(warnings).toEqual([{
+      line: 1,
+      message: 'no subpath for Enum (removed in 6.0: use a TS enum or a string union with the oneOf rule), ' +
+        'EnumItemType (removed in 6.0: use a TS enum or a string union): left on the root import, which no longer exists',
+    }])
   })
 
   it('--imports-only leaves the collection API alone', () => {

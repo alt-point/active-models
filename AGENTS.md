@@ -42,7 +42,7 @@ bundler only includes what you use (`ActiveModel` alone is ~8 KB gzipped; collec
 | `/ActiveCollection`, `/ActiveMap`, `/ActiveSet` | the class of the same name (`ActiveCollection` also exports type `CollectionInput`) |
 | `/collectionRegistry` | `isCollection` |
 | `/scalars/Decimal`, `/scalars/Money`, `/scalars/LocalDate`, `/scalars/immutable` | `Decimal` (+ `DecimalInput`, `RoundingMode`); `Money`, `minorUnits`; `LocalDate`; `markImmutable` |
-| `/CallableModel`, `/Enum`, `/utils` | `CallableModel`; `Enum` (deprecated); types `ModelProperties`, `RecursivePartialActiveModel` |
+| `/CallableModel`, `/utils` | `CallableModel`; types `ModelProperties`, `RecursivePartialActiveModel` |
 
 Containers are opt-in: a model, `@ActiveField` and the rest never load `ActiveCollection` / `ActiveMap` / `ActiveSet`. To use a typed container
 in a field, import it and describe the field with it: `@ActiveField({ container: ActiveCollection.field(Task, { sortBy: 'id' }) })`.
@@ -135,7 +135,7 @@ user.once(...) / User.once(...)
 - Scalars: `@ActiveField({ coerce: Money | Decimal | LocalDate })` turns strings/numbers/objects into immutable value objects
   (`Money.of('19.99','USD')`, `'19.99 USD'`; `Decimal.from('0.1').add('0.2')`; `LocalDate.from('2026-09-25')`). Never use `number` for money.
   `min`/`max` work with any value having `compareTo()` (mixed currencies fail the bound). Custom class: static `from()`, `compareTo`, `toJSON`, `markImmutable(Class)`.
-- `CallableModel` — instances are callable, implement `__call`. `Enum` is deprecated.
+- `CallableModel` — instances are callable, implement `__call`.
 
 ## Migrating 4.x → 5.0
 

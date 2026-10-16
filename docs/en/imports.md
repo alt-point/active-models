@@ -20,7 +20,6 @@ separate entry point (a subpath), so a bundle contains only what you import. The
 | `/scalars/LocalDate` | `LocalDate` |
 | `/scalars/immutable` | `markImmutable` |
 | `/CallableModel` | `CallableModel` |
-| `/Enum` | `Enum` (deprecated) |
 | `/utils` | types `ModelProperties`, `RecursivePartialActiveModel` |
 
 ```ts

@@ -26,7 +26,6 @@ const run = async (label, load) => {
   const { LocalDate } = await load('scalars/LocalDate')
   const { CallableModel } = await load('CallableModel')
   await load('utils')
-  await load('Enum')
   await load('scalars/immutable')
 
   const define = (Model, fields) => {
