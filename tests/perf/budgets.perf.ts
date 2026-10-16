@@ -83,6 +83,13 @@ describe('absolute budgets (median ns/op)', () => {
     expect(measure(() => doc.isDirty('lines'), 50, 5)).toBeLessThan(us(600))
   })
 
+  it("isTouched() / isDirty() of a { tracked: 'shallow' } model with a 2000-row collection", () => {
+    const doc = Doc.create({ title: 't', lines: Array.from({ length: 2000 }, (_, i) => ({ sku: `s${i}`, qty: i })) }, { tracked: 'shallow' })
+    // the two fields are compared by reference: no walk over the 2000 lines
+    expect(measure(() => doc.isTouched(), 2000, 5)).toBeLessThan(us(3))
+    expect(measure(() => doc.isDirty('lines'), 2000, 5)).toBeLessThan(us(2))
+  })
+
   it('createFromCollection() of 1000 items', () => {
     const items = Array.from({ length: 1000 }, () => d10)
     expect(measure(() => M10.createFromCollection(items), 3, 5)).toBeLessThan(us(80_000))

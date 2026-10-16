@@ -118,6 +118,8 @@ user.once(...) / User.once(...)
 - Dirty tracking: `Model.create(data, { tracked: true })`; `model.isTouched()` → `true`/`false`, or
   `undefined` if never tracked. Reset the baseline by re-creating the model. `model.getRaw()` returns the
   frozen source data exactly as passed to that `create()` (pre-defaults, pre-strip), `undefined` if untracked.
+  `{ tracked: 'shallow' }` keeps the field values by reference and compares them with `Object.is` (O(fields), no deep
+  copy): a reassignment counts, an edit inside a nested model or collection does not; `revert()` puts the kept instance back.
 - Mapping: `Model.mapTo(Target, (m, ...args) => ...)`, `model.mapTo(Target, lazy = true, ...args)`,
   `hasMapping(Target)`. `lazy` (default) falls back to `clone()`; `lazy: false` throws.
 - Collections: `ActiveCollection.create(Model, items, { sortBy, compare, order, coerce })` /

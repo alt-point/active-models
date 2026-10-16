@@ -2,8 +2,13 @@ import { ActiveModel } from './ActiveModel'
 import { cloneDeep } from './clone'
 type State = {
   raw?: any
-  /** A pristine copy of the model taken right after creation: what `isTouched()` / `changes()` compare to and `revert()` restores from */
-  baseline?: ActiveModel
+  /**
+   * What `isTouched()` / `changes()` compare to and `revert()` restores from: a pristine copy of the model taken right
+   * after creation, or with `tracked: 'shallow'` a plain object holding the field values as they were
+   */
+  baseline?: object
+  /** `tracked: 'shallow'`: `baseline` holds the values by reference and they are compared with `Object.is` */
+  shallow?: boolean
 }
 
 /**
@@ -137,7 +142,7 @@ const upsertState = (instance: ActiveModel, data: Partial<State>) => {
 export const copyTrackingState = (from: ActiveModel, to: ActiveModel) => {
   const meta = sharedState.get(from)
   if (meta?.baseline) {
-    upsertState(to, { raw: meta.raw, baseline: meta.baseline })
+    upsertState(to, { raw: meta.raw, baseline: meta.baseline, shallow: meta.shallow })
   }
 }
 
@@ -157,12 +162,15 @@ export const saveRaw = (instance: ActiveModel, raw: any) => {
  */
 export const getRaw = (instance: ActiveModel) => sharedState.get(instance)?.raw
 
-/** Keep the pristine copy of a tracked model (see `State.baseline`) */
-export const saveBaseline = (instance: ActiveModel, baseline: ActiveModel) => {
-  upsertState(instance, { baseline })
+/** Keep the baseline of a tracked model (see `State.baseline`) */
+export const saveBaseline = (instance: ActiveModel, baseline: object, shallow = false) => {
+  upsertState(instance, { baseline, shallow })
 }
 
 export const getBaseline = (instance: ActiveModel) => sharedState.get(instance)?.baseline
+
+/** Whether `instance` was created with `tracked: 'shallow'` */
+export const isShallow = (instance: ActiveModel) => sharedState.get(instance)?.shallow === true
 
 /**
  * Reqursive deep freaze object

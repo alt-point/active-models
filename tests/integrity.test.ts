@@ -503,6 +503,55 @@ describe('changes() / revert() / reset()', () => {
     profile.reset()
     expect(log).toEqual(['name=n'])
   })
+
+  const makeShallow = () => Profile.create({ id: '1', trips: [{ seats: 1 }], main: { seats: 2 } }, { tracked: 'shallow' })
+
+  it("tracked: 'shallow' compares the fields by reference: a reassignment counts, an edit inside a value doesn't", () => {
+    const profile = makeShallow()
+    expect(profile.isTouched()).toBe(false)
+    const trips = profile.trips
+    const main = profile.main!
+    profile.trips.push({ seats: 9 })
+    profile.main!.seats = 4
+    profile.secret = 't'
+    expect(profile.isTouched()).toBe(false)         // hidden: isTouched() skips it, changes() lists it
+    expect(profile.dirtyFields()).toEqual(['secret'])
+
+    profile.name = 'x'
+    profile.trips = [{ seats: 5 }] as any
+    profile.main = Trip.create({ seats: 6 })
+    expect(profile.isTouched()).toBe(true)
+    expect(profile.dirtyFields()).toEqual(['name', 'secret', 'trips', 'main'])
+    expect(profile.isDirty('score')).toBe(false)
+    const changes = profile.changes()
+    expect(changes.name).toEqual({ from: 'n', to: 'x' })
+    // the baseline keeps the collection itself, pushes included; `from` is still a copy
+    expect((changes.trips.from as ActiveCollection<Trip>).map((t) => t.seats)).toEqual([1, 9])
+    expect(changes.trips.from).not.toBe(trips)
+
+    profile.revert('trips')
+    expect(profile.trips).toBe(trips)               // the kept instance comes back, not a copy
+    expect(profile.isDirty('trips')).toBe(false)
+    profile.reset()
+    expect(profile.isTouched()).toBe(false)
+    expect(profile.main).toBe(main)
+    expect([profile.name, profile.secret]).toEqual(['n', 's'])
+  })
+
+  it('a clone of a shallow-tracked model keeps its dirty fields and tracks independently', () => {
+    const profile = makeShallow()
+    profile.name = 'x'
+    const copy = profile.clone()
+    expect(copy.isTouched()).toBe(true)
+    expect(copy.dirtyFields()).toEqual(['name'])    // trips and main are fresh copies, yet not dirty
+    copy.reset()
+    expect(copy.isTouched()).toBe(false)
+    expect([copy.name, profile.name]).toEqual(['n', 'x'])
+    copy.trips = [] as any
+    expect(copy.dirtyFields()).toEqual(['trips'])
+    expect(profile.dirtyFields()).toEqual(['name'])
+    expect(Profile.create({ id: '1' }).isTouched()).toBeUndefined()
+  })
 })
 
 describe('undo() / redo()', () => {

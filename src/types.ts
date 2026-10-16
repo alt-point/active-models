@@ -243,8 +243,12 @@ export type FactoryOptions = {
   lazy?: boolean
   /** Deep-clone the input first so the model never shares references with it. Default `true`. */
   sanitize?: boolean
-  /** Take the baseline snapshot used by `isTouched()`. */
-  tracked?: boolean
+  /**
+   * Keep the baseline that `isTouched()`, `changes()` and `revert()` compare to: `true` keeps a deep copy of the model and
+   * compares by content; `'shallow'` keeps the field values themselves and compares them by reference (`Object.is`), so
+   * a nested model or collection counts as changed only once the field is reassigned.
+   */
+  tracked?: boolean | 'shallow'
   /** Run `validate()` after filling and throw a `ValidationError` listing every problem. */
   validate?: boolean
   /** Record every later field write so it can be `undo()`ne and `redo()`ne; `{ limit }` caps the steps kept (default 100). */

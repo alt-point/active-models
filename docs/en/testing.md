@@ -25,7 +25,7 @@ storm trips them. Loosen on a slow machine with `PERF_FACTOR=3 bun run test:perf
 What is covered:
 
 - **absolute budgets** - `create()` (10/100 fields, nested order, `new Model`), read, write, `toJSON()`,
-  `clone()`, `isTouched()`, `createFromCollection()` of 1000 items, `isTouched()` / `isDirty()` of a tracked model
+  `clone()`, `isTouched()`, `createFromCollection()` of 1000 items, `isTouched()` / `isDirty()` of a tracked model (`true` and `'shallow'`)
   with a 2000-row collection, `Object.keys()` / `JSON.stringify()` of a model with 10 fields;
 - **listeners are cheap** - five listeners add < 5x to a write; a class-level listener on a 3-level
   inheritance chain stays sub-8µs;

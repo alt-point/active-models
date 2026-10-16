@@ -21,6 +21,7 @@ import {
   consumeRawConstruction,
   copyTrackingState,
   getBaseline,
+  isShallow,
   getRaw as getRawData,
   isCreating,
   isRestoring,
@@ -141,8 +142,8 @@ const getReadonlyWritten = makeWrittenTracker()
  */
 const getFillableWritten = makeWrittenTracker()
 
-/** The pristine copy a tracked model keeps for `changes()` / `revert()` (as its raw object) */
-const baselineOf = (model: ActiveModel): ActiveModel => {
+/** The baseline a tracked model keeps for `changes()` / `revert()` (a model as its raw object, or a shallow snapshot) */
+const baselineOf = (model: ActiveModel): object => {
   const baseline = getBaseline(model)
   if (!baseline) {
     throw new TypeError('changes() and revert() need a model created with create(data, { tracked: true })')
@@ -866,7 +867,9 @@ export class ActiveModel {
 
       this.fill(model, this.stripNonFillable(this.setDefaultAttributes(data)))
 
-      if (opts.tracked) {
+      if (opts.tracked === 'shallow') {
+        saveBaseline(model, this.snapshotFields(raw), true)
+      } else if (opts.tracked) {
         saveBaseline(model, model.clone())
       }
       if (opts.history) {
@@ -1083,8 +1086,34 @@ export class ActiveModel {
     getFillableWritten.peek(source)?.forEach((p) => getFillableWritten(copy).add(p))
     const model = Ctor.wrap(copy)
     copyTrackingState(this, model)
+    if (isShallow(this)) {
+      // the original's baseline holds its own references: the copy gets one around its values, each changed field kept changed
+      const baseline = getBaseline(this)!
+      const snapshot = Ctor.snapshotFields(copy)
+      for (const prop of Ctor.fieldNames()) {
+        const before = Reflect.get(baseline, prop)
+        if (!Object.is(before, Reflect.get(source, prop))) {
+          snapshot[prop] = Ctor.cloneValue(before)
+        }
+      }
+      saveBaseline(model, snapshot, true)
+    }
     Ctor.bindNestedModels(copy, model)
     return model as this
+  }
+
+  /** The `tracked: 'shallow'` baseline: the current value of every declared field, kept by reference */
+  protected static snapshotFields (raw: ActiveModel): Record<string | symbol, unknown> {
+    const snapshot: Record<string | symbol, unknown> = {}
+    for (const prop of this.fieldNames()) {
+      snapshot[prop] = Reflect.get(raw, prop)
+    }
+    return snapshot
+  }
+
+  /** How a tracked model's values are compared to its baseline: by reference with `tracked: 'shallow'`, by content otherwise */
+  protected static equalityOf (model: ActiveModel): (a: unknown, b: unknown) => boolean {
+    return isShallow(model) ? Object.is : (a, b) => deepEqual(a, b, this.sameContent)
   }
 
   /** A copy of a field value that shares nothing with the original (nested models and collections are cloned) */
@@ -1118,7 +1147,8 @@ export class ActiveModel {
   protected static dirtyProps (model: ActiveModel): Array<string | symbol> {
     const raw = rawOf.get(model) ?? model
     const baseline = baselineOf(model)
-    return this.fieldNames().filter((prop) => !deepEqual(Reflect.get(baseline, prop), Reflect.get(raw, prop), this.sameContent))
+    const same = this.equalityOf(model)
+    return this.fieldNames().filter((prop) => !same(Reflect.get(baseline, prop), Reflect.get(raw, prop)))
   }
 
   /**
@@ -1554,7 +1584,7 @@ export class ActiveModel {
     const raw = rawOf.get(this) ?? this
     const Ctor = <typeof ActiveModel>raw.constructor
     const baseline = baselineOf(this)
-    return Ctor.isActiveField(prop) && !deepEqual(Reflect.get(baseline, prop), Reflect.get(raw, prop), Ctor.sameContent)
+    return Ctor.isActiveField(prop) && !Ctor.equalityOf(this)(Reflect.get(baseline, prop), Reflect.get(raw, prop))
   }
 
   /**
@@ -1570,11 +1600,14 @@ export class ActiveModel {
       throw new TypeError(`"${prop}" is not a field of ${Ctor.name}`)
     }
     const props = prop === undefined ? Ctor.dirtyProps(this) : [prop]
+    const shallow = isShallow(this)
+    const same = Ctor.equalityOf(this)
     runRestoring(() => {
       for (const name of props) {
         const before = Reflect.get(baseline, name)
-        if (!deepEqual(before, Reflect.get(raw, name), Ctor.sameContent)) {
-          Reflect.set(this, name, Ctor.cloneValue(before))
+        if (!same(before, Reflect.get(raw, name))) {
+          // a shallow baseline is compared by reference, so the kept value itself goes back - a copy would still read as changed
+          Reflect.set(this, name, shallow ? before : Ctor.cloneValue(before))
         }
       }
     })
@@ -1630,15 +1663,20 @@ export class ActiveModel {
   }
 
   /**
-   * Whether a non-`hidden` field (or the set of own keys) differs from what it was right after creation;
-   * `undefined` for a model that was not created with `{ tracked: true }`.
+   * Whether a non-`hidden` field (or, with `tracked: true`, the set of own keys) differs from what it was right after
+   * creation; `undefined` for a model that was not created tracked.
    */
   isTouched (): boolean | undefined {
     const baseline = getBaseline(this)
     if (!baseline) {
       return undefined
     }
-    return !ActiveModel.sameFields(rawOf.get(this) ?? this, rawOf.get(baseline) ?? baseline)
+    const raw = rawOf.get(this) ?? this
+    if (isShallow(this)) {
+      const Ctor = <typeof ActiveModel>raw.constructor
+      return Ctor.fieldNames().some((prop) => !Ctor.fieldIsHidden(prop) && !Object.is(Reflect.get(baseline, prop), Reflect.get(raw, prop)))
+    }
+    return !ActiveModel.sameFields(raw, (rawOf.get(baseline) ?? baseline) as ActiveModel)
   }
 
   constructor (data: ActiveModelSource = {}) {

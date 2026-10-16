@@ -75,6 +75,13 @@ content, `from` is a copy, and — unlike `isTouched()` — `hidden` fields are 
 copies of nested models and collections, bypasses rules and emits the usual events. Needs a model created with
 `{ tracked: true }` (it keeps a pristine copy taken right after creation; a `clone()` shares it).
 
+`{ tracked: 'shallow' }` is the same API without the deep copy and the deep walk: the baseline keeps the field values **by
+reference** and compares them with `Object.is`, O(fields). Reassigning a field (`profile.trips = [...]`) counts; an edit inside a
+nested model or a `push` into a collection does not (same reference, and such edits show up in `from` too); `revert()` puts the
+kept instance itself back, not a copy; `clone()` keeps the list of changed fields. Pick it for large documents where
+`isTouched()` is called often and nested values are replaced rather than edited: a document with a 2000-row collection takes
+`isTouched()` from ≈ 370 µs to ≈ 0.2 µs.
+
 ## Undo and redo
 
 ```ts
@@ -96,6 +103,7 @@ Undo/redo bypass rules and transitions and aren't recorded themselves.
 - **In-place mutation** (`arr.push()`, a plain nested object) is invisible to `changes()` history and undo — they see
   field assignments. Nested `ActiveModel`s and `ActiveCollection`s are compared by content by `changes()`, but their
   own edits are not steps in the parent's undo history.
-- `changes()`/`revert()` keep a second copy of the model: tracked models cost about twice the memory.
+- `changes()`/`revert()` keep a second copy of the model: tracked models cost about twice the memory (`tracked: 'shallow'` keeps
+  only references to the field values).
 - These are prototype methods (`validate`, `transaction`, `changes`, `revert`, `reset`, `undo`, `redo`, ...): don't
   name a field the same.
