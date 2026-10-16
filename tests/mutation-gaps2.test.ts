@@ -274,7 +274,7 @@ describe('ActiveMap re-keying and events', () => {
   it('validates its arguments', () => {
     const map = make()
     expect(() => map.add({ title: 'no key' } as never)).not.toThrow()
-    expect(() => ActiveMap.prototype.add.call({} as never)).toThrow('Not an ActiveMap: create it with ActiveMap.create()')
+    expect(() => ActiveMap.prototype.addAll.call({} as never, [])).toThrow('Not an ActiveMap: create it with ActiveMap.create()')
     expect(() => map.set(7, { id: 8 } as never)).toThrow('key mismatch: stored under 7 but the item\'s key is 8')
     expect(() => ActiveMap.create(class Plain {} as never, { key: 'id' } as never)).toThrow('ActiveMap.create() needs a class extending ActiveModel')
   })

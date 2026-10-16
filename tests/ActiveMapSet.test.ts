@@ -264,6 +264,27 @@ describe('ActiveMap', () => {
     expect(users.size).toBe(1002)
   })
 
+  it('addAll() takes any iterable as one atomic batch; add() is a wrapper around it', () => {
+    const users = make([])
+    const events: string[] = []
+    users.on(EventType.itemsAdded, ({ keys }) => events.push(`+${keys}`))
+    users.on(EventType.touched, () => events.push('touched'))
+    function * rows () {
+      yield { id: 1, name: 'a' }
+      yield User.create({ id: 2, name: 'b' })
+    }
+    expect(users.addAll(rows())).toBe(users)
+    expect(Array.from(users.keys())).toEqual([1, 2])
+    expect(events).toEqual(['+1,2', 'touched'])
+    expect(() => users.addAll(new Set([{ id: 3 }, Other.create({ id: 4 }) as any]))).toThrow(/got Other/)
+    expect(users.size).toBe(2)
+    expect(events).toHaveLength(2)
+    expect(() => users.addAll([{ id: 5 }, { id: null as unknown as number }])).toThrow(/needs a key/)
+    expect(users.size).toBe(2)
+    expect(users.addAll([]).size).toBe(2)
+    expect(events).toHaveLength(2)
+  })
+
   it('isCollection() narrows to a collection, a map or a set', () => {
     const value: unknown = make()
     if (!isCollection(value)) throw new Error('not a collection')

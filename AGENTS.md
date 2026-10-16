@@ -126,7 +126,7 @@ user.once(...) / User.once(...)
   `coerce: false`; anything else throws), never has holes, and — with `sortBy`/`compare` — stays sorted
   (`push` inserts in place, items move when their key changes, `bisectLeft/Right`, `findByKey`, `range`).
   `unique: 'field' | fn` rejects duplicate keys atomically (`ValidationError` code `unique`; `getByKey`/`hasKey`).
-  `ActiveMap.create(Model, { key })` / `ActiveSet.create(Model, items, { unique })` and the `container: ActiveMap.field(Model, { key })` /
+  `ActiveMap.create(Model, { key }, items)` (`map.addAll(iterable)` adds a batch later) / `ActiveSet.create(Model, items, { unique })` and the `container: ActiveMap.field(Model, { key })` /
   `container: ActiveSet.field(Model, opts)` field options give the keyed / set flavours with the same rules (`.field()`, not `.of()` —
   `ActiveCollection` extends `Array`, whose static `of` is taken). Events: `itemsAdded`, `itemsRemoved`, `touched` (bubbles into the parent model). Use its own methods, not
   `Array.prototype.x.call(collection)` (guarded but not atomic).

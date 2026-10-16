@@ -16,6 +16,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 
 ## [Unreleased]
 
+### Added
+
+- `ActiveMap.addAll(iterable)`: store any iterable of items as one atomic batch (one `itemsAdded`, one `touched`); `add(...items)` is now a wrapper around it, so a large array no longer has to be spread into arguments.
+
 ### Fixed
 
 - `Model.create(data)` looped forever when `data` contained a circular reference: the sanitizer's object walk had no cycle guard.

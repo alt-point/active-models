@@ -84,36 +84,6 @@ const store = <T extends ActiveModel>(state: State<T>, key: unknown, item: T): b
   return true
 }
 
-/** `add()` for any iterable: nothing is stored if an item is refused, the batch is reported once */
-const addAll = <T extends ActiveModel>(map: ActiveMap<T>, items: Iterable<T | RecursivePartialActiveModel<T>>) => {
-  const state = stateOf<T>(map)
-  if (!state) {
-    throw new TypeError('Not an ActiveMap: create it with ActiveMap.create()')
-  }
-  // a key repeated in one call: the last item wins, the others are never stored
-  const byKey = new Map<unknown, T>()
-  for (const candidate of items) {
-    const item = normalizeItem<T>(state.model, state.coerce, 'ActiveMap', candidate)
-    const key = state.keyOf(item)
-    if (isNilKey(key)) {
-      throw new TypeError(`ActiveMap<${state.model.name}> needs a key for every item, got ${key}`)
-    }
-    byKey.set(key, item)
-  }
-  const added: T[] = []
-  const keys: unknown[] = []
-  for (const [key, item] of byKey) {
-    if (store(state, key, item)) {
-      added.push(item)
-      keys.push(key)
-    }
-  }
-  if (added.length > 0) {
-    emit(state, EventType.itemsAdded, { target: map, items: added, keys })
-    emit(state, EventType.touched, { target: map })
-  }
-}
-
 /**
  * A `Map` of one model's instances, keyed by a value taken from each item - and nothing else can get in.
  *
@@ -157,7 +127,7 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
       attached: new WeakMap(),
     })
     registerCollection(map)
-    addAll(map, items as Iterable<RecursivePartialActiveModel<InstanceType<M>>>)
+    map.addAll(items as Iterable<RecursivePartialActiveModel<InstanceType<M>>>)
     return map
   }
 
@@ -215,12 +185,42 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
   }
 
   /**
-   * Store each item under its key (replacing whatever held it). Nothing is stored if any item is refused;
-   * the whole batch is reported by one `itemsAdded` and one `touched`.
+   * Store every item of an iterable under its key (replacing whatever held it). Nothing is stored if any item
+   * is refused; the whole batch is reported by one `itemsAdded` and one `touched`.
    */
-  add (...items: Array<T | RecursivePartialActiveModel<T>>): this {
-    addAll(this, items)
+  addAll (items: Iterable<T | RecursivePartialActiveModel<T>>): this {
+    const state = stateOf<T>(this)
+    if (!state) {
+      throw new TypeError('Not an ActiveMap: create it with ActiveMap.create()')
+    }
+    // a key repeated in one call: the last item wins, the others are never stored
+    const byKey = new Map<unknown, T>()
+    for (const candidate of items) {
+      const item = normalizeItem<T>(state.model, state.coerce, 'ActiveMap', candidate)
+      const key = state.keyOf(item)
+      if (isNilKey(key)) {
+        throw new TypeError(`ActiveMap<${state.model.name}> needs a key for every item, got ${key}`)
+      }
+      byKey.set(key, item)
+    }
+    const added: T[] = []
+    const keys: unknown[] = []
+    for (const [key, item] of byKey) {
+      if (store(state, key, item)) {
+        added.push(item)
+        keys.push(key)
+      }
+    }
+    if (added.length > 0) {
+      emit(state, EventType.itemsAdded, { target: this, items: added, keys })
+      emit(state, EventType.touched, { target: this })
+    }
     return this
+  }
+
+  /** `addAll()` for a few items given as arguments. */
+  add (...items: Array<T | RecursivePartialActiveModel<T>>): this {
+    return this.addAll(items)
   }
 
   /**
@@ -263,7 +263,7 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
     if (before) {
       journal(this, () => {
         this.clear()
-        addAll(this, before)
+        this.addAll(before)
       })
     }
     return true
@@ -285,7 +285,7 @@ export class ActiveMap<T extends ActiveModel = ActiveModel, K = any> extends Map
     if (items.length > 0) {
       emit(state, EventType.itemsRemoved, { target: this, items, keys })
       emit(state, EventType.touched, { target: this })
-      journal(this, () => addAll(this, items))
+      journal(this, () => this.addAll(items))
     }
   }
 
