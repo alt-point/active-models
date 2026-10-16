@@ -211,6 +211,18 @@ describe('transaction()', () => {
     expect(route.rest.map((l) => l.city)).toEqual(['A', 'B', 'C'])
   })
 
+  it('a rolled-back removal puts the item back in front of its equal-key neighbour, not after it', () => {
+    class Leg extends ActiveModel { @ActiveField() city: string = '' }
+    class Route extends ActiveModel {
+      @ActiveField({ container: ActiveCollection.field(Leg, { sortBy: 'city' }) }) rest!: ActiveCollection<Leg>
+    }
+    const route = Route.create({ rest: [{ city: 'B' }, { city: 'B' }] })
+    const [first, second] = route.rest
+    expect(() => route.transaction((r) => { r.rest.shift(); throw new Error('x') })).toThrow('x')
+    expect(route.rest[0]).toBe(first)
+    expect(route.rest[1]).toBe(second)
+  })
+
   it('the rollback of a nested model emits on that model and bubbles up as touched', () => {
     class Leg extends ActiveModel { @ActiveField() city: string = '' }
     class Route extends ActiveModel { @ActiveField({ factory: Leg }) first?: Leg }
