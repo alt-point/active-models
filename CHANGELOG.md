@@ -43,6 +43,7 @@ Migration guide: [docs/en/migration-6.md](docs/en/migration-6.md) ([RU](docs/mig
 - `ActiveMap.addAll(iterable)`: store any iterable of items as one atomic batch (one `itemsAdded`, one `touched`); `add(...items)` is now a wrapper around it, so a large array no longer has to be spread into arguments.
 - The codemod (`npx @alt-point/active-models migrate`) rewrites `map.add(...items)` into `map.addAll(items)` when the file shows `map` to be an `ActiveMap` (created with `ActiveMap.create()`, typed `ActiveMap<...>` or declared as a field with the `map` option / `container: ActiveMap.field()`), and `ActiveMap.create(...).add(...items)` itself; other `add` calls are left alone.
 - `Model.create(data, { tracked: 'shallow' })`: dirty tracking that keeps the field values by reference instead of a deep copy and compares them with `Object.is`, so `isTouched()`, `changes()`, `isDirty()` and `revert()` cost O(fields) and never walk nested models or collections. A reassignment counts, an in-place edit inside a nested value does not; `revert()` puts the kept instance back; `clone()` keeps the changed fields. A document with a 2000-row collection: `isTouched()` ≈ 370 µs with `tracked: true` → ≈ 0.2 µs, `isDirty('lines')` ≈ 370 µs → ≈ 0.15 µs.
+- `@ActiveField({ factory: Model, many: false })` refuses an array for a single-model field and `many: true` refuses a single object (a `TypeError`); without `many` a factory field keeps accepting both shapes, since the field's declared type is erased at runtime.
 
 ### Fixed
 

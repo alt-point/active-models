@@ -298,6 +298,38 @@ describe('factory', () => {
     expect(User.create({ address: null }).address).toBeNull()
     expect(User.create({ address: undefined }).address).toBeUndefined()
   })
+
+  it('many: false refuses an array and many: true refuses a single object', () => {
+    class Address extends ActiveModel {
+      @ActiveField() city: string = ''
+    }
+    class User extends ActiveModel {
+      @ActiveField({ factory: Address, many: false }) address?: Address | null
+      @ActiveField({ factory: [Address, () => []], many: true }) previous: Address[] = []
+    }
+
+    const user = User.create({ address: { city: 'Berlin' }, previous: [{ city: 'Bonn' }] })
+    expect(user.address).toBeInstanceOf(Address)
+    expect(user.previous[0]).toBeInstanceOf(Address)
+    expect(() => User.create({ address: [{ city: 'Berlin' }] as any }))
+      .toThrow(new TypeError('User.address expects an object, got an array'))
+    expect(() => { user.previous = { city: 'Bonn' } as any })
+      .toThrow(new TypeError('User.previous expects an array, got an object'))
+    expect(() => User.create({ previous: 'Bonn' as any }))
+      .toThrow(new TypeError('User.previous expects an array, got string'))
+    expect(user.previous).toHaveLength(1)
+    expect(User.create({ address: null }).address).toBeNull()
+    expect(User.create({ previous: null as any }).previous).toEqual([])
+  })
+
+  it('many without factory is a misconfiguration', () => {
+    expect(() => {
+      class Bad extends ActiveModel {
+        @ActiveField({ many: true }) x?: unknown
+      }
+      return Bad
+    }).toThrow('Field "x": many needs factory')
+  })
 })
 
 describe('on / once hooks', () => {

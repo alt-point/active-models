@@ -73,7 +73,7 @@ in a field, import it and describe the field with it: `@ActiveField({ container:
 | `fillable: false` | data can never set it; direct assignment throws |
 | `hidden: true` | excluded from `Object.keys`, spread, `in`, `JSON.stringify`, `isTouched()`; still readable directly |
 | `protected` (default `true`) | `delete` throws; set `false` to allow delete |
-| `factory: Model` / `[Model, () => default]` | wrap nested object / array items in `Model` |
+| `factory: Model` / `[Model, () => default]` | wrap nested object / array items in `Model`; `many: false` / `true` refuses the other shape |
 | `on: { afterSetValue, ... }` / `once` | field-level hooks, shared by all instances (and subclasses) |
 
 ## Validation pipeline (every write)

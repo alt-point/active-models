@@ -90,7 +90,15 @@ const validateModelType = (Model: typeof ActiveModel, prop: string) => {
   }
 }
 
-const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryConfig) => {
+// the field's declared type is erased at runtime, so only `many` can tell an array field from a single one
+const checkShape = (Ctor: typeof ActiveModel, prop: string, many: boolean | undefined, v: unknown) => {
+  if (v != null && many !== undefined && many !== Array.isArray(v)) {
+    const got = Array.isArray(v) ? 'an array' : typeof v === 'object' ? 'an object' : typeof v
+    throw new TypeError(`${Ctor.name}.${prop} expects ${many ? 'an array' : 'an object'}, got ${got}`)
+  }
+}
+
+const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryConfig, many?: boolean) => {
   if (!factory) {
     return
   }
@@ -101,6 +109,7 @@ const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryCo
     validateModelType(Model, prop)
 
     Ctor.defineSetter(prop, (m, p, v, r) => {
+      checkShape(Ctor, prop, many, v)
       if (Array.isArray(v)) {
         return Reflect.set(m, p, Model.createFromCollectionLazy(v), r)
       }
@@ -121,6 +130,7 @@ const factoryDecorator = (target: ActiveModel, prop: string, factory?: FactoryCo
     if (v == null) {
       return Reflect.set(m, p, v, r)
     }
+    checkShape(Ctor, prop, many, v)
     const value = Array.isArray(v) ? Model.createFromCollectionLazy(v) : Model.createLazy(v)
     return Reflect.set(m, p, value, r)
   })
@@ -250,11 +260,15 @@ export function ActiveField<_T extends ActiveModel> (
       throw new Error(`Field "${prop}": use either factory or container, not both`)
     }
 
+    if (options.many !== undefined && !options.factory) {
+      throw new Error(`Field "${prop}": many needs factory`)
+    }
+
     if (options.setter && !options.factory && !options.container) {
       Ctor.defineSetter(prop, options.setter)
     }
 
-    factoryDecorator(target, prop, options.factory)
+    factoryDecorator(target, prop, options.factory, options.many)
 
     if (options.container) containerDecorator(target, prop, options.container, hasOwnDefault)
 

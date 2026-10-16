@@ -222,6 +222,11 @@ export type ActiveFieldDescriptor<_T = unknown> = {
   /** Wrap a nested object (or every array item) in this `ActiveModel`; `[Model, () => default]` adds a default. */
   factory?: FactoryConfig
   /**
+   * With `factory`: `false` refuses an array, `true` refuses a single object (a `TypeError`); unset accepts both,
+   * since the field's declared type is erased at runtime.
+   */
+  many?: boolean
+  /**
    * Keep the value in a typed container that accepts nothing but one model: `ActiveCollection.field(Model, options)`,
    * `ActiveMap.field(Model, { key })` or `ActiveSet.field(Model, options)`. An assigned array (or `Map`, object, `Set`)
    * is converted; the default is an empty container.

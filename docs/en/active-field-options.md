@@ -352,6 +352,20 @@ Order.create({ items: [{ label: 'a' }, { label: 'b' }] }).items // [Item{label:'
 Order.create({}).items // [] - a fresh array per instance
 ```
 
+**The shape of the value**: the field's declared type is erased at runtime, so by default an array assigned to a
+single-model field silently becomes an array of models. The `many` option fixes the shape: `many: false` refuses an
+array, `many: true` refuses a single object (a `TypeError`); `null` and `undefined` are not checked. `many` without
+`factory` is a declaration error.
+
+```ts
+class User extends ActiveModel {
+  @ActiveField({ factory: Address, many: false }) address?: Address
+  @ActiveField({ factory: [Address, () => []], many: true }) previous: Address[] = []
+}
+
+User.create({ address: [{ city: 'Berlin' }] }) // TypeError: User.address expects an object, got an array
+```
+
 `factory` is implemented via an auto-generated `setter` - a `setter` given in the decorator options is
 **ignored** when `factory` is also given.
 

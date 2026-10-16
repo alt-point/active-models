@@ -355,6 +355,19 @@ Order.create({ items: [{ label: 'a' }, { label: 'b' }] }).items // [Item{label:'
 Order.create({}).items // [] — свежий массив на каждый инстанс
 ```
 
+**Форма значения**: тип поля в рантайме не виден, поэтому массив, присвоенный одиночному полю, по умолчанию
+молча становится массивом моделей. Опция `many` фиксирует форму: `many: false` отвергает массив, `many: true` —
+одиночный объект (`TypeError`); `null` и `undefined` не проверяются. `many` без `factory` — ошибка объявления.
+
+```ts
+class User extends ActiveModel {
+  @ActiveField({ factory: Address, many: false }) address?: Address
+  @ActiveField({ factory: [Address, () => []], many: true }) previous: Address[] = []
+}
+
+User.create({ address: [{ city: 'Berlin' }] }) // TypeError: User.address expects an object, got an array
+```
+
 `factory` реализован через автоматически сгенерированный `setter` — свой `setter` в опциях декоратора
 при заданном `factory` **игнорируется**.
 
