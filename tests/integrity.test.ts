@@ -3,6 +3,8 @@ import { ActiveModel } from '../src/ActiveModel'
 import { ActiveField, InvariantMethod } from '../src/decorators'
 import { EventType } from '../src/types'
 import { ActiveCollection } from '../src/ActiveCollection'
+import { ActiveMap } from '../src/ActiveMap'
+import { ActiveSet } from '../src/ActiveSet'
 import { ValidationError } from '../src/pipeline'
 
 class Trip extends ActiveModel {
@@ -140,6 +142,84 @@ describe('transaction()', () => {
     expect(route.state).toBe('open')
     route.state = 'closed'
     expect(route.state).toBe('closed')
+  })
+
+  it('restores nested models, containers and model lists in place, so references kept to them stay valid', () => {
+    class Leg extends ActiveModel {
+      @ActiveField() city: string = ''
+      @ActiveField() back?: Route
+    }
+    class Route extends ActiveModel {
+      @ActiveField({ factory: Leg }) first?: Leg
+      @ActiveField({ factory: Leg, readonly: true }) origin?: Leg
+      @ActiveField({ factory: Leg }) legs: Leg[] = []
+      @ActiveField({ container: ActiveCollection.field(Leg, { sortBy: 'city', unique: 'city' }) }) rest!: ActiveCollection<Leg>
+      @ActiveField({ container: ActiveMap.field(Leg, { key: 'city' }) }) byCity!: ActiveMap<Leg>
+      @ActiveField({ container: ActiveSet.field(Leg) }) seen!: ActiveSet<Leg>
+    }
+    const route = Route.create({
+      first: { city: 'A' }, origin: { city: 'O' }, legs: [{ city: 'L' }], rest: [{ city: 'C' }, { city: 'B' }], byCity: [{ city: 'M' }], seen: [{ city: 'S' }],
+    })
+    const { first, origin, legs, rest, byCity, seen } = route
+    const [b, c] = rest
+    const [leg] = legs
+    const m = byCity.get('M')!
+    const [s] = seen
+    first!.back = route                                   // a reference cycle
+    seen.add(b)                                           // one instance in two containers
+    expect(() => route.transaction((r) => {
+      r.first!.city = 'Z'
+      r.first!.back!.origin!.city = 'Q'
+      r.legs[0].city = 'LL'
+      r.legs = [...r.legs, { city: 'X' }] as never
+      r.rest.push({ city: 'D' })
+      b.city = 'Y'
+      r.rest = [{ city: 'E' }] as never
+      r.byCity.add({ city: 'N' })
+      m.city = 'MM'
+      r.seen.add({ city: 'T' })
+      r.seen.delete(s)
+      r.first = { city: 'F' } as never
+      throw new Error('abort')
+    })).toThrow('abort')
+    expect(route.first).toBe(first)
+    expect(first!.city).toBe('A')
+    expect(route.origin).toBe(origin)
+    expect(origin!.city).toBe('O')
+    expect(route.legs).toHaveLength(1)
+    expect(route.legs[0]).toBe(leg)
+    expect(leg.city).toBe('L')
+    expect(route.rest).toBe(rest)
+    expect([...rest]).toEqual([b, c])
+    expect(b.city).toBe('B')
+    expect(rest.getByKey('B')).toBe(b)
+    expect(route.byCity).toBe(byCity)
+    expect([...byCity.entries()]).toEqual([['M', m]])
+    expect(m.city).toBe('M')
+    expect(route.seen).toBe(seen)
+    expect([...seen]).toEqual([s, b])
+  })
+
+  it('a sorted collection reversed inside a rolled-back transaction gets its direction back', () => {
+    class Leg extends ActiveModel { @ActiveField() city: string = '' }
+    class Route extends ActiveModel {
+      @ActiveField({ container: ActiveCollection.field(Leg, { sortBy: 'city' }) }) rest!: ActiveCollection<Leg>
+    }
+    const route = Route.create({ rest: [{ city: 'B' }, { city: 'C' }] })
+    expect(() => route.transaction((r) => { r.rest.reverse(); throw new Error('x') })).toThrow('x')
+    route.rest.push({ city: 'A' })
+    expect(route.rest.map((l) => l.city)).toEqual(['A', 'B', 'C'])
+  })
+
+  it('the rollback of a nested model emits on that model and bubbles up as touched', () => {
+    class Leg extends ActiveModel { @ActiveField() city: string = '' }
+    class Route extends ActiveModel { @ActiveField({ factory: Leg }) first?: Leg }
+    const route = Route.create({ first: { city: 'A' } })
+    const log: string[] = []
+    route.first!.on(EventType.afterSetValue, ({ value }) => log.push(`city=${value}`))
+    route.on(EventType.touched, () => log.push('touched'))
+    expect(() => route.transaction((r) => { r.first!.city = 'Z'; throw new Error('x') })).toThrow('x')
+    expect(log).toEqual(['city=Z', 'touched', 'city=A', 'touched'])
   })
 
   it('emits its own events for the fields it puts back, and nothing for untouched fields', () => {

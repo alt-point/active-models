@@ -45,8 +45,9 @@ awaited. Transactions nest, each rolling back to its own start.
 refused value.
 
 - Events fire as the writes happen and aren't un-fired; the rollback emits its own for the fields it puts back.
-- Nested models and collections are restored as **fresh copies**, so a reference you kept to the old nested instance
-  goes stale.
+- Nested models and containers are restored **in place**: a reference you kept to a nested instance or a collection
+  stays valid, a replaced instance is put back, a collection whose items changed is refilled; their rollback events
+  fire on them and bubble up as `touched`.
 - The rollback bypasses rules and transitions (those values were valid when taken).
 
 ## Diffs and revert

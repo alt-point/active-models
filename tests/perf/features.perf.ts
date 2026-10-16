@@ -3,6 +3,7 @@ import { ActiveModel } from '../../src/ActiveModel'
 import { ActiveField } from '../../src/decorators'
 import { ActiveMap } from '../../src/ActiveMap'
 import { ActiveSet } from '../../src/ActiveSet'
+import { ActiveCollection } from '../../src/ActiveCollection'
 import { Decimal } from '../../src/scalars/Decimal'
 import { Money } from '../../src/scalars/Money'
 import { LocalDate } from '../../src/scalars/LocalDate'
@@ -47,6 +48,24 @@ describe('features budgets (median ns/op)', () => {
     form.age = 31 as never
     expect(measure(() => form.changes(), 2000)).toBeLessThan(us(120))
     expect(measure(() => form.isTouched(), 2000)).toBeLessThan(us(120))
+  })
+
+  it('transaction() and its rollback over a model with 2000 nested rows', () => {
+    class Row extends ActiveModel {
+      @ActiveField() id: number = 0
+      @ActiveField() note: string = ''
+    }
+    class Doc extends ActiveModel {
+      @ActiveField() title: string = ''
+      @ActiveField({ container: ActiveCollection.field(Row) }) list!: ActiveCollection<Row>
+    }
+    const doc = Doc.create({ title: 't', list: Array.from({ length: 2000 }, (_, i) => ({ id: i, note: 'n' })) })
+    let i = 0
+    expect(measure(() => doc.transaction((d) => { d.title = 'x' + i++ }), 20, 5)).toBeLessThan(us(2000))
+    const abort = new Error('x')
+    expect(measure(() => {
+      try { doc.transaction((d) => { d.list[5].note = 'z' + i++; throw abort }) } catch (e) { if (e !== abort) throw e }
+    }, 20, 5)).toBeLessThan(us(1500))
   })
 
   it('a write with history enabled, and undo/redo', () => {
