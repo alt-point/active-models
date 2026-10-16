@@ -231,6 +231,30 @@ function staticEdits (source, masked, edits, warnings, needed) {
   }
 }
 
+/**
+ * `map.add(...items)` -> `map.addAll(items)` where the file shows `map` to be an `ActiveMap`: a binding created with
+ * `ActiveMap.create()` or typed `ActiveMap<...>`. A field declared only through `container: ActiveMap.field()` is not seen.
+ */
+function addAllEdits (source, masked, edits) {
+  // shortcut: a name counts file-wide, not per scope; track scopes if one file reuses a map's name for another type
+  const maps = new Set()
+  for (const m of masked.matchAll(/(?<![\w$])([A-Za-z_$][\w$]*)[!?]?\s*[:=]\s*ActiveMap\s*(?:<|\.\s*create\s*\()/g)) maps.add(m[1])
+  if (maps.size === 0) return
+  const call = /(?<![\w$])([A-Za-z_$][\w$]*)\s*\.\s*add\s*\(/g
+  let m
+  while ((m = call.exec(masked))) {
+    const open = m.index + m[0].length - 1
+    const close = matchClose(masked, open)
+    if (!maps.has(m[1]) || close < 0) continue
+    const args = topLevelSegments(masked, open, close)
+    const spread = /^\s*\.\.\./.exec(masked.slice(args[0][0], args[0][1]))
+    if (args.length !== 1 || !spread) continue
+    const add = m.index + m[0].lastIndexOf('add')
+    const dots = args[0][0] + spread[0].length - 3
+    edits.push({ start: add, end: dots + 3, text: `addAll${source.slice(add + 3, dots)}` })
+  }
+}
+
 function splitNames (text) {
   return text.split(',').map((part) => part.trim()).filter(Boolean)
 }
@@ -346,6 +370,7 @@ export function migrateSource (source, { api = true } = {}) {
   if (api) {
     containerEdits(source, masked, edits, warnings, needed)
     staticEdits(source, masked, edits, warnings, needed)
+    addAllEdits(source, masked, edits)
   }
 
   const imported = new Set(statements.flatMap((statement) => statement.items.map((item) => item.base)))
@@ -377,7 +402,7 @@ export function migrateSource (source, { api = true } = {}) {
   }
   if (api) {
     for (const edit of edits) {
-      if (edit.text.startsWith('container:') || edit.text.startsWith('ActiveCollection.')) {
+      if (edit.text.startsWith('container:') || edit.text.startsWith('ActiveCollection.') || edit.text.startsWith('addAll')) {
         changes.push({ line: lineOf(source, edit.start), before: source.slice(edit.start, edit.end).replace(/\s+/g, ' '), after: edit.text })
       }
     }

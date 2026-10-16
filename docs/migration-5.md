@@ -21,6 +21,8 @@ npx @alt-point/active-models migrate ./src --write   # применить
   (`ActiveMap.field`, `ActiveSet.field`) и добавляет нужные импорты;
 - переписывает `Model.collection(...)` и `Model.createCollection(...)` в `ActiveCollection.create(Model, ...)` и
   `ActiveCollection.createFromData(Model, ...)`;
+- переписывает `map.add(...items)` в `map.addAll(items)`, если в том же файле видно, что `map` — `ActiveMap` (создан через
+  `ActiveMap.create()` или объявлен с типом `ActiveMap<...>`); остальные вызовы `add` не трогает;
 - не трогает строки, комментарии и регулярные выражения, `node_modules`, `dist`, `build`, `.git`, `.nuxt`, `.output`;
 - идемпотентен: повторный запуск ничего не меняет.
 
@@ -32,7 +34,7 @@ npx @alt-point/active-models migrate ./src --write   # применить
 |---|---|
 | `--write` | применить изменения (без него — только показать) |
 | `--check` | код возврата 1, если есть что менять или править вручную (для CI) |
-| `--imports-only` | править только импорты; `Model.collection()` и опции `collection` / `map` / `set` не трогать |
+| `--imports-only` | править только импорты; `Model.collection()`, `add(...items)` и опции `collection` / `map` / `set` не трогать |
 | `--ext ts,vue` | какие расширения сканировать |
 | `--ignore a,b` | какие каталоги пропускать вместо стандартного списка |
 

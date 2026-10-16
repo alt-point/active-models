@@ -21,6 +21,8 @@ What it does:
   (`ActiveMap.field`, `ActiveSet.field`) and adds the imports it needs;
 - rewrites `Model.collection(...)` and `Model.createCollection(...)` into `ActiveCollection.create(Model, ...)` and
   `ActiveCollection.createFromData(Model, ...)`;
+- rewrites `map.add(...items)` into `map.addAll(items)` when the same file shows `map` to be an `ActiveMap` (created with
+  `ActiveMap.create()` or typed `ActiveMap<...>`); other `add` calls are left alone;
 - leaves strings, comments and regular expressions alone, and skips `node_modules`, `dist`, `build`, `.git`, `.nuxt`, `.output`;
 - is idempotent: running it again changes nothing.
 
@@ -32,7 +34,7 @@ and line (`MANUAL`).
 |---|---|
 | `--write` | apply the changes (without it, only show them) |
 | `--check` | exit code 1 when something would change or needs manual work (for CI) |
-| `--imports-only` | fix imports only; leave `Model.collection()` and the `collection` / `map` / `set` options |
+| `--imports-only` | fix imports only; leave `Model.collection()`, `add(...items)` and the `collection` / `map` / `set` options |
 | `--ext ts,vue` | which extensions to scan |
 | `--ignore a,b` | which directories to skip instead of the default list |
 

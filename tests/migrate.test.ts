@@ -121,9 +121,9 @@ describe('migrate: imports', () => {
   })
 
   it('--imports-only leaves the collection API alone', () => {
-    const source = `import { ActiveModel } from '${PACKAGE}'\nconst a = Task.collection([])\n`
+    const source = `import { ActiveModel } from '${PACKAGE}'\nconst a = Task.collection([])\nconst m = ActiveMap.create(User, { key: 'id' })\nm.add(...rows)\n`
     const { code } = migrate(source, { api: false })
-    expect(code).toBe(`import { ActiveModel } from '${PACKAGE}/ActiveModel'\nconst a = Task.collection([])\n`)
+    expect(code).toBe(`import { ActiveModel } from '${PACKAGE}/ActiveModel'\nconst a = Task.collection([])\nconst m = ActiveMap.create(User, { key: 'id' })\nm.add(...rows)\n`)
   })
 })
 
@@ -180,6 +180,25 @@ describe('migrate: the collection API', () => {
     expect(code.endsWith(body)).toBe(true)
   })
 
+  it('rewrites map.add(...items) into map.addAll(items) for receivers it can see are an ActiveMap', () => {
+    const { code, changes } = migrate(`${head}const users = ActiveMap.create(User, { key: 'id' })
+users.add(...rows)
+users.add( ...more )
+users.add(one)
+users.add(...a, ...b)
+class Team extends ActiveModel { @ActiveField({ container: ActiveMap.field(User, { key: 'id' }) }) byId!: ActiveMap<User> }
+team.byId.add(...rows)
+function load (m: ActiveMap<User>) { m.add(...rows) }
+tags.add(...rows)
+const s = 'users.add(...rows)' // users.add(...rows)
+`)
+    expect(code).toContain('users.addAll(rows)\nusers.addAll( more )\nusers.add(one)\nusers.add(...a, ...b)\n')
+    expect(code).toContain('team.byId.addAll(rows)\nfunction load (m: ActiveMap<User>) { m.addAll(rows) }\n')
+    expect(code).toContain("tags.add(...rows)\nconst s = 'users.add(...rows)' // users.add(...rows)\n")
+    expect(changes.map((change) => change.line)).toEqual([1, 3, 4, 8, 9])
+    expect(changes[1]).toMatchObject({ before: 'add(...', after: 'addAll(' })
+  })
+
   it('does not import a class twice', () => {
     const { code } = migrate(`import { ActiveModel, ActiveCollection } from '${PACKAGE}'\nconst a = Task.collection()\n`)
     expect(code.match(/ActiveCollection } from/g)).toHaveLength(1)
@@ -199,7 +218,7 @@ const q = models.Task.collection()
   })
 
   it('is idempotent', () => {
-    const once = migrate(`${head}const a = Task.collection([])\nclass B extends ActiveModel { @ActiveField({ set: Tag }) t!: unknown }\n`).code
+    const once = migrate(`${head}const a = Task.collection([])\nconst m = ActiveMap.create(User, { key: 'id' })\nm.add(...rows)\nclass B extends ActiveModel { @ActiveField({ set: Tag }) t!: unknown }\n`).code
     expect(migrate(once)).toEqual({ code: once, changes: [], warnings: [] })
   })
 
@@ -338,6 +357,8 @@ export const sorted = Task.collection([{ id: 2 }, { id: 1 }], { sortBy: 'id' })
 export const loaded = Task.createCollection([{ id: 3 }], { ...options, sortBy: 'id' })
 export const board = Board.create({ tasks: [{ id: 1 }] }, options)
 board.on(EventType.touched, () => undefined)
+const rows = [{ id: 2 }, { id: 3 }]
+board.users.add(...rows)
 try { board.validate() } catch (error) { if (error instanceof ValidationError) console.log(error.issues) }
 `)
     writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
@@ -357,6 +378,7 @@ try { board.validate() } catch (error) { if (error instanceof ValidationError) c
     const migrated = readFileSync(join(dir, 'models.ts'), 'utf8')
     expect(migrated).not.toContain(`from '${PACKAGE}'`)
     expect(migrated).toContain('container: ActiveSet.field(Tag')
+    expect(migrated).toContain('board.users.addAll(rows)')
 
     const after = spawnSync(process.execPath, [tscBin, '-p', dir], { encoding: 'utf8' })
     expect(after.stdout + after.stderr).toBe('')

@@ -11,13 +11,14 @@ file below the given paths (default: the current directory):
      -> import { ActiveModel } from '${PACKAGE}/ActiveModel' ...)
   - @ActiveField({ collection | map | set }) options become container: ActiveCollection.field(...) and friends
   - Model.collection(...) / Model.createCollection(...) become ActiveCollection.create(Model, ...) / createFromData(Model, ...)
+  - map.add(...items) becomes map.addAll(items) where the file shows map to be an ActiveMap
 
 Nothing is written unless you pass --write. Without it the tool prints what it would change.
 
 Options:
   --write            apply the changes
   --check            exit with code 1 when anything would change or needs manual work (for CI)
-  --imports-only     rewrite imports only, leave collection / map / set options and Model.collection() calls alone
+  --imports-only     rewrite imports only, leave collection / map / set options, Model.collection() and add(...items) calls alone
   --ext <list>       comma-separated extensions to scan (default: ${DEFAULT_EXTENSIONS.join(',')})
   --ignore <list>    comma-separated directory names to skip (default: ${DEFAULT_IGNORE.join(',')})
   -h, --help         show this help
