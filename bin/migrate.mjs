@@ -233,26 +233,44 @@ function staticEdits (source, masked, edits, warnings, needed) {
 
 /**
  * `map.add(...items)` -> `map.addAll(items)` where the file shows `map` to be an `ActiveMap`: a binding created with
- * `ActiveMap.create()` or typed `ActiveMap<...>`. A field declared only through `container: ActiveMap.field()` is not seen.
+ * `ActiveMap.create()` or typed `ActiveMap<...>`, or a field declared with the `map` option / `container: ActiveMap.field()`;
+ * also `ActiveMap.create(...).add(...items)` itself.
  */
 function addAllEdits (source, masked, edits) {
   // shortcut: a name counts file-wide, not per scope; track scopes if one file reuses a map's name for another type
   const maps = new Set()
   for (const m of masked.matchAll(/(?<![\w$])([A-Za-z_$][\w$]*)[!?]?\s*[:=]\s*ActiveMap\s*(?:<|\.\s*create\s*\()/g)) maps.add(m[1])
-  if (maps.size === 0) return
-  const call = /(?<![\w$])([A-Za-z_$][\w$]*)\s*\.\s*add\s*\(/g
+  const field = /@ActiveField\s*\(/g
   let m
-  while ((m = call.exec(masked))) {
+  while ((m = field.exec(masked))) {
     const open = m.index + m[0].length - 1
     const close = matchClose(masked, open)
-    if (!maps.has(m[1]) || close < 0) continue
-    const args = topLevelSegments(masked, open, close)
-    const spread = /^\s*\.\.\./.exec(masked.slice(args[0][0], args[0][1]))
-    if (args.length !== 1 || !spread) continue
-    const add = m.index + m[0].lastIndexOf('add')
-    const dots = args[0][0] + spread[0].length - 3
-    edits.push({ start: add, end: dots + 3, text: `addAll${source.slice(add + 3, dots)}` })
+    if (close < 0 || !/(?<![\w$])(?:map\s*:|container\s*:\s*ActiveMap\s*\.\s*field\s*\()/.test(masked.slice(open, close))) continue
+    const name = /^\s*(?:(?:readonly|public|private|protected|static|declare|override)\s+)*([A-Za-z_$][\w$]*)/.exec(masked.slice(close + 1))
+    if (name) maps.add(name[1])
   }
+  const chained = /ActiveMap\s*\.\s*create\s*\(/g
+  while ((m = chained.exec(masked))) {
+    const close = matchClose(masked, m.index + m[0].length - 1)
+    const add = close < 0 ? null : /^\s*\.\s*add\s*\(/.exec(masked.slice(close + 1))
+    if (add) spreadToAddAll(source, masked, edits, close + 1 + add[0].indexOf('add'), close + add[0].length)
+  }
+  if (maps.size === 0) return
+  const call = /(?<![\w$])([A-Za-z_$][\w$]*)\s*\.\s*add\s*\(/g
+  while ((m = call.exec(masked))) {
+    if (maps.has(m[1])) spreadToAddAll(source, masked, edits, m.index + m[0].lastIndexOf('add'), m.index + m[0].length - 1)
+  }
+}
+
+/** The `add` at `add` with its `(` at `open`: `add(...items)` -> `addAll(items)`, any other argument shape is left alone */
+function spreadToAddAll (source, masked, edits, add, open) {
+  const close = matchClose(masked, open)
+  if (close < 0) return
+  const args = topLevelSegments(masked, open, close)
+  const spread = args.length === 1 && /^\s*\.\.\./.exec(masked.slice(args[0][0], args[0][1]))
+  if (!spread) return
+  const dots = args[0][0] + spread[0].length - 3
+  edits.push({ start: add, end: dots + 3, text: `addAll${source.slice(add + 3, dots)}` })
 }
 
 function splitNames (text) {

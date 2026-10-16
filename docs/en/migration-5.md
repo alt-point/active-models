@@ -22,7 +22,8 @@ What it does:
 - rewrites `Model.collection(...)` and `Model.createCollection(...)` into `ActiveCollection.create(Model, ...)` and
   `ActiveCollection.createFromData(Model, ...)`;
 - rewrites `map.add(...items)` into `map.addAll(items)` when the same file shows `map` to be an `ActiveMap` (created with
-  `ActiveMap.create()` or typed `ActiveMap<...>`); other `add` calls are left alone;
+  `ActiveMap.create()`, typed `ActiveMap<...>` or declared as a field with the `map` option / `container: ActiveMap.field()`),
+  and `ActiveMap.create(...).add(...items)` itself; other `add` calls are left alone;
 - leaves strings, comments and regular expressions alone, and skips `node_modules`, `dist`, `build`, `.git`, `.nuxt`, `.output`;
 - is idempotent: running it again changes nothing.
 

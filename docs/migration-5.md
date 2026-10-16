@@ -22,7 +22,8 @@ npx @alt-point/active-models migrate ./src --write   # применить
 - переписывает `Model.collection(...)` и `Model.createCollection(...)` в `ActiveCollection.create(Model, ...)` и
   `ActiveCollection.createFromData(Model, ...)`;
 - переписывает `map.add(...items)` в `map.addAll(items)`, если в том же файле видно, что `map` — `ActiveMap` (создан через
-  `ActiveMap.create()` или объявлен с типом `ActiveMap<...>`); остальные вызовы `add` не трогает;
+  `ActiveMap.create()`, объявлен с типом `ActiveMap<...>` или как поле с опцией `map` / `container: ActiveMap.field()`),
+  а также `ActiveMap.create(...).add(...items)`; остальные вызовы `add` не трогает;
 - не трогает строки, комментарии и регулярные выражения, `node_modules`, `dist`, `build`, `.git`, `.nuxt`, `.output`;
 - идемпотентен: повторный запуск ничего не меняет.
 
