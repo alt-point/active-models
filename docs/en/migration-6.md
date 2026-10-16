@@ -40,7 +40,9 @@ The check runs wherever data turns into a model, not only in direct `create()` c
 - a `factory` field that gets a primitive it used to wrap into an empty model:
   `Order.create({ address: 'Berlin' })` throws `Address.create() expects an object, got "Berlin"`.
 
-`new User(null)` throws too (`new User() expects an object, got null`); in 5.x it gave an empty model.
+`new User(null)` throws too (`new User() expects an object, got null`); in 5.x it gave an empty model. The TypeScript
+signatures of `create()`, `createLazy()`, `asyncCreate()` / `asyncCreateLazy()` and the constructor no longer accept `null`, so
+such a call fails to compile; `fill(null)` (treated as `{}`) and `null` items of `createFromCollection()` are typed as before.
 
 ## 2. `Enum` removed
 

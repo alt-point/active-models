@@ -41,6 +41,9 @@ const draft = User.create() // пустая модель, как раньше
   `Order.create({ address: 'Berlin' })` бросает `Address.create() expects an object, got "Berlin"`.
 
 `new User(null)` тоже бросает исключение (`new User() expects an object, got null`); в 5.x он молча давал пустую модель.
+Сигнатуры TypeScript у `create()`, `createLazy()`, `asyncCreate()` / `asyncCreateLazy()` и конструктора больше не принимают
+`null`, так что такой вызов не компилируется; `fill(null)` (то же, что `{}`) и элементы `null` в `createFromCollection()`
+типизированы как раньше.
 
 ## 2. Удалён `Enum`
 

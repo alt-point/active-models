@@ -24,7 +24,7 @@ Migration guide: [docs/en/migration-6.md](docs/en/migration-6.md) ([RU](docs/mig
 
 | 5.x | 6.0 |
 |---|---|
-| `Model.create('str' / 42 / true / null)` was treated as `create({})` | throws a `TypeError` (`User.create() expects an object, got null`), and so does `new Model(primitive)`; `create()` with no argument still gives an empty model |
+| `Model.create('str' / 42 / true / null)` was treated as `create({})` | throws a `TypeError` (`User.create() expects an object, got null`), and so does `new Model(primitive)`; `create()` with no argument still gives an empty model; the TypeScript signatures of `create()`, `createLazy()`, `asyncCreate*()` and the constructor no longer accept `null` |
 | `import { Enum } from '@alt-point/active-models/Enum'` (deprecated since 4.x) and the `EnumItemType` type from `/types` | removed: use a TS `enum` or a string union with the `oneOf` rule (`@ActiveField({ oneOf: Status })`) |
 | A field `validator` that returned `false` was ignored: the write went through | refuses the write: `ValidationError` with code `validator` and the message `"prop" is invalid`; `validate()` reports a stored value the same way. Throwing works as before; `true` / `undefined` accept |
 | `transaction()` rolled back from a snapshot, so a plain value mutated in place (`m.tags.push(x)`, `m.date.setHours(0)`) was restored too | rolls back from a journal of writes: an in-place mutation of a plain value is not a write and stays after the rollback; replace the value instead (`m.tags = [...m.tags, x]`) |
@@ -33,7 +33,7 @@ Migration guide: [docs/en/migration-6.md](docs/en/migration-6.md) ([RU](docs/mig
 
 | 5.x | 6.0 |
 |---|---|
-| `Model.create('str' / 42 / true / null)` превращался в `create({})` | бросает `TypeError` (`User.create() expects an object, got null`), как и `new Model(primitive)`; `create()` без аргумента по-прежнему даёт пустую модель |
+| `Model.create('str' / 42 / true / null)` превращался в `create({})` | бросает `TypeError` (`User.create() expects an object, got null`), как и `new Model(primitive)`; `create()` без аргумента по-прежнему даёт пустую модель; сигнатуры TypeScript у `create()`, `createLazy()`, `asyncCreate*()` и конструктора больше не принимают `null` |
 | `import { Enum } from '@alt-point/active-models/Enum'` (устарел с 4.x) и тип `EnumItemType` из `/types` | удалены: используйте TS-`enum` или объединение строк с правилом `oneOf` (`@ActiveField({ oneOf: Status })`) |
 | `validator`, вернувший `false`, игнорировался: запись проходила | отклоняет запись: `ValidationError` с кодом `validator` и сообщением `"prop" is invalid`; `validate()` так же сообщает о сохранённом значении. Исключение работает как раньше; `true` / `undefined` принимают |
 | `transaction()` откатывался из снимка, поэтому plain-значение, изменённое на месте (`m.tags.push(x)`, `m.date.setHours(0)`), тоже восстанавливалось | откатывается по журналу записей: правка plain-значения на месте записью не является и остаётся после отката; заменяйте значение (`m.tags = [...m.tags, x]`) |

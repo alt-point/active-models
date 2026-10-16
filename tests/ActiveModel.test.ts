@@ -32,6 +32,7 @@ describe('ActiveModel.create()', () => {
       expect(Empty.create(undefined).x).toBe(0)
       // @ts-expect-error a primitive source is refused
       expect(() => Empty.create('not an object')).toThrow(new TypeError('Empty.create() expects an object, got "not an object"'))
+      // @ts-expect-error null is refused by the types as well as at runtime
       expect(() => Empty.create(null)).toThrow(new TypeError('Empty.create() expects an object, got null'))
       expect(() => Empty.create(42 as any)).toThrow(new TypeError('Empty.create() expects an object, got 42'))
       expect(() => Empty.create(true as any)).toThrow(new TypeError('Empty.create() expects an object, got true'))

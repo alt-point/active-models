@@ -823,7 +823,7 @@ export class ActiveModel {
     this: T,
     data:
       | RecursivePartialActiveModel<ModelProperties<T>>
-      | ActiveModelSource = {} as any,
+      | Exclude<ActiveModelSource, null> = {} as any,
     opts: FactoryOptions = { lazy: false, tracked: false, sanitize: true }
   ): InstanceType<T> {
     if (data instanceof this && opts.lazy) {
@@ -905,7 +905,7 @@ export class ActiveModel {
   static async asyncCreate<T extends typeof ActiveModel> (
     this: T,
     data: Promise<
-      RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource
+      RecursivePartialActiveModel<ModelProperties<T>> | Exclude<ActiveModelSource, null>
     > = Promise.resolve({}) as any,
     opts: FactoryOptions = { lazy: false, tracked: false, sanitize: true }
   ): Promise<InstanceType<T>> {
@@ -922,7 +922,7 @@ export class ActiveModel {
     this: T,
     data:
       | RecursivePartialActiveModel<ModelProperties<T>>
-      | ActiveModelSource = {},
+      | Exclude<ActiveModelSource, null> = {},
     opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }
   ): InstanceType<T> {
     return this.create<T>(data, {
@@ -941,7 +941,7 @@ export class ActiveModel {
   static async asyncCreateLazy<T extends typeof ActiveModel> (
     this: T,
     data: Promise<
-      RecursivePartialActiveModel<ModelProperties<T>> | ActiveModelSource
+      RecursivePartialActiveModel<ModelProperties<T>> | Exclude<ActiveModelSource, null>
     > = Promise.resolve({}) as any,
     opts: Pick<FactoryOptions, 'tracked'> = { tracked: false }
   ): Promise<InstanceType<T>> {
@@ -1672,7 +1672,7 @@ export class ActiveModel {
     return !ActiveModel.sameFields(raw, (rawOf.get(baseline) ?? baseline) as ActiveModel)
   }
 
-  constructor (data: ActiveModelSource = {}) {
+  constructor (data: Exclude<ActiveModelSource, null> = {}) {
     const Ctor = <typeof ActiveModel>this.constructor
     if (consumeRawConstruction()) {
       return this
