@@ -1,12 +1,15 @@
 # Migrating from 5.x to 6.0
 
-Version 6.0 removes behaviors and APIs deprecated in 5.x. There is no codemod for this release: each item below is a
-runtime or build error that you fix at the call site.
+Version 6.0 removes `Enum` (deprecated since 4.x) and changes three behaviors that could not be fixed compatibly. There is no
+codemod for this release: items 1 and 2 are a runtime or build error you fix at the call site; items 3 and 4 change what
+existing code does, so review the places they name.
 
 | 5.x | 6.0 |
 |---|---|
-| `Model.create('str' / 42 / true / null)` was treated as `create({})` (with a `console.warn` since 5.1) | throws a `TypeError` (`User.create() expects an object, got null`), and so does `new Model(primitive)`; `create()` with no argument still gives an empty model |
+| `Model.create('str' / 42 / true / null)` was treated as `create({})` | throws a `TypeError` (`User.create() expects an object, got null`), and so does `new Model(primitive)`; `create()` with no argument still gives an empty model |
 | `import { Enum } from '@alt-point/active-models/Enum'` (deprecated since 4.x) and the `EnumItemType` type from `/types` | removed: use a TS `enum` or a string union with the `oneOf` rule (`@ActiveField({ oneOf: Status })`) |
+| A field `validator` that returned `false` was ignored: the write went through | refuses the write: `ValidationError` with code `validator` and the message `"prop" is invalid`; `validate()` reports a stored value the same way. Throwing works as before; `true` / `undefined` accept |
+| `transaction()` rolled back from a snapshot, so a plain value mutated in place (`m.tags.push(x)`, `m.date.setHours(0)`) was restored too | rolls back from a journal of writes: an in-place mutation of a plain value is not a write and stays after the rollback; replace the value instead (`m.tags = [...m.tags, x]`) |
 
 ## 1. `Model.create(primitive)` throws
 
@@ -29,8 +32,7 @@ const user = data ? User.create(data) : null
 const draft = User.create() // an empty model, as before
 ```
 
-The 5.x warning (`User.create() got null instead of an object: ...`) points at the calls to fix. Besides direct
-`create()` calls, they include:
+The check runs wherever data turns into a model, not only in direct `create()` calls:
 
 - `createLazy()`, and `asyncCreate()` / `asyncCreateLazy()` whose promise resolves to `null`, a string, a number or a
   boolean (they reject);
@@ -38,7 +40,7 @@ The 5.x warning (`User.create() got null instead of an object: ...`) points at t
 - a `factory` field that gets a primitive it used to wrap into an empty model:
   `Order.create({ address: 'Berlin' })` throws `Address.create() expects an object, got "Berlin"`.
 
-`new User(null)` throws too (`new User() expects an object, got null`); in 5.x it gave an empty model without a warning.
+`new User(null)` throws too (`new User() expects an object, got null`); in 5.x it gave an empty model.
 
 ## 2. `Enum` removed
 
@@ -78,6 +80,45 @@ class Order extends ActiveModel {
 
 `validate([a, b])` over an array of values has no rule of its own: keep a `validator` that checks each item, e.g.
 `validator: (_m, _p, v: OrderStatus[]) => v.every((s) => Object.values(OrderStatus).includes(s))`.
+
+## 3. A `validator` that returns `false` refuses the write
+
+In 5.x only a throwing `validator` refused a value; its return value was ignored, so a predicate-style validator let
+everything through. Now `false` refuses the write with a `ValidationError` (code `validator`, message `"prop" is invalid`),
+and `validate()` reports a stored value the validator rejects. `true`, `undefined` and throwing work as before
+([`validator`](/en/active-field-options#validator)).
+
+```ts
+class Product extends ActiveModel {
+  @ActiveField({ validator: (_m, _p, v: number) => v >= 0 }) price: number = 0
+}
+
+const product = Product.create({ price: 1 })
+product.price = -1 // 5.x: written; 6.0: ValidationError: "price" is invalid
+```
+
+- A validator that was meant to refuse needs no change; throw instead of returning `false` to give your own message.
+- A validator that runs for a side effect and happened to return `false` should return nothing: `validator: (_m, _p, v) => { track(v) }`.
+- Code that wrote a value the validator disagrees with and handled it later now gets the exception at the write.
+
+## 4. `transaction()` does not undo in-place mutations of plain values
+
+The rollback used to restore the model from a snapshot taken at the start, which also put back a plain array or `Date`
+mutated in place. Now it replays a journal of writes, which is what makes its cost
+[proportional to the changes](/en/integrity), and an in-place mutation of a plain value is not a write: `m.tags.push(x)` or
+`m.date.setHours(0)` stays after the rollback. Nested models and containers (`ActiveCollection` / `ActiveMap` / `ActiveSet`)
+record their own operations and are restored as before.
+
+```ts
+order.transaction((o) => {
+  o.tags.push('rush')          // stays after the rollback
+  o.tags = [...o.tags, 'rush'] // undone
+  throw new Error('abort')
+})
+```
+
+Replace values instead of mutating them (`m.tags = [...m.tags, x]`, `m.date = new Date(...)`): the rule events, dirty
+tracking and history already followed.
 
 ## What is not affected
 
