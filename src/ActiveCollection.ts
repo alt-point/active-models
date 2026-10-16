@@ -53,6 +53,13 @@ const states = new WeakMap<object, State<any>>()
 /** `Array.prototype.splice` for the raw storage: returns the removed items as a plain array */
 const rawSplice = <T>(raw: any[], start: number, deleteCount: number, items: readonly T[]): T[] => {
   const length = raw.length
+  // Stryker disable next-line ConditionalExpression: the general path appends just as well, this one only skips its bookkeeping
+  if (start === length) {
+    for (const item of items) {
+      A.push.call(raw, item)
+    }
+    return []
+  }
   // Stryker disable next-line ArrayDeclaration: the loop below fills every slot
   const removed = new Array<T>(deleteCount)
   for (let i = 0; i < deleteCount; i++) {
@@ -299,11 +306,6 @@ const insert = <T extends ActiveModel>(state: State<T>, items: T[], position: nu
         rawSplice(raw, upperBound(state, items[i]), 0, [items[i]])
       }
     }
-  // Stryker disable next-line ConditionalExpression: appending through rawSplice gives the same result, the branch is a fast path
-  } else if (position === raw.length) {
-    for (const item of items) {
-      A.push.call(raw, item)
-    }
   } else {
     rawSplice(raw, position, 0, items)
   }
@@ -504,7 +506,6 @@ export class ActiveCollection<T extends ActiveModel = ActiveModel> extends Array
       attached: new WeakMap(),
     }
     state.compare = options.compare
-      // Stryker disable next-line ArithmeticOperator: only the sign of a comparator result matters
       ? (a, b) => (state.order === 'desc' ? -1 : 1) * options.compare!(a, b)
       : keyOf
         ? (a, b) => compareKeys(keyOf(a), keyOf(b), state.order)
