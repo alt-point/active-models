@@ -2,6 +2,12 @@ name: npm-publish
 on:
   release:
     types: [published]
+  workflow_dispatch:
+
+# trusted publishing: npm exchanges the GitHub OIDC token for a short-lived publish token, no NPM_AUTH_TOKEN secret
+permissions:
+  id-token: write
+  contents: read
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
@@ -27,5 +33,3 @@ jobs:
       - name: Check the built package (ESM + CJS, one copy of every class)
         run: bun run test:dist
       - run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
