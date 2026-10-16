@@ -34,14 +34,14 @@ features:
     details: mapTo() - several projections of one model (DTO, view-model, payload) in one place, no reflection.
   - icon: 🧪
     title: Battle-tested
-    details: 516 tests, 99% coverage, 94% mutation score, performance budgets and memory-leak checks.
+    details: 547 tests, 99% coverage, 95% mutation score, performance budgets and memory-leak checks.
 ---
 
-::: tip What's new in 4.0
-`model.emitter` and `startTracking()` are removed - subscribe through `model.on()` / `Model.on()`, track via
-`create(data, { tracked: true })`. Added `getRaw()`, inherited subscriptions, `touched` bubbling, per-instance
-default copies, and a fixed `clone()`. Details: [migrating to 4.0](/en/migration) and the
-[CHANGELOG](https://github.com/alt-point/active-models/blob/master/CHANGELOG.md).
+::: tip What's new in 6.0
+`Model.create(primitive)` throws a `TypeError` instead of giving an empty model; a `validator` that returns `false` refuses
+the write; `transaction()` rolls back from a journal of writes, so an in-place mutation of a plain value (`m.tags.push(x)`) is not
+undone; `Enum` is removed (use a TS enum or a string union with `oneOf`). Also new: `tracked: 'shallow'`, `ActiveMap.addAll()`.
+Details: [migrating to 6.0](/en/migration-6); coming from 4.x, start with [migrating to 5.0](/en/migration-5).
 :::
 
 ::: tip What's new in 5.0

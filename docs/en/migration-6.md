@@ -4,6 +4,8 @@ Version 6.0 removes `Enum` (deprecated since 4.x) and changes three behaviors th
 codemod for this release: items 1 and 2 are a runtime or build error you fix at the call site; items 3 and 4 change what
 existing code does, so review the places they name.
 
+Coming from 4.x? Do [migrating to 5.0](/en/migration-5) first.
+
 | 5.x | 6.0 |
 |---|---|
 | `Model.create('str' / 42 / true / null)` was treated as `create({})` | throws a `TypeError` (`User.create() expects an object, got null`), and so does `new Model(primitive)`; `create()` with no argument still gives an empty model |

@@ -34,14 +34,14 @@ features:
     details: mapTo() — несколько проекций одной модели (DTO, view-модель, payload) в одном месте, без рефлексии.
   - icon: 🧪
     title: Проверено тестами
-    details: 516 тестов, 99% покрытия, 94% mutation score, бюджеты производительности и проверки утечек памяти.
+    details: 547 тестов, 99% покрытия, 95% mutation score, бюджеты производительности и проверки утечек памяти.
 ---
 
-::: tip Что нового в 4.0
-`model.emitter` и `startTracking()` удалены — подписка через `model.on()` / `Model.on()`, отслеживание через
-`create(data, { tracked: true })`. Добавлены `getRaw()`, наследование подписок, всплытие `touched`, копия
-дефолтов на инстанс, исправлен `clone()`. Подробно: [миграция на 4.0](/migration) и
-[CHANGELOG](https://github.com/alt-point/active-models/blob/master/CHANGELOG.md).
+::: tip Что нового в 6.0
+`Model.create(primitive)` бросает `TypeError` вместо пустой модели; `validator`, вернувший `false`, отклоняет запись;
+`transaction()` откатывается по журналу записей, поэтому правка plain-значения на месте (`m.tags.push(x)`) не отменяется;
+`Enum` удалён (используйте TS enum или объединение строк с `oneOf`). Также новое: `tracked: 'shallow'`, `ActiveMap.addAll()`.
+Подробно: [миграция на 6.0](/migration-6); если переходите с 4.x, начните с [миграции на 5.0](/migration-5).
 :::
 
 ::: tip Что нового в 5.0

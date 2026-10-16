@@ -137,6 +137,13 @@ user.once(...) / User.once(...)
   `min`/`max` work with any value having `compareTo()` (mixed currencies fail the bound). Custom class: static `from()`, `compareTo`, `toJSON`, `markImmutable(Class)`.
 - `CallableModel` — instances are callable, implement `__call`.
 
+## Migrating 5.x → 6.0
+
+No codemod. `Model.create(primitive)` / `new Model(primitive)` throw a `TypeError` (an empty model before). `Enum`, `EnumItemType` and
+the `/Enum` entry are gone: use a TS enum or a string union with `oneOf` (the codemod prints a `MANUAL` line for them). A `validator` that
+returns `false` refuses the write (ignored before). `transaction()` rolls back from a journal of writes, so an in-place mutation of a plain
+value (`m.tags.push(x)`) stays after the rollback - replace the value instead. Details: `docs/en/migration-6.md`.
+
 ## Migrating 4.x → 5.0
 
 Run `npx @alt-point/active-models migrate <dir>` (dry run; `--write` applies, `--check` for CI): it rewrites root imports into subpath imports

@@ -16,6 +16,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](ht
 
 ## [Unreleased]
 
+## [6.0.0] - 2026-10-16
+
 Migration guide: [docs/en/migration-6.md](docs/en/migration-6.md) ([RU](docs/migration-6.md)).
 
 ### Breaking changes
@@ -29,6 +31,8 @@ Migration guide: [docs/en/migration-6.md](docs/en/migration-6.md) ([RU](docs/mig
 | A field `validator` that returned `false` was ignored: the write went through | refuses the write: `ValidationError` with code `validator` and the message `"prop" is invalid`; `validate()` reports a stored value the same way. Throwing works as before; `true` / `undefined` accept |
 | `transaction()` rolled back from a snapshot, so a plain value mutated in place (`m.tags.push(x)`, `m.date.setHours(0)`) was restored too | rolls back from a journal of writes: an in-place mutation of a plain value is not a write and stays after the rollback; replace the value instead (`m.tags = [...m.tags, x]`) |
 
+Why: `create(primitive)` and a `validator` that returns `false` hid mistakes (an empty model from a scalar, a write that passed its own check) and now fail loudly; the journal makes a rollback about 10x faster on large models, at the price of not seeing in-place mutations; `Enum` had been deprecated since 4.x.
+
 **Русский**
 
 | 5.x | 6.0 |
@@ -37,6 +41,8 @@ Migration guide: [docs/en/migration-6.md](docs/en/migration-6.md) ([RU](docs/mig
 | `import { Enum } from '@alt-point/active-models/Enum'` (устарел с 4.x) и тип `EnumItemType` из `/types` | удалены: используйте TS-`enum` или объединение строк с правилом `oneOf` (`@ActiveField({ oneOf: Status })`) |
 | `validator`, вернувший `false`, игнорировался: запись проходила | отклоняет запись: `ValidationError` с кодом `validator` и сообщением `"prop" is invalid`; `validate()` так же сообщает о сохранённом значении. Исключение работает как раньше; `true` / `undefined` принимают |
 | `transaction()` откатывался из снимка, поэтому plain-значение, изменённое на месте (`m.tags.push(x)`, `m.date.setHours(0)`), тоже восстанавливалось | откатывается по журналу записей: правка plain-значения на месте записью не является и остаётся после отката; заменяйте значение (`m.tags = [...m.tags, x]`) |
+
+Зачем: `create(primitive)` и `validator`, вернувший `false`, скрывали ошибки (пустая модель из скаляра, запись, прошедшая собственную проверку) — теперь это ошибка; журнал делает откат примерно в 10 раз быстрее на больших моделях ценой того, что правок на месте он не видит; `Enum` был устаревшим с 4.x.
 
 ### Added
 

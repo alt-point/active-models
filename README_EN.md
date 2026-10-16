@@ -15,16 +15,16 @@ into other shapes.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
 [![docs](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/deploy-docs.yml?branch=master&label=docs&logo=vitepress&logoColor=white)](https://alt-point.github.io/active-models/en/)
-[![tests](https://img.shields.io/badge/tests-525%20passing-brightgreen)](docs/en/testing.md)
+[![tests](https://img.shields.io/badge/tests-547%20passing-brightgreen)](docs/en/testing.md)
 [![coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](docs/en/testing.md)
-[![mutation score](https://img.shields.io/badge/mutation%20score-94%25-brightgreen?logo=stryker&logoColor=white)](docs/en/testing.md#mutation-testing)
+[![mutation score](https://img.shields.io/badge/mutation%20score-95%25-brightgreen?logo=stryker&logoColor=white)](docs/en/testing.md#mutation-testing)
 [![semver](https://img.shields.io/badge/semver-2.0.0-blue)](CHANGELOG.md)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff69b4)](AGENTS.md)
 
 **[📖 Documentation](https://alt-point.github.io/active-models/en/)** ·
 **[🚀 Quick start](#quick-start)** ·
 **[🧩 Options reference](docs/en/active-field-options.md)** ·
-**[🔄 Migrating to 4.0](docs/en/migration.md)** ·
+**[🔄 Migrating to 6.0](docs/en/migration-6.md)** ·
 **[🇷🇺 Русский](README.md)**
 
 </div>
@@ -164,7 +164,7 @@ class Notify extends CallableModel {
 | [ActiveCollection / Map / Set](docs/en/collections.md) | containers of the declared model only: sorting, binary search, unique keys |
 | [Node.js example](docs/en/node-example.md) | a server on plain `node:http` |
 | [Known limitations](docs/en/limitations.md) | what doesn't work as you'd expect — and what to do |
-| [Migrating to 4.0](docs/en/migration.md) · [CHANGELOG](CHANGELOG.md) | what changed and how to upgrade |
+| [Migrating to 6.0](docs/en/migration-6.md) · [to 5.0](docs/en/migration-5.md) · [to 4.0](docs/en/migration.md) · [CHANGELOG](CHANGELOG.md) | what changed and how to upgrade |
 | [Testing and quality](docs/en/testing.md) | coverage, performance budgets, mutation testing |
 | [API reference](https://alt-point.github.io/active-models/en/api/) | generated from TSDoc |
 
@@ -181,7 +181,7 @@ Before working with models, read node_modules/@alt-point/active-models/AGENTS.md
 
 ## Quality
 
-**525** unit tests · **99 %** coverage · **94 %** mutation score (Stryker, gate at 90 %) · performance budgets
+**547** unit tests · **99 %** coverage · **95 %** mutation score (Stryker, gate at 90 %) · performance budgets
 and memory-leak checks · ESLint · strict [SemVer](CHANGELOG.md#versioning-policy).
 
 ```bash

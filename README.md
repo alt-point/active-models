@@ -15,16 +15,16 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/alt-point/active-models/actions/workflows/ci.yml)
 [![docs](https://img.shields.io/github/actions/workflow/status/alt-point/active-models/deploy-docs.yml?branch=master&label=docs&logo=vitepress&logoColor=white)](https://alt-point.github.io/active-models/)
-[![tests](https://img.shields.io/badge/tests-525%20passing-brightgreen)](docs/testing.md)
+[![tests](https://img.shields.io/badge/tests-547%20passing-brightgreen)](docs/testing.md)
 [![coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](docs/testing.md)
-[![mutation score](https://img.shields.io/badge/mutation%20score-94%25-brightgreen?logo=stryker&logoColor=white)](docs/testing.md#мутационное-тестирование)
+[![mutation score](https://img.shields.io/badge/mutation%20score-95%25-brightgreen?logo=stryker&logoColor=white)](docs/testing.md#мутационное-тестирование)
 [![semver](https://img.shields.io/badge/semver-2.0.0-blue)](CHANGELOG.md)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff69b4)](AGENTS.md)
 
 **[📖 Документация](https://alt-point.github.io/active-models/)** ·
 **[🚀 Быстрый старт](#быстрый-старт)** ·
 **[🧩 Справочник опций](docs/active-field-options.md)** ·
-**[🔄 Миграция на 4.0](docs/migration.md)** ·
+**[🔄 Миграция на 6.0](docs/migration-6.md)** ·
 **[🇬🇧 English](README_EN.md)**
 
 </div>
@@ -187,7 +187,7 @@ class Notify extends CallableModel {
 | [ActiveCollection / Map / Set](docs/collections.md) | контейнеры только из объявленной модели: сортировка, бинарный поиск, уникальные ключи |
 | [Пример для Node.js](docs/node-example.md) | сервер на чистом `node:http` |
 | [Известные ограничения](docs/limitations.md) | что работает не так, как ожидаешь — и что делать |
-| [Миграция на 4.0](docs/migration.md) · [CHANGELOG](CHANGELOG.md) | что изменилось и как перейти |
+| [Миграция на 6.0](docs/migration-6.md) · [на 5.0](docs/migration-5.md) · [на 4.0](docs/migration.md) · [CHANGELOG](CHANGELOG.md) | что изменилось и как перейти |
 | [Тестирование и качество](docs/testing.md) | покрытие, performance-бюджеты, мутационное тестирование |
 | [Справочник API](https://alt-point.github.io/active-models/en/api/) | сгенерировано из TSDoc |
 
@@ -203,7 +203,7 @@ class Notify extends CallableModel {
 
 ## Качество
 
-**525** unit-тестов · покрытие **99 %** · **94 %** mutation score (Stryker, порог 90 %) · performance-бюджеты и
+**547** unit-тестов · покрытие **99 %** · **95 %** mutation score (Stryker, порог 90 %) · performance-бюджеты и
 проверки утечек памяти · ESLint · строгий [SemVer](CHANGELOG.md#versioning-policy).
 
 ```bash
