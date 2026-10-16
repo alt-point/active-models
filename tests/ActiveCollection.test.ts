@@ -157,6 +157,8 @@ describe('ActiveCollection: reads go to the storage, with the Array rules', () =
     expect(tasks.findIndex((t) => t.id > 9)).toBe(-1)
     expect(tasks.findLast((t) => t.id > 9)).toBeUndefined()
     expect(tasks.findLastIndex((t) => t.id > 9)).toBe(-1)
+    expect(tasks.findLast((t) => t.id === 1)).toBe(tasks[0])
+    expect(tasks.findLastIndex((t) => t.id === 1)).toBe(0)
     expect(tasks.some((t) => t.id === 2)).toBe(true)
     expect(tasks.some((t) => t.id === 9)).toBe(false)
     expect(tasks.every((t) => t.id > 0)).toBe(true)
@@ -167,9 +169,11 @@ describe('ActiveCollection: reads go to the storage, with the Array rules', () =
     const tasks = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }, { id: 3 }])
     expect(tasks.reduce((sum, t) => sum + t.id, 10)).toBe(16)
     expect(tasks.reduce((sum, t, i, list) => sum + t.id + i + (list === tasks ? 100 : 0), 0)).toBe(309)
-    expect(tasks.reduce((a, t) => (a.id > t.id ? a : t))).toBe(tasks[2])
+    const indexes: number[] = []
+    expect(tasks.reduce((a, t, i) => { indexes.push(i); return a.id > t.id ? a : t })).toBe(tasks[2])
+    expect(indexes).toEqual([1, 2])
     expect(ActiveCollection.create(Task).reduce((a) => a, 'init')).toBe('init')
-    expect(() => ActiveCollection.create(Task).reduce((a) => a)).toThrow(TypeError)
+    expect(() => ActiveCollection.create(Task).reduce((a) => a)).toThrow('Reduce of empty array with no initial value')
   })
 
   it('iterators, indexOf and includes', () => {
@@ -194,6 +198,20 @@ describe('ActiveCollection: reads go to the storage, with the Array rules', () =
     tasks.forEach((t) => { visited.push(t.id); if (t.id === 1) tasks.splice(1, 3) })
     expect(visited).toEqual([1])
     expect(ids(tasks)).toEqual([1])
+    // map, filter, some, every and reduce follow the same rules; 0 is reduce's initial value and a thisArg for the rest
+    for (const method of ['map', 'filter', 'some', 'every', 'reduce'] as const) {
+      const list = ActiveCollection.create(Task, [{ id: 1 }, { id: 2 }, { id: 3 }])
+      for (const [change, expected] of [[() => list.push({ id: 4 }), [1, 2, 3]], [() => list.splice(1, 3), [1]]] as const) {
+        const seen: number[] = []
+        ;(list as any)[method]((...args: Task[]) => {
+          const t = args[method === 'reduce' ? 1 : 0]
+          seen.push(t.id)
+          if (t.id === 1) change()
+          return method === 'every'
+        }, 0)
+        expect(seen, method).toEqual(expected)
+      }
+    }
   })
 
   it('reads work on an instance that did not come from create()', () => {
@@ -299,6 +317,8 @@ describe('ActiveCollection: sorted', () => {
     const stable = ActiveCollection.create(Task, [a], { sortBy: 'id' })
     stable.push(b)
     expect(stable.map((t) => t.title)).toEqual(['first', 'second'])
+    const byCompare = ActiveCollection.create(Task, [{ id: 1, title: 'first' }, { id: 1, title: 'second' }], { compare: (x, y) => x.id - y.id })
+    expect(byCompare.map((t) => t.title)).toEqual(['first', 'second'])
   })
 
   it('sortBy accepts a function, order desc, and puts null/undefined last', () => {

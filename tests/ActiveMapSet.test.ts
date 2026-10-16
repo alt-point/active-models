@@ -38,6 +38,7 @@ describe('ActiveCollection: unique', () => {
     expect(() => users.splice(0, 0, { id: 7, email: 'b' })).toThrow(ValidationError)
     expect(() => { users[2] = { id: 8, email: 'a' } as any }).toThrow(ValidationError)
     expect(() => ActiveCollection.create(User, [{ email: 'x' }, { email: 'x' }], { unique: 'email' })).toThrow(ValidationError)
+    expect(() => users.replaceAll([{ id: 3, email: 'c' }, { id: 4, email: 'c' }])).toThrow(ValidationError)
     expect(users.map((u) => u.email)).toEqual(['a', 'b'])
   })
 
@@ -45,6 +46,7 @@ describe('ActiveCollection: unique', () => {
     const users = make()
     users.push({ id: 3 }, { id: 4 })
     expect(users).toHaveLength(4)
+    expect(users.getByKey(undefined)).toBeUndefined()
     users.shift()
     users.push({ id: 9, email: 'a' })
     expect(users.map((u) => u.id)).toEqual([2, 3, 4, 9])
@@ -56,6 +58,8 @@ describe('ActiveCollection: unique', () => {
     expect(users.map((u) => u.id)).toEqual([10, 2])
     expect(() => users.splice(0, 1, { id: 11, email: 'b' })).toThrow(ValidationError)
     expect(users.map((u) => u.id)).toEqual([10, 2])
+    users.splice(0, 2, { id: 12, email: 'b' })
+    expect(users.map((u) => u.id)).toEqual([12])
   })
 
   it('index replacement follows the same rules', () => {
@@ -65,6 +69,7 @@ describe('ActiveCollection: unique', () => {
     expect(users.hasKey('z')).toBe(true)
     const same = users[0]
     users[0] = same
+    expect(users.hasKey('z')).toBe(true)
     expect(() => { users[0] = User.create({ id: 6, email: 'b' }) }).toThrow(ValidationError)
     expect(users.map((u) => u.id)).toEqual([5, 2])
   })
@@ -96,6 +101,11 @@ describe('ActiveCollection: unique', () => {
     users[0].email = 'b'
     expect(users.getByKey('b')!.id).toBe(2)
     expect(users.hasKey('a')).toBe(false)
+    users[0].email = 'c' // leaving 'b' does not take it from its holder either
+    expect(users.getByKey('b')!.id).toBe(2)
+    users[0].email = 'b'
+    users.remove(users[0]) // nor does leaving the collection
+    expect(users.getByKey('b')!.id).toBe(2)
   })
 
   it('an unsorted unique collection refuses fill() and copyWithin(); works with sortBy and a function key', () => {
@@ -132,8 +142,9 @@ describe('ActiveMap', () => {
 
   it('needs a model class and a key option', () => {
     expect(() => ActiveMap.create(class Plain {} as any, { key: 'id' })).toThrow('needs a class extending ActiveModel')
+    expect(() => ActiveMap.create(undefined as any, { key: 'id' })).toThrow('needs a class extending ActiveModel')
     expect(() => ActiveMap.create(User, {} as any)).toThrow('needs options.key')
-    expect(() => ActiveMap.create(User, undefined as any)).toThrow(TypeError)
+    expect(() => ActiveMap.create(User, undefined as any)).toThrow('needs options.key')
     expect(ActiveMap.create(User, { key: (u) => u.name }, [{ name: 'x' }]).has('x')).toBe(true)
   })
 
@@ -151,7 +162,7 @@ describe('ActiveMap', () => {
     const users = make()
     users.add({ id: 7 }, User.create({ id: 8 }))
     expect(Array.from(users.keys())).toEqual([1, 2, 7, 8])
-    expect(() => users.add({ id: 9 }, 5 as any)).toThrow(TypeError)
+    expect(() => users.add({ id: 9 }, 5 as any)).toThrow('ActiveMap<User> accepts only User instances or plain objects, got number')
     expect(users.has(9)).toBe(false)
     expect(() => ActiveMap.create(User, { key: 'email' }, [{ id: 1 }])).toThrow('needs a key for every item, got undefined')
   })
@@ -230,8 +241,8 @@ describe('ActiveMap', () => {
     let seen = 0
     Users.on(EventType.itemsAdded, () => { seen++ })
     Users.once(EventType.touched, () => { seen += 10 })
-    ;(ActiveMap.create as any).call(Users, User, { key: 'id' }, [{ id: 1 }])
-    expect(seen).toBe(11)
+    ;(ActiveMap.create as any).call(Users, User, { key: 'id' }, [{ id: 1 }]).add({ id: 2 })
+    expect(seen).toBe(12)
   })
 
   it('clone() deep-copies items; toJSON() is an object keyed by the key', () => {

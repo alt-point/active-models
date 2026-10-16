@@ -17,7 +17,9 @@ const ownListeners = (target: EmitterTarget, eventName: EventType): ListenersCon
   Registry.get(target)?.get(eventName)
 
 const countClassListener = (target: EmitterTarget, eventName: EventType, delta: number) => {
+  // Stryker disable next-line ConditionalExpression: counting instance listeners too only raises the count, which costs emit() the prototype walk, never a listener
   if (typeof target === 'function') {
+    // Stryker disable next-line ArithmeticOperator: a negated count is zero exactly when the real one is, and emit() only tests it for zero
     classListeners.set(eventName, (classListeners.get(eventName) ?? 0) + delta)
   }
 }
@@ -74,6 +76,7 @@ const getListeners = (target: EmitterTarget, eventName: EventType): Iterable<Act
  */
 export const emit = (target: EmitterTarget, eventName: EventType, payload?: unknown): void => {
   // the common case: nobody listens to this event, neither on the target nor on any class
+  // Stryker disable next-line ConditionalExpression,BlockStatement: without the early return getListeners() finds the same (no) listeners
   if (!classListeners.get(eventName) && !ownListeners(target, eventName)?.size) {
     return
   }
@@ -111,7 +114,9 @@ export const useEmitter = (target: EmitterTarget) => {
     eventName: EventType,
     listener: ActiveModelHookListener
   ) => {
+    // Stryker disable next-line BlockStatement: a count left too high only costs emit() the prototype walk, never a listener
     if (ownListeners(target, eventName)?.delete(listener)) {
+      // Stryker disable next-line UnaryOperator,CallExpression: a count left too high only costs emit() the prototype walk, never a listener
       countClassListener(target, eventName, -1)
     }
   }
@@ -151,6 +156,7 @@ export const useEmitter = (target: EmitterTarget) => {
     const before = container.size
     container.add(entry)
     // the same listener added twice is one entry
+    // Stryker disable next-line ConditionalExpression,EqualityOperator: counting a duplicate only raises the count, which costs emit() the prototype walk, never a listener
     if (container.size > before) {
       countClassListener(target, eventName, 1)
     }

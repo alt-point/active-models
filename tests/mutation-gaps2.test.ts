@@ -259,6 +259,7 @@ describe('ActiveMap re-keying and events', () => {
     const item = map.get(1)!
     item.title = 'z'
     expect(map.get(1)).toBe(item)
+    expect(Array.from(map.keys())).toEqual([1, 2])
     expect(touched).toHaveBeenCalledTimes(1)
   })
 
@@ -269,6 +270,21 @@ describe('ActiveMap re-keying and events', () => {
     map.add({ id: 3 }, { id: 4 })
     map.add({ id: 5 })
     expect(cb).toHaveBeenCalledTimes(1)
+  })
+
+  it('add() and set() report the map itself as the touched target', () => {
+    const map = make()
+    const touched = vi.fn()
+    map.on(EventType.touched, touched)
+    map.add({ id: 3 })
+    map.set(4, { id: 4 })
+    expect(touched.mock.calls).toEqual([[{ target: map }], [{ target: map }]])
+  })
+
+  it('without create() it is a plain Map', () => {
+    const plain = new ActiveMap<Item>().set(1, Item.create({ id: 1 }))
+    plain.clear()
+    expect(plain.size).toBe(0)
   })
 
   it('validates its arguments', () => {

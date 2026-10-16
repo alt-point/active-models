@@ -125,6 +125,9 @@ describe('sorting details', () => {
       expect(priorities(tasks).slice(-3)).toEqual(['1:-', '3:-', '5:-'])
       expect(Math.max(...tasks.map((t) => t.priority ?? -1))).toBe(3)
     }
+    // null is a missing key too, and real keys inserted after it still go before it
+    const withNull = ActiveCollection.create(Task, [{ id: 2, priority: 5 }, { id: 1, priority: null as any }, { id: 3, priority: -1 }, { id: 4, priority: 7 }], { sortBy: 'priority' })
+    expect(ids(withNull)).toEqual([3, 2, 4, 1])
   })
 
   it('the bulk path (many items) orders exactly like one-by-one inserts, for keys and for compare', () => {
@@ -165,6 +168,11 @@ describe('sorting details', () => {
     expect(tasks.map((t) => t)).toEqual([a, c, b].sort((x, y) => x.id - y.id))
     c.id = 3
     expect(ids(tasks)).toEqual([1, 3, 3])
+    // tied on both sides, a change to another field leaves it in place too
+    const [x, y, z] = [1, 2, 3].map((id) => Task.create({ id, priority: 0 }))
+    const tied = ActiveCollection.create(Task, [x, y, z], { sortBy: 'priority' })
+    y.title = 'changed'
+    expect(ids(tied)).toEqual([1, 2, 3])
   })
 
   it('an item that violates the order only on one side is still moved', () => {
@@ -176,6 +184,11 @@ describe('sorting details', () => {
     expect(ids(tasks)).toEqual([2, 2.5, 2.7, 3])
     c.id = 0
     expect(ids(tasks)).toEqual([0, 2, 2.5, 2.7])
+    // once moved, it goes after the items it now ties with, as a push would
+    const [p, q, r] = [1, 2, 3].map((id) => Task.create({ id, priority: id }))
+    const byPriority = ActiveCollection.create(Task, [p, q, r], { sortBy: 'priority' })
+    p.priority = 3
+    expect(ids(byPriority)).toEqual([2, 3, 1])
   })
 })
 

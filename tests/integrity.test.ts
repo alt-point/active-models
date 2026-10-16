@@ -318,6 +318,33 @@ describe('transaction()', () => {
     expect(ids(table.sorted)).toEqual([0, 1, 2, 3])
   })
 
+  it('rolls back fill(), copyWithin(), an index write and a push of an item already held, each on its own', () => {
+    const table = Table.create({ rows: [{ id: 1 }, { id: 2 }, { id: 3 }] })
+    const [a] = table.rows
+    const x = Row.create({ id: 9 })
+    const touched: unknown[] = []
+    table.rows.on(EventType.touched, (payload) => touched.push(payload))
+    attempt(table, () => {
+      table.rows.fill(x)
+      throw abort
+    })
+    expect(ids(table.rows)).toEqual([1, 2, 3])
+    expect(touched.at(-1)).toEqual({ target: table.rows })
+    const count = touched.length
+    x.id = 10 // x left with the rollback
+    expect(touched).toHaveLength(count)
+    a.id = 11 // the items put back notify again
+    expect(touched).toHaveLength(count + 1)
+    a.id = 1
+    for (const change of [() => table.rows.copyWithin(0, 2), () => { table.rows[1] = x }, () => table.rows.push(a)]) {
+      attempt(table, () => {
+        change()
+        throw abort
+      })
+      expect(ids(table.rows)).toEqual([1, 2, 3])
+    }
+  })
+
   it('rolls back ActiveMap and ActiveSet operations, including a key move that displaced an entry', () => {
     const table = Table.create({ byId: [{ id: 1 }, { id: 2 }, { id: 3 }], set: [{ id: 1 }, { id: 2 }] })
     const [m1, m2, m3] = table.byId.values()
@@ -337,6 +364,26 @@ describe('transaction()', () => {
     expect([...table.byId.entries()]).toEqual([[1, m1], [2, m2], [3, m3]])
     expect(m3.id).toBe(3)
     expect([...table.set]).toEqual([s1, s2])
+  })
+
+  it('rolls back an ActiveMap displacement, replacement and clear() to the very same instances', () => {
+    const table = Table.create({ byId: [{ id: 1 }, { id: 2 }] })
+    const [m1, m2] = table.byId.values()
+    attempt(table, () => {
+      m1.id = 2 // displaces m2
+      throw abort
+    })
+    expect(table.byId.get(2)).toBe(m2)
+    attempt(table, () => {
+      table.byId.set(2, { id: 2 }) // replaces m2
+      throw abort
+    })
+    expect(table.byId.get(2)).toBe(m2)
+    attempt(table, () => {
+      table.byId.clear()
+      throw abort
+    })
+    expect([...table.byId.entries()]).toEqual([[1, m1], [2, m2]])
   })
 
   it('restores a model written after it left the collection inside the transaction', () => {
