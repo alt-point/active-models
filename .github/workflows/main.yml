@@ -33,3 +33,6 @@ jobs:
       - name: Check the built package (ESM + CJS, one copy of every class)
         run: bun run test:dist
       - run: npm publish --access public
+        # verbose: npm reports a failed OIDC token exchange only at this level
+        env:
+          NPM_CONFIG_LOGLEVEL: verbose
